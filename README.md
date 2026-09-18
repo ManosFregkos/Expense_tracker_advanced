@@ -6,7 +6,7 @@ The V1 implementation is complete. See [Implementation plan](docs/IMPLEMENTATION
 
 ## Quick start
 
-Prerequisites: Node.js 20+, Java 21 (Firebase emulators), and Firebase CLI.
+Prerequisites: Node.js 22+, Java 21 (Firebase emulators), and Firebase CLI.
 
 ```bash
 npm install
@@ -71,7 +71,7 @@ App Check is initialized with a reCAPTCHA v3 provider when `VITE_FIREBASE_APPCHE
 
 The Functions predeploy step compiles and packages the private shared workspace into `functions/vendor/shared`. Keep the generated vendor package and `functions/package-lock.json` committed so Cloud Build can install the Functions package without access to a private npm registry.
 
-Hosting serves `apps/web/dist` and rewrites client routes to `index.html`. Firestore indexes and rules are deployed from the repository root. Functions target Node.js 20.
+Hosting serves `apps/web/dist` and rewrites client routes to `index.html`. Firestore indexes and rules are deployed from the repository root. Functions target Node.js 22.
 
 ## Testing
 
