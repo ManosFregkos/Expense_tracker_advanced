@@ -2,6 +2,8 @@ node_modules/
 dist/
 dev-dist/
 lib/
+!apps/web/src/lib/
+!apps/web/src/lib/**
 coverage/
 playwright-report/
 test-results/

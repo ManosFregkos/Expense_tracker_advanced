@@ -7,9 +7,14 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_STORAGE_BUCKET: string
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID: string
   readonly VITE_FIREBASE_APP_ID: string
+  readonly VITE_FIREBASE_APPCHECK_SITE_KEY?: string
   readonly VITE_USE_FIREBASE_EMULATORS?: string
   readonly VITE_DEFAULT_TIME_ZONE?: string
   readonly VITE_AUTH_EMULATOR_PORT?: string
   readonly VITE_FIRESTORE_EMULATOR_PORT?: string
   readonly VITE_FUNCTIONS_EMULATOR_PORT?: string
+}
+
+interface WorkerGlobalScope {
+  FIREBASE_APPCHECK_DEBUG_TOKEN?: boolean | string
 }

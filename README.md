@@ -59,12 +59,12 @@ docs              Architecture, collections, and implementation plan
 
 Copy `.env.example` to `apps/web/.env.local`. Firebase web configuration values identify a Firebase project but are not server secrets. Production bank-provider credentials must be stored with Firebase Functions secrets / Google Secret Manager and must never use `VITE_` variables.
 
-Callable Functions enforce authentication, membership, roles, ownership constraints, and server-side Zod validation.
+App Check is initialized with a reCAPTCHA v3 provider when `VITE_FIREBASE_APPCHECK_SITE_KEY` is configured. Local emulator mode uses the App Check debug token. Callable Functions also enforce authentication, membership, roles, ownership constraints, and server-side Zod validation.
 
 ## Firebase setup and deployment
 
 1. Create Firebase projects for development and production.
-2. Enable Email/Password and Google providers, Firestore, Functions, and Hosting.
+2. Enable Email/Password and Google providers, Firestore, Functions, Hosting, and App Check with a reCAPTCHA v3 site key.
 3. Put project aliases in `.firebaserc`; do not commit private service-account keys.
 4. Build and verify: `npm run build && npm test && npm run test:rules`.
 5. Deploy with `firebase deploy --project <alias>`.
@@ -93,6 +93,7 @@ All amounts are positive integers in currency minor units. Transaction type dete
 - The backend derives membership, actor, and account ownership relationships from trusted documents.
 - Invitations are server-created and match the authenticated verified email on acceptance.
 - Analytics and audit logs are backend-controlled. Bank provider tokens never enter client-readable documents.
+- App Check enforcement is configurable during rollout; authentication and authorization never depend on App Check alone.
 
 See [Security](docs/SECURITY.md), [Firestore model](docs/FIRESTORE.md), and `firestore.rules` for details.
 

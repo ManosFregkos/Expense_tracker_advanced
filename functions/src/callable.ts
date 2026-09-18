@@ -9,6 +9,8 @@ import { ZodError, type ZodType } from 'zod'
 const options: CallableOptions = {
   region: 'europe-west1',
   cors: true,
+  enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+  consumeAppCheckToken: false,
 }
 
 export interface Actor {
