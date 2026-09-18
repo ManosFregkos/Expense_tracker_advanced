@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": { "noEmit": true, "types": ["node"] },
+  "include": ["playwright.config.ts", "vitest.config.ts", "tests/**/*.ts"],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./functions" },
+    { "path": "./apps/web" }
+  ]
+}

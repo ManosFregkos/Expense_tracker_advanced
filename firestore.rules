@@ -1,0 +1,49 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function memberPath(householdId) {
+      return /databases/$(database)/documents/households/$(householdId)/members/$(request.auth.uid);
+    }
+    function isMember(householdId) { return signedIn() && exists(memberPath(householdId)); }
+    function role(householdId) { return get(memberPath(householdId)).data.role; }
+    function hasRole(householdId, roles) {
+      return isMember(householdId) && role(householdId) in roles;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['id', 'email', 'displayName', 'photoURL', 'locale', 'createdAt', 'updatedAt']);
+      allow update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'locale', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    match /households/{householdId} {
+      allow read: if isMember(householdId);
+      allow create, update, delete: if false;
+      match /members/{memberId} { allow read: if isMember(householdId); allow write: if false; }
+      match /accounts/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /transactions/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /categories/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /bankConnections/{documentId} { allow read: if hasRole(householdId, ['OWNER', 'ADMIN']); allow write: if false; }
+      match /bankTransactions/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /merchantRules/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /auditLogs/{documentId} { allow read: if hasRole(householdId, ['OWNER', 'ADMIN']); allow write: if false; }
+      match /monthlyAnalytics/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+    }
+
+    match /invitations/{invitationId} {
+      allow read: if signedIn() && (
+        resource.data.emailLower == request.auth.token.email.lower()
+        || isMember(resource.data.householdId)
+      );
+      allow write: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

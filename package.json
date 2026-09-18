@@ -1,0 +1,51 @@
+{
+  "name": "family-expense-tracker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "functions",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "overrides": {
+    "gaxios@6.7.1": {
+      "uuid": "^11.1.1"
+    }
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace=@family-expense-tracker/web",
+    "build": "npm run build --workspace=@family-expense-tracker/shared && npm run build --workspace=@family-expense-tracker/functions && npm run build --workspace=@family-expense-tracker/web",
+    "typecheck": "npm run typecheck --workspace=@family-expense-tracker/shared && npm run typecheck --workspace=@family-expense-tracker/functions && npm run typecheck --workspace=@family-expense-tracker/web",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run build --workspace=@family-expense-tracker/shared && npm run test --workspaces --if-present",
+    "test:unit": "vitest run",
+    "test:rules": "firebase emulators:exec --config firebase.rules-test.json --only firestore \"vitest run tests/rules\"",
+    "test:e2e": "npm run build --workspace=@family-expense-tracker/shared && npm run build --workspace=@family-expense-tracker/functions && firebase emulators:exec --config firebase.e2e.json --only auth,firestore,functions \"playwright test\"",
+    "emulators": "npm run build --workspace=@family-expense-tracker/shared && npm run build --workspace=@family-expense-tracker/functions && firebase emulators:start",
+    "seed": "npm run build --workspace=@family-expense-tracker/shared && FIRESTORE_EMULATOR_HOST=127.0.0.1:8088 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 GCLOUD_PROJECT=demo-family-expense-tracker npm run seed --workspace=@family-expense-tracker/functions"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.3.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "firebase-admin": "^14.4.0",
+    "firebase-tools": "^15.30.2",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0",
+    "vitest": "^5.0.1"
+  }
+}
