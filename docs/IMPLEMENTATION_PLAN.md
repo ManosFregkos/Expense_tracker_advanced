@@ -12,7 +12,7 @@ The phases mirror the product specification. Each phase is completed with typech
 | 6     | Transaction search, filtering, pagination, details                               | Complete |
 | 7     | Dashboard, aggregates, charts, analytics                                         | Complete |
 | 8     | Invitations, members, roles                                                      | Complete |
-| 9     | Audit logging, rules, App Check                                                  | Complete |
+| 9     | Audit logging and rules                                                          | Complete |
 | 10    | PWA, offline and responsive polish                                               | Complete |
 | 11    | CSV export                                                                       | Complete |
 | 12    | Bank/provider architecture, idempotency, merchant rules                          | Complete |
@@ -22,7 +22,7 @@ The phases mirror the product specification. Each phase is completed with typech
 
 - Phase 1–3: workspace tooling, shared Zod/domain boundary, Firebase client/emulators, authentication, verification gate, protected routes, household onboarding, and category seeding.
 - Phase 4–6: individually owned accounts, cached/deterministic balances, unified transaction form, atomic transfers, soft deletion, normalized prefix search, URL filters, and cursor pagination.
-- Phase 7–9: dashboard/report charts, monthly aggregates and repair callable, invitations, role checks, audit records, deny-by-default rules, App Check initialization, and household-isolation tests.
+- Phase 7–9: dashboard/report charts, monthly aggregates and repair callable, invitations, role checks, audit records, deny-by-default rules, and household-isolation tests.
 - Phase 10–13: installable/offline PWA shell, responsive navigation, CSV ownership export, bank-provider abstraction/mock/idempotency, unit/component/E2E coverage, CI, and operational documentation.
 
 ## Quality gates

@@ -43,7 +43,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           react: ['react', 'react-dom', 'react-router-dom'],
-          'firebase-core': ['firebase/app', 'firebase/app-check'],
+          'firebase-core': ['firebase/app'],
           'firebase-auth': ['firebase/auth'],
           'firebase-firestore': ['firebase/firestore'],
           'firebase-functions': ['firebase/functions'],
