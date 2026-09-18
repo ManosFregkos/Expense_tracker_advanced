@@ -1,0 +1,17 @@
+{
+  "name": "@family-expense-tracker/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./compiled/index.js",
+  "types": "./compiled/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./compiled/index.d.ts",
+      "import": "./compiled/index.js"
+    }
+  },
+  "dependencies": {
+    "zod": "^4.1.5"
+  }
+}

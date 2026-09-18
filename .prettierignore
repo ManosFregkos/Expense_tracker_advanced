@@ -1,6 +1,7 @@
 node_modules
 dist
 lib
+vendor
 coverage
 package-lock.json
 public/icons.svg

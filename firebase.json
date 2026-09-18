@@ -2,7 +2,11 @@
   "functions": {
     "source": "functions",
     "runtime": "nodejs20",
-    "predeploy": ["npm --prefix functions run build"]
+    "predeploy": [
+      "npm run build --workspace=@family-expense-tracker/shared",
+      "node scripts/sync-functions-shared.mjs",
+      "npm --prefix functions run build"
+    ]
   },
   "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
   "hosting": {

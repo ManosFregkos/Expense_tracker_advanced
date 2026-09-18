@@ -15,6 +15,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm ci --prefix functions --omit=dev --ignore-scripts --workspaces=false
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
