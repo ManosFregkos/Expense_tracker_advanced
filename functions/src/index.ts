@@ -7,8 +7,25 @@ export {
   updateTransaction,
   deleteTransaction,
   restoreTransaction,
+  unlinkBankTransaction,
 } from './services/transactions.js'
 export { createCategory, updateCategory } from './services/categories.js'
-export { syncBankConnection, processBankTransaction } from './services/banking.js'
-export { createMerchantRule } from './services/merchant-rules.js'
+export {
+  createBankConnection,
+  reconnectBankConnection,
+  disconnectBankConnection,
+  syncBankConnection,
+  reviewBankTransaction,
+  processBankTransaction,
+} from './services/banking.js'
+export {
+  createMerchantRule,
+  updateMerchantRule,
+  deleteMerchantRule,
+} from './services/merchant-rules.js'
 export { rebuildMonthlyAnalytics } from './services/rebuild-analytics.js'
+export {
+  openBankingWebhook,
+  processOpenBankingWebhook,
+  scheduledBankRefresh,
+} from './banking/webhooks.js'

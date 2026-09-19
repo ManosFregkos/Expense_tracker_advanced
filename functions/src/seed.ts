@@ -71,11 +71,15 @@ async function seed() {
       id: seed.id,
       householdId,
       name: seed.name,
+      normalizedName: seed.name.trim().toLowerCase(),
       type: seed.type,
       ...(seed.parentId ? { parentCategoryId: seed.parentId } : {}),
       ...(seed.icon ? { icon: seed.icon } : {}),
       isSystem: true,
+      origin: 'SYSTEM',
       isArchived: false,
+      createdAt: now,
+      updatedAt: now,
     })
   }
   const accounts = [
@@ -97,6 +101,7 @@ async function seed() {
       currency: 'EUR',
       openingBalanceMinor: balance,
       currentBalanceMinor: balance,
+      appCalculatedBalanceMinor: balance,
       isArchived: false,
       createdAt: now,
       updatedAt: now,

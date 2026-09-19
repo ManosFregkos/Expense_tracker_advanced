@@ -27,12 +27,17 @@ service cloud.firestore {
       allow read: if isMember(householdId);
       allow create, update, delete: if false;
       match /members/{memberId} { allow read: if isMember(householdId); allow write: if false; }
-      match /accounts/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /accounts/{documentId} {
+        allow read: if isMember(householdId); allow write: if false;
+        match /balanceSnapshots/{snapshotId} { allow read: if isMember(householdId); allow write: if false; }
+      }
       match /transactions/{documentId} { allow read: if isMember(householdId); allow write: if false; }
       match /categories/{documentId} { allow read: if isMember(householdId); allow write: if false; }
       match /bankConnections/{documentId} { allow read: if hasRole(householdId, ['OWNER', 'ADMIN']); allow write: if false; }
       match /bankTransactions/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /bankAccountLinks/{documentId} { allow read: if isMember(householdId); allow write: if false; }
       match /merchantRules/{documentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /tags/{documentId} { allow read: if isMember(householdId); allow write: if false; }
       match /auditLogs/{documentId} { allow read: if hasRole(householdId, ['OWNER', 'ADMIN']); allow write: if false; }
       match /monthlyAnalytics/{documentId} { allow read: if isMember(householdId); allow write: if false; }
     }

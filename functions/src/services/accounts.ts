@@ -37,6 +37,7 @@ export const createAccount = secureCallable(createAccountSchema, async (input, a
       currency: input.currency,
       openingBalanceMinor: input.openingBalanceMinor,
       currentBalanceMinor: input.openingBalanceMinor,
+      appCalculatedBalanceMinor: input.openingBalanceMinor,
       isArchived: false,
       createdAt: now,
       updatedAt: now,

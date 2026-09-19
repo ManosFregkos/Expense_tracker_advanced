@@ -91,4 +91,6 @@ export const DEFAULT_CATEGORY_SEEDS: readonly CategorySeed[] = [
   { id: 'income-bonus', name: 'Bonus', type: 'INCOME' },
   { id: 'income-refund', name: 'Refund', type: 'INCOME' },
   { id: 'income-other', name: 'Other income', type: 'INCOME' },
+  { id: 'expense-uncategorised', name: 'Uncategorised', type: 'EXPENSE' },
+  { id: 'income-uncategorised', name: 'Uncategorised', type: 'INCOME' },
 ] as const

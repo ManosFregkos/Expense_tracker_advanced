@@ -5,6 +5,7 @@ import {
   categoryKeys,
   householdKeys,
   transactionKeys,
+  bankingKeys,
 } from '../lib/query-keys'
 import {
   listAccounts,
@@ -12,6 +13,9 @@ import {
   listMembers,
   listMonthlyAnalytics,
   listTransactions,
+  listBankConnections,
+  listReviewBankTransactions,
+  listPendingBankTransactions,
 } from '../lib/repositories'
 import { useHousehold } from '../features/households/HouseholdProvider'
 
@@ -52,6 +56,30 @@ export function useLatestTransactions(count = 8) {
   return useQuery({
     queryKey: transactionKeys.list(household?.id ?? '', { latest: count }),
     queryFn: () => listTransactions(household!.id, { pageSize: count }),
+    enabled: Boolean(household),
+  })
+}
+export function useBankConnections() {
+  const { household } = useHousehold()
+  return useQuery({
+    queryKey: bankingKeys.connections(household?.id ?? ''),
+    queryFn: () => listBankConnections(household!.id),
+    enabled: Boolean(household),
+  })
+}
+export function useReviewBankTransactions() {
+  const { household } = useHousehold()
+  return useQuery({
+    queryKey: bankingKeys.review(household?.id ?? ''),
+    queryFn: () => listReviewBankTransactions(household!.id),
+    enabled: Boolean(household),
+  })
+}
+export function usePendingBankTransactions() {
+  const { household } = useHousehold()
+  return useQuery({
+    queryKey: bankingKeys.pending(household?.id ?? ''),
+    queryFn: () => listPendingBankTransactions(household!.id),
     enabled: Boolean(household),
   })
 }

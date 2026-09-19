@@ -41,7 +41,7 @@ npm run build
 - Paginated/filterable transaction history and CSV export
 - Monthly aggregate analytics; transfers and deleted records are excluded
 - Installable PWA with offline shell and Firestore persistence
-- Bank-provider abstraction and emulator-only mock provider; no bank credentials or scraping
+- Provider-independent PSD2 integration with Salt Edge API V6 and a deterministic local mock
 
 Explicit non-goals include budgets, net worth, investments, loans, receipt OCR, recurring billing, and Splitwise-style settlement.
 
@@ -99,18 +99,32 @@ All amounts are positive integers in currency minor units. Transaction type dete
 
 See [Security](docs/SECURITY.md), [Firestore model](docs/FIRESTORE.md), and `firestore.rules` for details.
 
-## Bank integration
+## Open Banking
 
-V1 is manual-first. `BankProvider` defines connection, refresh, account, transaction, and disconnect operations. `MockBankProvider` supports deterministic emulator tests. The production adapter deliberately fails with a configuration error until a regulated PSD2/Open Banking provider and server-side secrets are configured. Raw `BankTransaction` records remain separate and use deterministic IDs based on provider connection plus external transaction ID to ensure idempotent normalization.
+`OpenBankingProvider` isolates the application from providers. `SaltEdgeProvider` implements Salt Edge Account Information API V6; `MockBankProvider` runs locally and models Alpha Bank, Eurobank, and National Bank of Greece, checking/card accounts, pending-to-booked IDs, duplicate records, balances, consent expiry, and refresh cooldowns. No scraping or bank credentials are used.
 
-No online-banking username/password is requested or stored, and this repository does not claim live Greek-bank support.
+For local use, set `OPEN_BANKING_PROVIDER=mock` in the Functions environment, start the emulators, open **Settings → Bank connections**, and connect one of the three banks. The mock's initial sync supplies a pending card purchase and a booked transaction for review; the next eligible refresh books the pending purchase under a changed provider ID.
+
+For production:
+
+1. Obtain a Salt Edge Account Information client account and the contractual/PSD2 coverage needed for the intended Greek institutions.
+2. Store secrets with `firebase functions:secrets:set SALTEDGE_APP_ID` and `firebase functions:secrets:set SALTEDGE_SECRET`.
+3. Set `OPEN_BANKING_PROVIDER=saltedge`, the three `SALTEDGE_*_PROVIDER_CODE` values returned by the provider catalogue, the allowed frontend origin, and the success/failure URLs.
+4. In Salt Edge Dashboard callbacks, configure the deployed `openBankingWebhook` HTTPS URL for Success, Failure, Notify, and Consent Status. Set `OPEN_BANKING_SUCCESS_URL`, `OPEN_BANKING_FAILURE_URL`, and `OPEN_BANKING_WEBHOOK_URL` to that same exact URL. Signature verification includes the URL, raw body, and V6 public key; progress callbacks are acknowledged and only `stage: finish` starts an import.
+5. Deploy Functions, rules, and indexes, then validate the flow in Salt Edge test mode before live enablement.
+
+Live support is not claimed until real credentials, provider codes, callbacks, and bank consents have been tested. Sync is best effort and subject to bank availability, SCA, consent duration, pending-data support, and provider refresh limits.
+
+## V2 migration
+
+Take a Firestore backup, then run `npm run migrate:open-banking-v2` for a dry run. Review the count and re-run with `npm run migrate:open-banking-v2 -- --apply`. The migration adds `appCalculatedBalanceMinor` from the existing cached balance, category normalization and split-reference metadata, and moves any legacy provider connection IDs to backend-only documents. It never changes transaction amounts or opening balances. Legacy live connections without a known provider customer ID require reconnecting.
 
 ## Known limitations and roadmap
 
 - Firestore prefix search is intentionally limited to normalized description/merchant tokens; an external search adapter can later add full text.
 - FX conversion and cross-currency transfers are not implemented.
-- The mock bank provider is development-only.
-- Future work: real PSD2 provider, Greek localization, recurring-payment detection, finer permissions, scheduled reports, push notifications, privacy deletion workflow, and search-provider adapter.
+- The mock bank provider is development-only; Salt Edge credentials and an appropriate provider contract are external requirements.
+- Future work: Greek localization, recurring-payment detection, finer permissions, scheduled reports, push notifications, privacy deletion workflow, and a full-text search-provider adapter.
 
 ## Data ownership
 

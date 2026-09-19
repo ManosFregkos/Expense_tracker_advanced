@@ -21,11 +21,13 @@ export function applyDelta(
         byMember: { ...(current.byMember as Record<string, number> | undefined) },
         byAccount: { ...(current.byAccount as Record<string, number> | undefined) },
         byMerchant: { ...(current.byMerchant as Record<string, number> | undefined) },
+        byTag: { ...(current.byTag as Record<string, number> | undefined) },
       }
     : emptyAnalyticsDelta()
   const merged = mergeAnalyticsDeltas(base, delta)
-  for (const key of ['byCategory', 'byMember', 'byAccount', 'byMerchant'] as const) {
-    for (const [id, amount] of Object.entries(merged[key])) if (amount === 0) delete merged[key][id]
+  for (const key of ['byCategory', 'byMember', 'byAccount', 'byMerchant', 'byTag'] as const) {
+    for (const [id, amount] of Object.entries(merged[key] ?? {}))
+      if (amount === 0 && merged[key]) delete merged[key][id]
   }
   return { ...merged, currency, monthKey: month, updatedAt: Timestamp.now() }
 }

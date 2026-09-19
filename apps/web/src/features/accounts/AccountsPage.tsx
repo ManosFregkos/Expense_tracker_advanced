@@ -16,7 +16,11 @@ import { useDisclosure } from '@mantine/hooks'
 import { IconDots, IconEdit, IconPlus, IconArchive } from '@tabler/icons-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { formatMoney, type FinancialAccount } from '@family-expense-tracker/shared'
+import {
+  AccountBalanceService,
+  formatMoney,
+  type FinancialAccount,
+} from '@family-expense-tracker/shared'
 import { EmptyState } from '../../components/EmptyState'
 import { useAccounts, useMembers } from '../../hooks/useHouseholdData'
 import { api } from '../../lib/callables'
@@ -128,10 +132,101 @@ export function AccountsPage() {
                           </Menu.Dropdown>
                         </Menu>
                       </Group>
-                      <Text fz={28} fw={750} mt="xl">
-                        {formatMoney(account.currentBalanceMinor, account.currency)}
+                      <Text size="xs" c="dimmed" mt="xl">
+                        APPLICATION {account.type === 'CREDIT_CARD' ? 'OUTSTANDING' : 'CALCULATED'}
                       </Text>
-                      <Text size="xs" c="dimmed">
+                      <Text fz={28} fw={750}>
+                        {formatMoney(
+                          account.appCalculatedBalanceMinor ?? account.currentBalanceMinor,
+                          account.currency,
+                        )}
+                      </Text>
+                      {account.bankReportedBalance && (
+                        <Stack gap={2} mt="md">
+                          <Text size="xs" c="dimmed">
+                            BANK REPORTED
+                          </Text>
+                          {account.type === 'CREDIT_CARD' ? (
+                            <>
+                              <Text>
+                                Outstanding{' '}
+                                {account.bankReportedBalance.outstandingMinor === undefined
+                                  ? 'Unavailable'
+                                  : formatMoney(
+                                      account.bankReportedBalance.outstandingMinor,
+                                      account.currency,
+                                    )}
+                              </Text>
+                              <Text>
+                                Available credit{' '}
+                                {AccountBalanceService.calculateAvailableCredit(
+                                  account.bankReportedBalance.creditLimitMinor,
+                                  account.bankReportedBalance.outstandingMinor ?? 0,
+                                ) === undefined
+                                  ? 'Unavailable'
+                                  : formatMoney(
+                                      AccountBalanceService.calculateAvailableCredit(
+                                        account.bankReportedBalance.creditLimitMinor,
+                                        account.bankReportedBalance.outstandingMinor ?? 0,
+                                      )!,
+                                      account.currency,
+                                    )}
+                              </Text>
+                            </>
+                          ) : (
+                            <>
+                              <Text>
+                                Current{' '}
+                                {account.bankReportedBalance.currentMinor === undefined
+                                  ? 'Unavailable'
+                                  : formatMoney(
+                                      account.bankReportedBalance.currentMinor,
+                                      account.currency,
+                                    )}
+                              </Text>
+                              <Text>
+                                Available{' '}
+                                {account.bankReportedBalance.availableMinor === undefined
+                                  ? 'Unavailable'
+                                  : formatMoney(
+                                      account.bankReportedBalance.availableMinor,
+                                      account.currency,
+                                    )}
+                              </Text>
+                            </>
+                          )}
+                          <Text
+                            size="sm"
+                            c={
+                              AccountBalanceService.compareWithBankBalance(
+                                account.type,
+                                account.appCalculatedBalanceMinor ?? account.currentBalanceMinor,
+                                account.bankReportedBalance,
+                              )
+                                ? 'orange'
+                                : 'dimmed'
+                            }
+                          >
+                            Difference{' '}
+                            {AccountBalanceService.compareWithBankBalance(
+                              account.type,
+                              account.appCalculatedBalanceMinor ?? account.currentBalanceMinor,
+                              account.bankReportedBalance,
+                            ) === undefined
+                              ? 'Unavailable'
+                              : formatMoney(
+                                  AccountBalanceService.compareWithBankBalance(
+                                    account.type,
+                                    account.appCalculatedBalanceMinor ??
+                                      account.currentBalanceMinor,
+                                    account.bankReportedBalance,
+                                  )!,
+                                  account.currency,
+                                )}
+                          </Text>
+                        </Stack>
+                      )}
+                      <Text size="xs" c="dimmed" mt="xs">
                         Opening {formatMoney(account.openingBalanceMinor, account.currency)}
                       </Text>
                     </Card>

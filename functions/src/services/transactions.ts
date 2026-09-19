@@ -11,6 +11,7 @@ import {
   monthKey,
   transactionAnalyticsDelta,
   transactionIdSchema,
+  transactionEffectForAccount,
   transactionInputSchema,
   updateTransactionSchema,
   type FinancialAccount,
@@ -41,6 +42,9 @@ function inputToTransaction(input: TransactionInput, id: string, actor: Actor): 
     ...(input.notes ? { notes: input.notes } : {}),
     source: input.source,
     ...(input.bankTransactionId ? { bankTransactionId: input.bankTransactionId } : {}),
+    ...(input.tags?.length
+      ? { tags: [...new Set(input.tags.map((tag) => tag.trim().toLowerCase()))] }
+      : {}),
     createdBy: actor.uid,
     searchPrefixes: buildSearchPrefixes(input.description, input.merchant),
     isDeleted: false,
@@ -63,6 +67,12 @@ function inputToTransaction(input: TransactionInput, id: string, actor: Actor): 
     accountId: input.accountId,
     ownerUserId: input.ownerUserId,
     categoryId: input.categoryId,
+    ...(input.type === 'EXPENSE' && input.splits?.length
+      ? {
+          splits: input.splits,
+          splitCategoryIds: [...new Set(input.splits.map((split) => split.categoryId))],
+        }
+      : {}),
   }
 }
 
@@ -74,9 +84,15 @@ function updatedTransaction(
   const replacement = inputToTransaction(input, existing.id, actor)
   return {
     ...replacement,
+    source: existing.source,
     createdAt: existing.createdAt,
     createdBy: existing.createdBy,
     updatedAt: Timestamp.now(),
+    ...(existing.bankTransactionId ? { bankTransactionId: existing.bankTransactionId } : {}),
+    ...(existing.bankTransactionIds ? { bankTransactionIds: existing.bankTransactionIds } : {}),
+    ...(existing.bankStatus ? { bankStatus: existing.bankStatus } : {}),
+    ...(existing.affectsBalance === false ? { affectsBalance: false } : {}),
+    ...(existing.excludeFromAnalytics ? { excludeFromAnalytics: true } : {}),
     ...(existing.deletedAt ? { deletedAt: existing.deletedAt } : {}),
     ...(existing.deletedBy ? { deletedBy: existing.deletedBy } : {}),
   }
@@ -151,6 +167,27 @@ async function validateTransactionRelations(
         'Select an active category matching the transaction type.',
       )
     }
+    if (financialTransaction.type === 'EXPENSE' && financialTransaction.splits?.length) {
+      const splitCategories = await Promise.all(
+        financialTransaction.splits.map((split) =>
+          transaction.get(
+            db.doc(`households/${financialTransaction.householdId}/categories/${split.categoryId}`),
+          ),
+        ),
+      )
+      if (
+        splitCategories.some(
+          (splitCategory) =>
+            !splitCategory.exists ||
+            splitCategory.get('type') !== 'EXPENSE' ||
+            splitCategory.get('isArchived'),
+        )
+      )
+        throw new HttpsError(
+          'failed-precondition',
+          'Every split must use an active expense category in this household.',
+        )
+    }
   }
   return accounts
 }
@@ -174,13 +211,25 @@ async function applyFinancialMutation(
   before: Transaction | undefined,
   after: Transaction | undefined,
 ): Promise<void> {
-  const accountDeltas = combineAccountEffects(before, after)
-  const accountRefs = Object.keys(accountDeltas).map((id) =>
-    db.doc(`households/${household.id}/accounts/${id}`),
-  )
+  const affectedIds = [
+    ...new Set([
+      ...(before ? involvedAccountIds(before) : []),
+      ...(after ? involvedAccountIds(after) : []),
+    ]),
+  ]
+  const accountRefs = affectedIds.map((id) => db.doc(`households/${household.id}/accounts/${id}`))
   const accountSnapshots = await Promise.all(
     accountRefs.map((ref) => firestoreTransaction.get(ref)),
   )
+  const accountDeltas: Record<string, number> = {}
+  accountSnapshots.forEach((snapshot) => {
+    if (!snapshot.exists)
+      throw new HttpsError('failed-precondition', 'A referenced account no longer exists.')
+    const account = snapshot.data() as FinancialAccount
+    accountDeltas[account.id] =
+      (before ? -transactionEffectForAccount(before, account.id, account.type) : 0) +
+      (after ? transactionEffectForAccount(after, account.id, account.type) : 0)
+  })
 
   const monthDeltas = new Map<string, ReturnType<typeof transactionAnalyticsDelta>>()
   for (const [value, direction] of [
@@ -200,6 +249,7 @@ async function applyFinancialMutation(
           byMember: {},
           byAccount: {},
           byMerchant: {},
+          byTag: {},
         },
         transactionAnalyticsDelta(value, direction),
       ),
@@ -217,8 +267,13 @@ async function applyFinancialMutation(
     if (!ref || !snapshot.exists)
       throw new HttpsError('failed-precondition', 'A referenced account no longer exists.')
     const delta = accountDeltas[ref.id] ?? 0
+    const existingAppBalance = snapshot.get('appCalculatedBalanceMinor') as number | undefined
     firestoreTransaction.update(ref, {
       currentBalanceMinor: FieldValue.increment(delta),
+      appCalculatedBalanceMinor:
+        existingAppBalance === undefined
+          ? Number(snapshot.get('currentBalanceMinor') ?? 0) + delta
+          : FieldValue.increment(delta),
       updatedAt: Timestamp.now(),
     })
   })
@@ -250,6 +305,18 @@ export const createTransaction = secureCallable(transactionInputSchema, async (i
       entityId: ref.id,
       after: safeFinancialSnapshot(financialTransaction as unknown as Record<string, unknown>),
     })
+    if (financialTransaction.type === 'EXPENSE' && financialTransaction.splits?.length)
+      writeAudit(db, transaction, {
+        householdId: input.householdId,
+        userId: actor.uid,
+        action: 'TRANSACTION_SPLIT_CREATED',
+        entityType: 'TRANSACTION',
+        entityId: ref.id,
+        after: {
+          splitCount: financialTransaction.splits.length,
+          amountMinor: financialTransaction.amountMinor,
+        },
+      })
   })
   return { transactionId: ref.id }
 })
@@ -273,6 +340,26 @@ export const updateTransaction = secureCallable(updateTransactionSchema, async (
       { ...input.transaction, householdId: input.householdId },
       actor,
     )
+    if (before.bankTransactionId) {
+      const immutableChanged =
+        input.transaction.type !== before.type ||
+        input.transaction.amountMinor !== before.amountMinor ||
+        input.transaction.currency !== before.currency ||
+        input.transaction.transactionDate !==
+          timestampToDate(before.transactionDate).toISOString() ||
+        (before.type !== 'TRANSFER' &&
+          input.transaction.type !== 'TRANSFER' &&
+          input.transaction.accountId !== before.accountId) ||
+        (before.type === 'TRANSFER' &&
+          input.transaction.type === 'TRANSFER' &&
+          (input.transaction.sourceAccountId !== before.transfer.sourceAccountId ||
+            input.transaction.destinationAccountId !== before.transfer.destinationAccountId))
+      if (immutableChanged)
+        throw new HttpsError(
+          'failed-precondition',
+          'Unlink this bank transaction before changing its amount, date, account, currency, or type.',
+        )
+    }
     await validateTransactionRelations(transaction, after)
     await applyFinancialMutation(transaction, household, before, after)
     transaction.set(ref, after)
@@ -285,6 +372,19 @@ export const updateTransaction = secureCallable(updateTransactionSchema, async (
       before: safeFinancialSnapshot(before as unknown as Record<string, unknown>),
       after: safeFinancialSnapshot(after as unknown as Record<string, unknown>),
     })
+    if (
+      after.type === 'EXPENSE' &&
+      after.splits?.length &&
+      (before.type !== 'EXPENSE' || JSON.stringify(before.splits) !== JSON.stringify(after.splits))
+    )
+      writeAudit(db, transaction, {
+        householdId: input.householdId,
+        userId: actor.uid,
+        action: 'TRANSACTION_SPLIT_CREATED',
+        entityType: 'TRANSACTION',
+        entityId: ref.id,
+        after: { splitCount: after.splits.length, amountMinor: after.amountMinor },
+      })
   })
   return { transactionId: ref.id }
 })
@@ -303,6 +403,24 @@ async function setDeletionState(
     ])
     if (!snapshot.exists) throw new HttpsError('not-found', 'Transaction not found.')
     const before = snapshot.data() as Transaction
+    if (!restore && before.bankTransactionId && before.source !== 'BANK_SYNC')
+      throw new HttpsError(
+        'failed-precondition',
+        'Unlink this bank transaction before deleting it.',
+      )
+    if (
+      restore &&
+      before.bankTransactionId &&
+      (before.bankStatus === 'REVERSED' || before.bankStatus === 'CANCELLED')
+    )
+      throw new HttpsError(
+        'failed-precondition',
+        'A reversed or cancelled bank transaction cannot be restored.',
+      )
+    const bankRefs = (
+      before.bankTransactionIds ?? (before.bankTransactionId ? [before.bankTransactionId] : [])
+    ).map((id) => db.doc(`households/${input.householdId}/bankTransactions/${id}`))
+    const bankSnapshots = await Promise.all(bankRefs.map((bankRef) => transaction.get(bankRef)))
     if (restore === !before.deletedAt) return
     const restored = { ...before, isDeleted: false, updatedAt: Timestamp.now() }
     delete restored.deletedAt
@@ -318,6 +436,15 @@ async function setDeletionState(
         }
     await applyFinancialMutation(transaction, household, before, after)
     transaction.set(ref, after)
+    if (!restore && before.source === 'BANK_SYNC')
+      bankSnapshots.forEach((bankSnapshot, index) => {
+        const bankRef = bankRefs[index]
+        if (bankSnapshot.exists && bankRef)
+          transaction.update(bankRef, {
+            reconciliationStatus: 'IGNORED',
+            updatedAt: Timestamp.now(),
+          })
+      })
     writeAudit(db, transaction, {
       householdId: input.householdId,
       userId: actor.uid,
@@ -338,4 +465,119 @@ export const restoreTransaction = secureCallable(transactionIdSchema, (input, ac
   setDeletionState(input, actor, true),
 )
 
+export const unlinkBankTransaction = secureCallable(transactionIdSchema, async (input, actor) => {
+  await requireMember(input.householdId, actor.uid)
+  const ref = db.doc(`households/${input.householdId}/transactions/${input.transactionId}`)
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref)
+    if (!snapshot.exists) throw new HttpsError('not-found', 'Transaction not found.')
+    const financial = snapshot.data() as Transaction
+    if (!financial.bankTransactionId) return
+    if (financial.source === 'BANK_SYNC')
+      throw new HttpsError(
+        'failed-precondition',
+        'Imported transactions cannot be unlinked. Delete it to preserve an ignored bank record.',
+      )
+    const bankRefs = (financial.bankTransactionIds ?? [financial.bankTransactionId]).map((id) =>
+      db.doc(`households/${input.householdId}/bankTransactions/${id}`),
+    )
+    const bankSnapshots = await Promise.all(bankRefs.map((bankRef) => transaction.get(bankRef)))
+    transaction.update(ref, {
+      bankTransactionId: FieldValue.delete(),
+      bankTransactionIds: FieldValue.delete(),
+      bankStatus: FieldValue.delete(),
+      updatedAt: Timestamp.now(),
+    })
+    bankSnapshots.forEach((bank, index) => {
+      const bankRef = bankRefs[index]
+      if (bank.exists && bankRef)
+        transaction.update(bankRef, {
+          normalizedTransactionId: FieldValue.delete(),
+          reconciliationStatus: 'REVIEW',
+          reviewReason: 'POSSIBLE_DUPLICATE',
+          updatedAt: Timestamp.now(),
+        })
+    })
+  })
+  return { transactionId: input.transactionId }
+})
+
 export const internalTransactionHelpers = { inputToTransaction, combineAccountEffects }
+
+export async function createImportedTransaction(
+  financialTransaction: Transaction,
+): Promise<string> {
+  const ref = db.doc(
+    `households/${financialTransaction.householdId}/transactions/${financialTransaction.id}`,
+  )
+  await db.runTransaction(async (transaction) => {
+    const existing = await transaction.get(ref)
+    if (existing.exists) return
+    const household = await loadHousehold(transaction, financialTransaction.householdId)
+    await validateTransactionRelations(transaction, financialTransaction)
+    await applyFinancialMutation(transaction, household, undefined, financialTransaction)
+    transaction.set(ref, financialTransaction)
+  })
+  return ref.id
+}
+
+export async function reverseImportedTransaction(
+  householdId: string,
+  transactionId: string,
+): Promise<void> {
+  const ref = db.doc(`households/${householdId}/transactions/${transactionId}`)
+  await db.runTransaction(async (transaction) => {
+    const [household, snapshot] = await Promise.all([
+      loadHousehold(transaction, householdId),
+      transaction.get(ref),
+    ])
+    if (!snapshot.exists) return
+    const before = snapshot.data() as Transaction
+    if (before.isDeleted) return
+    const after: Transaction = {
+      ...before,
+      bankStatus: 'REVERSED',
+      isDeleted: true,
+      deletedAt: Timestamp.now(),
+      deletedBy: 'OPEN_BANKING_SYNC',
+      updatedAt: Timestamp.now(),
+    }
+    await applyFinancialMutation(transaction, household, before, after)
+    transaction.set(ref, after)
+  })
+}
+
+export async function updateImportedTransactionFromBank(
+  householdId: string,
+  transactionId: string,
+  update: {
+    amountMinor: number
+    transactionDate: Timestamp
+    description: string
+    merchant?: string
+    bankStatus: 'BOOKED' | 'PENDING'
+  },
+): Promise<void> {
+  const ref = db.doc(`households/${householdId}/transactions/${transactionId}`)
+  await db.runTransaction(async (transaction) => {
+    const [household, snapshot] = await Promise.all([
+      loadHousehold(transaction, householdId),
+      transaction.get(ref),
+    ])
+    if (!snapshot.exists) return
+    const before = snapshot.data() as Transaction
+    if (before.source !== 'BANK_SYNC' || before.isDeleted) return
+    const after: Transaction = {
+      ...before,
+      amountMinor: update.amountMinor,
+      transactionDate: update.transactionDate,
+      description: update.description,
+      ...(update.merchant ? { merchant: update.merchant } : {}),
+      bankStatus: update.bankStatus,
+      searchPrefixes: buildSearchPrefixes(update.description, update.merchant),
+      updatedAt: Timestamp.now(),
+    }
+    await applyFinancialMutation(transaction, household, before, after)
+    transaction.set(ref, after)
+  })
+}

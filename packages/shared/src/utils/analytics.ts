@@ -11,6 +11,7 @@ export function emptyAnalyticsDelta(): AnalyticsDelta {
     byMember: {},
     byAccount: {},
     byMerchant: {},
+    byTag: {},
   }
 }
 
@@ -27,17 +28,26 @@ export function transactionAnalyticsDelta(
   direction: 1 | -1 = 1,
 ): AnalyticsDelta {
   const delta = emptyAnalyticsDelta()
-  if (transaction.isDeleted || transaction.deletedAt || transaction.type === 'TRANSFER')
+  if (
+    transaction.isDeleted ||
+    transaction.deletedAt ||
+    transaction.type === 'TRANSFER' ||
+    transaction.excludeFromAnalytics
+  )
     return delta
   const amount = transaction.amountMinor * direction
   delta.transactionCount = direction
   if (transaction.type === 'INCOME') delta.incomeMinor = amount
   if (transaction.type === 'EXPENSE') {
     delta.expenseMinor = amount
-    addDimension(delta.byCategory, transaction.categoryId, amount)
+    if (transaction.splits?.length)
+      for (const split of transaction.splits)
+        addDimension(delta.byCategory, split.categoryId, split.amountMinor * direction)
+    else addDimension(delta.byCategory, transaction.categoryId, amount)
     addDimension(delta.byMember, transaction.ownerUserId, amount)
     addDimension(delta.byAccount, transaction.accountId, amount)
     addDimension(delta.byMerchant, transaction.merchant?.trim().toLowerCase(), amount)
+    for (const tag of transaction.tags ?? []) addDimension(delta.byTag ?? {}, tag, amount)
   }
   return delta
 }
@@ -63,9 +73,9 @@ export function mergeAnalyticsDeltas(...deltas: AnalyticsDelta[]): AnalyticsDelt
     result.incomeMinor += delta.incomeMinor
     result.expenseMinor += delta.expenseMinor
     result.transactionCount += delta.transactionCount
-    for (const key of ['byCategory', 'byMember', 'byAccount', 'byMerchant'] as const) {
-      for (const [id, amount] of Object.entries(delta[key]))
-        result[key][id] = (result[key][id] ?? 0) + amount
+    for (const key of ['byCategory', 'byMember', 'byAccount', 'byMerchant', 'byTag'] as const) {
+      for (const [id, amount] of Object.entries(delta[key] ?? {}))
+        if (result[key]) result[key][id] = (result[key][id] ?? 0) + amount
     }
   }
   return result

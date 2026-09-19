@@ -2,10 +2,19 @@ import { Badge, Button, Card, Group, Loader, Paper, Stack, Table, Text, Title } 
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { dateRangeForPreset, type TransactionType } from '@family-expense-tracker/shared'
+import {
+  dateRangeForPreset,
+  formatMoney,
+  type TransactionType,
+} from '@family-expense-tracker/shared'
 import { Amount } from '../../components/Amount'
 import { EmptyState } from '../../components/EmptyState'
-import { useAccounts, useCategories, useMembers } from '../../hooks/useHouseholdData'
+import {
+  useAccounts,
+  useCategories,
+  useMembers,
+  usePendingBankTransactions,
+} from '../../hooks/useHouseholdData'
 import { formatDate } from '../../lib/date'
 import { transactionKeys } from '../../lib/query-keys'
 import { listTransactions, type TransactionFilters as QueryFilters } from '../../lib/repositories'
@@ -24,6 +33,7 @@ export function TransactionsPage() {
   const accounts = useAccounts()
   const categories = useCategories()
   const members = useMembers()
+  const pending = usePendingBankTransactions()
   const filters: FilterValues = {
     period: params.get('period') ?? 'THIS_MONTH',
     type: params.get('type') ?? '',
@@ -102,6 +112,30 @@ export function TransactionsPage() {
         </div>
         <Button onClick={add.open}>Add transaction</Button>
       </div>
+      {(pending.data?.length ?? 0) > 0 && (
+        <Paper withBorder p="md" mb="lg">
+          <Group justify="space-between" mb="xs">
+            <Text fw={700}>Pending bank activity</Text>
+            <Badge color="yellow">Not included in analytics</Badge>
+          </Group>
+          <Stack gap="xs">
+            {pending.data?.map((item) => (
+              <Group key={item.id} justify="space-between">
+                <div>
+                  <Text fw={600}>{item.merchantName ?? item.rawDescription}</Text>
+                  <Text size="xs" c="dimmed">
+                    Pending · bank synchronization
+                  </Text>
+                </div>
+                <Text c={item.direction === 'DEBIT' ? 'red' : 'teal'}>
+                  {item.direction === 'DEBIT' ? '−' : '+'}
+                  {formatMoney(item.amountMinor, item.currency)}
+                </Text>
+              </Group>
+            ))}
+          </Stack>
+        </Paper>
+      )}
       <Paper withBorder p="md" mb="lg">
         <TransactionFilters value={filters} onChange={changeFilters} />
       </Paper>

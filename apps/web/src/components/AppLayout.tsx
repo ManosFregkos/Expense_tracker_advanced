@@ -32,6 +32,7 @@ import { OfflineBanner } from './OfflineBanner'
 const nav = [
   ['/dashboard', 'Dashboard', IconHome],
   ['/transactions', 'Transactions', IconReceipt],
+  ['/transactions/review', 'Review transactions', IconReceipt],
   ['/accounts', 'Accounts', IconCreditCard],
   ['/analytics', 'Analytics', IconChartBar],
   ['/members', 'Members', IconUsers],

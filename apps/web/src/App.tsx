@@ -51,6 +51,11 @@ const BankConnectionsPage = lazy(() =>
     default: module.BankConnectionsPage,
   })),
 )
+const ReviewTransactionsPage = lazy(() =>
+  import('./features/banking/ReviewTransactionsPage').then((module) => ({
+    default: module.ReviewTransactionsPage,
+  })),
+)
 
 export default function App() {
   return (
@@ -84,6 +89,7 @@ export default function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/bank-connections" element={<BankConnectionsPage />} />
+              <Route path="/transactions/review" element={<ReviewTransactionsPage />} />
             </Route>
           </Route>
         </Route>

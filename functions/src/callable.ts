@@ -49,8 +49,9 @@ export function secureCallable<TInput, TOutput>(
   schema: ZodType<TInput>,
   handler: (input: TInput, actor: Actor) => Promise<TOutput>,
   requireVerified = true,
+  additionalOptions: Partial<CallableOptions> = {},
 ) {
-  return onCall(options, async (request) => {
+  return onCall({ ...options, ...additionalOptions }, async (request) => {
     const actor = actorFrom(request, requireVerified)
     return handler(parseInput(schema, request.data), actor)
   })

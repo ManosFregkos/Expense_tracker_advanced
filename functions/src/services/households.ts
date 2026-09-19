@@ -5,6 +5,7 @@ import {
   deleteHouseholdSchema,
   updateHouseholdSchema,
   type Household,
+  normalizeSearchText,
 } from '@family-expense-tracker/shared'
 import { HttpsError } from 'firebase-functions/v2/https'
 import { secureCallable } from '../callable.js'
@@ -51,11 +52,15 @@ export const createHousehold = secureCallable(createHouseholdSchema, async (inpu
         id: seed.id,
         householdId: householdRef.id,
         name: seed.name,
+        normalizedName: normalizeSearchText(seed.name),
         type: seed.type,
         ...(seed.parentId ? { parentCategoryId: seed.parentId } : {}),
         ...(seed.icon ? { icon: seed.icon } : {}),
         isSystem: true,
+        origin: 'SYSTEM',
         isArchived: false,
+        createdAt: now,
+        updatedAt: now,
       })
     }
     const auditRef = householdRef.collection('auditLogs').doc()

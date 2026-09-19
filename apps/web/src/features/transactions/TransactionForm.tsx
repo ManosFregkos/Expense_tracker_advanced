@@ -12,6 +12,7 @@ import {
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Controller, useForm } from 'react-hook-form'
+import { useEffect, useState } from 'react'
 import { z } from 'zod'
 import {
   parseMoneyToMinor,
@@ -38,6 +39,11 @@ const formSchema = z
     merchant: z.string().trim().max(160).optional(),
     date: z.string().min(1),
     notes: z.string().trim().max(1000).optional(),
+    tags: z.string().max(1200),
+    splits: z
+      .array(z.object({ id: z.string(), categoryId: z.string().min(1), amount: z.string().min(1) }))
+      .max(20)
+      .optional(),
   })
   .superRefine((value, context) => {
     if (value.type === 'TRANSFER') {
@@ -64,6 +70,40 @@ const formSchema = z
         if (!value[field]) context.addIssue({ code: 'custom', path: [field], message: 'Required' })
   })
 type Values = z.infer<typeof formSchema>
+type ManualSuggestion = {
+  merchant: string
+  type: 'EXPENSE' | 'INCOME'
+  accountId: string
+  ownerUserId: string
+  categoryId: string
+}
+
+function loadSuggestions(): ManualSuggestion[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem('manualTransactionSuggestions') ?? '[]')
+    if (!Array.isArray(value)) return []
+    const items = value as unknown[]
+    return items
+      .filter(
+        (item): item is ManualSuggestion =>
+          item !== null &&
+          typeof item === 'object' &&
+          'merchant' in item &&
+          typeof item.merchant === 'string' &&
+          'type' in item &&
+          (item.type === 'EXPENSE' || item.type === 'INCOME') &&
+          'accountId' in item &&
+          typeof item.accountId === 'string' &&
+          'ownerUserId' in item &&
+          typeof item.ownerUserId === 'string' &&
+          'categoryId' in item &&
+          typeof item.categoryId === 'string',
+      )
+      .slice(0, 20)
+  } catch {
+    return []
+  }
+}
 
 function defaults(transaction?: Transaction): Values {
   const base = {
@@ -74,8 +114,22 @@ function defaults(transaction?: Transaction): Values {
       ? localDateInputValue(toDate(transaction.transactionDate))
       : localDateInputValue(),
     notes: transaction?.notes ?? '',
+    tags: transaction?.tags?.join(', ') ?? '',
+    splits:
+      transaction?.type === 'EXPENSE'
+        ? transaction.splits?.map((split) => ({
+            id: split.id,
+            categoryId: split.categoryId,
+            amount: String(split.amountMinor / 100),
+          }))
+        : undefined,
   }
-  if (!transaction) return { ...base, type: 'EXPENSE' }
+  if (!transaction)
+    return {
+      ...base,
+      type: 'EXPENSE',
+      accountId: localStorage.getItem('lastUsedAccountId') ?? undefined,
+    }
   if (transaction.type === 'TRANSFER')
     return {
       ...base,
@@ -103,6 +157,7 @@ export function TransactionForm({
   const accounts = useAccounts()
   const members = useMembers()
   const categories = useCategories()
+  const suggestions = loadSuggestions()
   const queryClient = useQueryClient()
   const {
     control,
@@ -113,7 +168,13 @@ export function TransactionForm({
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(formSchema), defaultValues: defaults(transaction) })
   const type = watch('type')
+  const selectedAccountId = watch('accountId')
+  const [splits, setSplits] = useState(() => defaults(transaction).splits ?? [])
   const activeAccounts = (accounts.data ?? []).filter((account) => !account.isArchived)
+  useEffect(() => {
+    const account = accounts.data?.find((item) => item.id === selectedAccountId && !item.isArchived)
+    if (account) setValue('ownerUserId', account.ownerUserId)
+  }, [accounts.data, selectedAccountId, setValue])
   const accountOptions = activeAccounts.map((account) => ({
     value: account.id,
     label: `${account.name} · ${members.data?.find((member) => member.userId === account.ownerUserId)?.displayName ?? 'Member'}`,
@@ -129,6 +190,10 @@ export function TransactionForm({
         label: parent ? `${parent.name} › ${category.name}` : category.name,
       }
     })
+  const merchantSuggestions = suggestions
+    .filter((item) => item.type === type)
+    .map((item) => item.merchant)
+  const descriptionField = register('description')
   const mutation = useMutation({
     mutationFn: async (values: Values) => {
       if (!household) throw new Error('No household selected')
@@ -140,6 +205,15 @@ export function TransactionForm({
         ...(values.merchant ? { merchant: values.merchant } : {}),
         transactionDate: localDateToIso(values.date),
         ...(values.notes ? { notes: values.notes } : {}),
+        ...(values.tags.trim()
+          ? {
+              tags: values.tags
+                .split(',')
+                .map((tag) => tag.trim())
+                .filter(Boolean)
+                .slice(0, 20),
+            }
+          : {}),
         source: 'MANUAL' as const,
       }
       const input =
@@ -156,6 +230,15 @@ export function TransactionForm({
               accountId: values.accountId!,
               ownerUserId: values.ownerUserId!,
               categoryId: values.categoryId!,
+              ...(values.type === 'EXPENSE' && values.splits?.length
+                ? {
+                    splits: values.splits.map((split) => ({
+                      id: split.id,
+                      categoryId: split.categoryId,
+                      amountMinor: parseMoneyToMinor(split.amount, household.defaultCurrency),
+                    })),
+                  }
+                : {}),
             }
       return transaction
         ? api.updateTransaction({
@@ -167,6 +250,32 @@ export function TransactionForm({
     },
     onSuccess: async () => {
       if (!household) return
+      const selectedAccount = watch('accountId')
+      if (selectedAccount) localStorage.setItem('lastUsedAccountId', selectedAccount)
+      const selectedCategory = watch('categoryId')
+      const selectedOwner = watch('ownerUserId')
+      const enteredMerchant = watch('merchant') || watch('description')
+      if (
+        type !== 'TRANSFER' &&
+        selectedAccount &&
+        selectedCategory &&
+        selectedOwner &&
+        enteredMerchant
+      ) {
+        const next = [
+          {
+            merchant: enteredMerchant,
+            type,
+            accountId: selectedAccount,
+            ownerUserId: selectedOwner,
+            categoryId: selectedCategory,
+          },
+          ...suggestions.filter(
+            (item) => item.merchant.toLowerCase() !== enteredMerchant.toLowerCase(),
+          ),
+        ].slice(0, 20)
+        localStorage.setItem('manualTransactionSuggestions', JSON.stringify(next))
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: transactionKeys.all(household.id) }),
         queryClient.invalidateQueries({ queryKey: accountKeys.all(household.id) }),
@@ -233,6 +342,7 @@ export function TransactionForm({
               render={({ field }) => (
                 <Select
                   searchable
+                  allowDeselect={false}
                   label="From account"
                   data={accountOptions}
                   error={errors.sourceAccountId?.message}
@@ -246,6 +356,7 @@ export function TransactionForm({
               render={({ field }) => (
                 <Select
                   searchable
+                  allowDeselect={false}
                   label="To account"
                   data={accountOptions}
                   error={errors.destinationAccountId?.message}
@@ -262,6 +373,7 @@ export function TransactionForm({
               render={({ field }) => (
                 <Select
                   searchable
+                  allowDeselect={false}
                   label="Account"
                   data={accountOptions}
                   error={errors.accountId?.message}
@@ -280,6 +392,7 @@ export function TransactionForm({
               render={({ field }) => (
                 <Select
                   searchable
+                  allowDeselect={false}
                   label="Category"
                   data={categoryOptions}
                   error={errors.categoryId?.message}
@@ -292,6 +405,7 @@ export function TransactionForm({
               control={control}
               render={({ field }) => (
                 <Select
+                  allowDeselect={false}
                   label={type === 'EXPENSE' ? 'Paid by' : 'Received by'}
                   data={(members.data ?? []).map((member) => ({
                     value: member.userId,
@@ -302,6 +416,70 @@ export function TransactionForm({
                 />
               )}
             />
+            {type === 'EXPENSE' && (
+              <Stack gap="xs">
+                <Group justify="space-between">
+                  <TextInput readOnly variant="unstyled" value="Split categories (optional)" />
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="light"
+                    onClick={() => {
+                      const next = [
+                        ...splits,
+                        { id: crypto.randomUUID(), categoryId: '', amount: '' },
+                      ]
+                      setSplits(next)
+                      setValue('splits', next)
+                    }}
+                  >
+                    Add split
+                  </Button>
+                </Group>
+                {splits.map((split, index) => (
+                  <Group key={split.id} align="end" grow>
+                    <Controller
+                      name={`splits.${index}.categoryId`}
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          searchable
+                          allowDeselect={false}
+                          label={`Split ${index + 1} category`}
+                          data={categoryOptions}
+                          {...field}
+                        />
+                      )}
+                    />
+                    <Controller
+                      name={`splits.${index}.amount`}
+                      control={control}
+                      render={({ field }) => (
+                        <NumberInput
+                          label="Amount"
+                          decimalScale={2}
+                          fixedDecimalScale
+                          value={field.value}
+                          onChange={(value) => field.onChange(String(value))}
+                        />
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      color="red"
+                      variant="subtle"
+                      onClick={() => {
+                        const next = splits.filter((_, candidateIndex) => candidateIndex !== index)
+                        setSplits(next)
+                        setValue('splits', next)
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </Group>
+                ))}
+              </Stack>
+            )}
           </>
         )}
         <TextInput
@@ -313,12 +491,38 @@ export function TransactionForm({
                 ? 'e.g. September salary'
                 : 'e.g. Cash withdrawal'
           }
+          list={type === 'TRANSFER' ? undefined : 'merchant-suggestions'}
           error={errors.description?.message}
-          {...register('description')}
+          {...descriptionField}
+          onChange={(event) => {
+            void descriptionField.onChange(event)
+            const previous = suggestions.find(
+              (item) =>
+                item.type === type &&
+                item.merchant.toLowerCase() === event.currentTarget.value.toLowerCase(),
+            )
+            if (previous) {
+              setValue('merchant', previous.merchant)
+              setValue('accountId', previous.accountId)
+              setValue('ownerUserId', previous.ownerUserId)
+              setValue('categoryId', previous.categoryId)
+            }
+          }}
         />
+        <datalist id="merchant-suggestions">
+          {merchantSuggestions.map((merchant) => (
+            <option key={merchant} value={merchant} />
+          ))}
+        </datalist>
         {type !== 'TRANSFER' && <TextInput label="Merchant (optional)" {...register('merchant')} />}
         <TextInput label="Date" type="date" error={errors.date?.message} {...register('date')} />
         <Textarea label="Notes (optional)" autosize minRows={2} {...register('notes')} />
+        <TextInput
+          label="Tags (optional)"
+          placeholder="Holiday 2026, renovation…"
+          description="Separate tags with commas"
+          {...register('tags')}
+        />
         <Button size="md" type="submit" loading={mutation.isPending}>
           Save {type === 'EXPENSE' ? 'expense' : type === 'INCOME' ? 'income' : 'transfer'}
         </Button>

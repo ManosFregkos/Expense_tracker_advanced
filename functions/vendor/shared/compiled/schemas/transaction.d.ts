@@ -12,6 +12,12 @@ export declare const transactionCoreSchema: z.ZodDiscriminatedUnion<[z.ZodObject
         IMPORT: "IMPORT";
     }>>;
     bankTransactionId: z.ZodOptional<z.ZodString>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    splits: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        categoryId: z.ZodString;
+        amountMinor: z.ZodNumber;
+    }, z.core.$strip>>>;
     accountId: z.ZodString;
     ownerUserId: z.ZodString;
     categoryId: z.ZodString;
@@ -29,6 +35,7 @@ export declare const transactionCoreSchema: z.ZodDiscriminatedUnion<[z.ZodObject
         IMPORT: "IMPORT";
     }>>;
     bankTransactionId: z.ZodOptional<z.ZodString>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
     accountId: z.ZodString;
     ownerUserId: z.ZodString;
     categoryId: z.ZodString;
@@ -46,6 +53,7 @@ export declare const transactionCoreSchema: z.ZodDiscriminatedUnion<[z.ZodObject
         IMPORT: "IMPORT";
     }>>;
     bankTransactionId: z.ZodOptional<z.ZodString>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
     type: z.ZodLiteral<"TRANSFER">;
     sourceAccountId: z.ZodString;
     destinationAccountId: z.ZodString;
@@ -65,6 +73,12 @@ export declare const transactionInputSchema: z.ZodIntersection<z.ZodObject<{
         IMPORT: "IMPORT";
     }>>;
     bankTransactionId: z.ZodOptional<z.ZodString>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    splits: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        categoryId: z.ZodString;
+        amountMinor: z.ZodNumber;
+    }, z.core.$strip>>>;
     accountId: z.ZodString;
     ownerUserId: z.ZodString;
     categoryId: z.ZodString;
@@ -82,6 +96,7 @@ export declare const transactionInputSchema: z.ZodIntersection<z.ZodObject<{
         IMPORT: "IMPORT";
     }>>;
     bankTransactionId: z.ZodOptional<z.ZodString>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
     accountId: z.ZodString;
     ownerUserId: z.ZodString;
     categoryId: z.ZodString;
@@ -99,6 +114,7 @@ export declare const transactionInputSchema: z.ZodIntersection<z.ZodObject<{
         IMPORT: "IMPORT";
     }>>;
     bankTransactionId: z.ZodOptional<z.ZodString>;
+    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
     type: z.ZodLiteral<"TRANSFER">;
     sourceAccountId: z.ZodString;
     destinationAccountId: z.ZodString;
@@ -119,6 +135,12 @@ export declare const updateTransactionSchema: z.ZodObject<{
             IMPORT: "IMPORT";
         }>>;
         bankTransactionId: z.ZodOptional<z.ZodString>;
+        tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        splits: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            categoryId: z.ZodString;
+            amountMinor: z.ZodNumber;
+        }, z.core.$strip>>>;
         accountId: z.ZodString;
         ownerUserId: z.ZodString;
         categoryId: z.ZodString;
@@ -136,6 +158,7 @@ export declare const updateTransactionSchema: z.ZodObject<{
             IMPORT: "IMPORT";
         }>>;
         bankTransactionId: z.ZodOptional<z.ZodString>;
+        tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
         accountId: z.ZodString;
         ownerUserId: z.ZodString;
         categoryId: z.ZodString;
@@ -153,6 +176,7 @@ export declare const updateTransactionSchema: z.ZodObject<{
             IMPORT: "IMPORT";
         }>>;
         bankTransactionId: z.ZodOptional<z.ZodString>;
+        tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
         type: z.ZodLiteral<"TRANSFER">;
         sourceAccountId: z.ZodString;
         destinationAccountId: z.ZodString;

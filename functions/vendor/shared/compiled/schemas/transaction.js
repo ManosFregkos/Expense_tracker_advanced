@@ -10,14 +10,23 @@ const base = z.object({
     notes: optionalTextSchema,
     source: z.enum(TRANSACTION_SOURCES).default('MANUAL'),
     bankTransactionId: idSchema.optional(),
+    tags: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
 });
 const expenseIncomeFields = {
     accountId: idSchema,
     ownerUserId: idSchema,
     categoryId: idSchema,
 };
-export const transactionCoreSchema = z.discriminatedUnion('type', [
-    base.extend({ type: z.literal('EXPENSE'), ...expenseIncomeFields }),
+export const transactionCoreSchema = z
+    .discriminatedUnion('type', [
+    base.extend({
+        type: z.literal('EXPENSE'),
+        ...expenseIncomeFields,
+        splits: z
+            .array(z.object({ id: idSchema, categoryId: idSchema, amountMinor: amountMinorSchema }))
+            .max(20)
+            .optional(),
+    }),
     base.extend({ type: z.literal('INCOME'), ...expenseIncomeFields }),
     base
         .extend({
@@ -29,7 +38,17 @@ export const transactionCoreSchema = z.discriminatedUnion('type', [
         message: 'Source and destination accounts must differ',
         path: ['destinationAccountId'],
     }),
-]);
+])
+    .superRefine((value, context) => {
+    if (value.type === 'EXPENSE' &&
+        value.splits?.length &&
+        value.splits.reduce((sum, split) => sum + split.amountMinor, 0) !== value.amountMinor)
+        context.addIssue({
+            code: 'custom',
+            path: ['splits'],
+            message: 'Split amounts must equal the transaction amount',
+        });
+});
 export const transactionInputSchema = z.intersection(z.object({ householdId: idSchema }), transactionCoreSchema);
 export const updateTransactionSchema = z.object({
     householdId: idSchema,

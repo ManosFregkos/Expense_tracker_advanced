@@ -20,7 +20,7 @@ export function TransactionDrawer({
       size="md"
       overlayProps={{ backgroundOpacity: 0.35, blur: 2 }}
     >
-      <TransactionForm transaction={transaction} onSaved={onClose} />
+      {opened && <TransactionForm transaction={transaction} onSaved={onClose} />}
     </Drawer>
   )
 }

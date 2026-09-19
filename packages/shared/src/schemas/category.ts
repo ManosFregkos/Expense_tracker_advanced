@@ -7,10 +7,17 @@ export const createCategorySchema = z.object({
   parentCategoryId: idSchema.optional(),
   type: z.enum(['EXPENSE', 'INCOME']),
   icon: z.string().trim().max(40).optional(),
+  color: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
 })
 
-export const updateCategorySchema = createCategorySchema
-  .omit({ type: true, parentCategoryId: true })
-  .extend({ categoryId: idSchema, isArchived: z.boolean().optional() })
+export const updateCategorySchema = createCategorySchema.extend({
+  categoryId: idSchema,
+  isArchived: z.boolean().optional(),
+})
 
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>
+export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>
