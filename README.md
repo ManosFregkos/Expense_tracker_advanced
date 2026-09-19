@@ -108,7 +108,7 @@ For local use, set `OPEN_BANKING_PROVIDER=mock` in the Functions environment, st
 For production:
 
 1. Obtain a Salt Edge Account Information client account and the contractual/PSD2 coverage needed for the intended Greek institutions.
-2. Store secrets with `firebase functions:secrets:set SALTEDGE_APP_ID` and `firebase functions:secrets:set SALTEDGE_SECRET`.
+2. Store `SALTEDGE_APP_ID`, `SALTEDGE_SECRET`, and the PEM-encoded `SALTEDGE_PRIVATE_KEY` with `firebase functions:secrets:set`. Upload the matching public key to the Salt Edge Dashboard; never commit either key.
 3. Set `OPEN_BANKING_PROVIDER=saltedge`, the three `SALTEDGE_*_PROVIDER_CODE` values returned by the provider catalogue, the allowed frontend origin, and the success/failure URLs.
 4. In Salt Edge Dashboard callbacks, configure the deployed `openBankingWebhook` HTTPS URL for Success, Failure, Notify, and Consent Status. Set `OPEN_BANKING_SUCCESS_URL`, `OPEN_BANKING_FAILURE_URL`, and `OPEN_BANKING_WEBHOOK_URL` to that same exact URL. Signature verification includes the URL, raw body, and V6 public key; progress callbacks are acknowledged and only `stage: finish` starts an import.
 5. Deploy Functions, rules, and indexes, then validate the flow in Salt Edge test mode before live enablement.

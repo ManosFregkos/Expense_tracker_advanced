@@ -1,4 +1,4 @@
-import { createHash, createVerify } from 'node:crypto'
+import { createHash, createSign, createVerify } from 'node:crypto'
 import { currencyMinorDigits } from '@family-expense-tracker/shared'
 import {
   ProviderError,
@@ -70,23 +70,42 @@ export class SaltEdgeProvider implements OpenBankingProvider {
     private readonly appId: string,
     private readonly secret: string,
     private readonly baseUrl = 'https://www.saltedge.com/api/v6',
+    private readonly privateKey?: string,
   ) {
     if (!appId || !secret) throw new Error('Salt Edge credentials are not configured.')
+  }
+
+  private signedHeaders(url: string, init: RequestInit): Record<string, string> {
+    if (!this.privateKey) return {}
+    const method = (init.method ?? 'GET').toUpperCase()
+    const body = init.body ?? ''
+    if (typeof body !== 'string')
+      throw new Error('Salt Edge request signing requires a string request body.')
+    const expiresAt = Math.floor(Date.now() / 1_000) + 60
+    const signer = createSign('RSA-SHA256')
+    signer.update(`${expiresAt}|${method}|${url}|${body}`)
+    signer.end()
+    return {
+      'Expires-at': String(expiresAt),
+      Signature: signer.sign(this.privateKey, 'base64'),
+    }
   }
 
   private async request(path: string, init: RequestInit = {}): Promise<Json> {
     let lastError: unknown
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
-        const response = await fetch(`${this.baseUrl.replace(/\/$/, '')}${path}`, {
+        const url = `${this.baseUrl.replace(/\/$/, '')}${path}`
+        const headers = new Headers(init.headers)
+        headers.set('Accept', 'application/json')
+        headers.set('Content-Type', 'application/json')
+        headers.set('App-id', this.appId)
+        headers.set('Secret', this.secret)
+        for (const [name, value] of Object.entries(this.signedHeaders(url, init)))
+          headers.set(name, value)
+        const response = await fetch(url, {
           ...init,
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'App-id': this.appId,
-            Secret: this.secret,
-            ...init.headers,
-          },
+          headers,
         })
         if (response.ok) return asObject(await response.json(), 'Salt Edge response')
         const retryable = response.status === 429 || response.status >= 500

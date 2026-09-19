@@ -15,6 +15,7 @@ ui-debug.log*
 .env.*
 !.env.example
 *.local
+saltedge-*.pem
 .DS_Store
 .idea/
 *.tsbuildinfo

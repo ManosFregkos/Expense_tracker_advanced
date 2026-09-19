@@ -6,7 +6,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { db } from '../firebase.js'
 import { getOpenBankingProvider } from './provider-factory.js'
 import { syncBankConnectionInternal } from '../services/banking.js'
-import { openBankingSecrets } from './secrets.js'
+import { openBankingCredentialSecrets, openBankingSecrets } from './secrets.js'
 
 type CallbackBody = {
   data?: {
@@ -21,7 +21,7 @@ type CallbackBody = {
 }
 
 export const openBankingWebhook = onRequest(
-  { region: 'europe-west1', cors: false, secrets: openBankingSecrets },
+  { region: 'europe-west1', cors: false, secrets: openBankingCredentialSecrets },
   async (request, response) => {
     if (request.method !== 'POST') {
       response.status(405).send('Method not allowed')
