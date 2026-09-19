@@ -194,15 +194,15 @@ export class SaltEdgeProvider implements OpenBankingProvider {
       attempt: {
         fetch_scopes: ['accounts', 'balance', 'transactions'],
         fetch_from_date: new Date(Date.now() - 730 * 86_400_000).toISOString().slice(0, 10),
-        unduplicate_transactions: 'mark_as_pending',
+        unduplication_strategy: 'mark_as_pending',
+        return_to: input.returnTo,
+        custom_fields: input.customFields,
       },
       widget: {
-        return_to: input.returnTo,
         skip_provider_selection: Boolean(institutionId),
         skip_stages_screen: false,
       },
       ...(institutionId ? { provider: { code: institutionId } } : {}),
-      custom_fields: input.customFields,
       automatic_refresh: true,
     }
   }
