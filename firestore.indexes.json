@@ -87,14 +87,6 @@
     },
     {
       "collectionGroup": "bankConnections",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "bankConnections",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "ownerUserId", "order": "ASCENDING" },
@@ -191,5 +183,11 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    {
+      "collectionGroup": "bankConnections",
+      "fieldPath": "status",
+      "indexes": [{ "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }]
+    }
+  ]
 }
