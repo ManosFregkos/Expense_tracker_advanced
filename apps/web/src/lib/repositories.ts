@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  getCountFromServer,
   limit,
   orderBy,
   query,
@@ -11,7 +12,7 @@ import {
   type DocumentSnapshot,
   type QueryConstraint,
 } from 'firebase/firestore'
-import { normalizeSearchText, type BankConnection, type BankTransaction, type Category, type FinancialAccount, type Household, type HouseholdMember, type Invitation, type MonthlyAnalytics, type Transaction } from '@family-expense-tracker/shared'
+import { normalizeSearchText, taskDueAt, type BankConnection, type BankTransaction, type Category, type FinancialAccount, type Household, type HouseholdMember, type HouseholdTask, type Invitation, type MonthlyAnalytics, type TaskActivity, type TaskList, type TaskNotification, type TaskNotificationSettings, type TaskSubtask, type Transaction } from '@family-expense-tracker/shared'
 import { firestore } from './firebase'
 
 export async function listHouseholds(userId: string): Promise<Household[]> {
@@ -85,4 +86,114 @@ export async function listHouseholdInvitations(householdId: string): Promise<Inv
 export async function getHousehold(id: string): Promise<Household | null> {
   const snapshot = await getDoc(doc(firestore, 'households', id))
   return snapshot.exists() ? (snapshot.data() as Household) : null
+}
+
+export type TaskView = 'today' | 'upcoming' | 'all' | 'completed'
+export interface TaskQueryFilters {
+  view: TaskView
+  todayKey: string
+  timeZone: string
+  pageSize?: number
+  cursor?: DocumentSnapshot
+}
+
+export async function listTasks(householdId: string, filters: TaskQueryFilters) {
+  const collectionRef = collection(firestore, `households/${householdId}/tasks`)
+  const pageSize = filters.pageSize ?? 100
+  const constraints: QueryConstraint[] = [where('isDeleted', '==', false)]
+  if (filters.view === 'completed') {
+    constraints.push(
+      where('status', 'in', ['DONE', 'CANCELLED']),
+      orderBy('updatedAt', 'desc'),
+      limit(pageSize),
+    )
+  } else {
+    constraints.push(where('status', 'in', ['TODO', 'IN_PROGRESS']))
+    if (filters.view === 'today') {
+      constraints.push(
+        where('dueAt', '<=', taskDueAt(filters.todayKey, null, filters.timeZone)),
+        orderBy('dueAt', 'asc'),
+        limit(pageSize),
+      )
+    } else if (filters.view === 'upcoming') {
+      constraints.push(
+        where('dueAt', '>', taskDueAt(filters.todayKey, null, filters.timeZone)),
+        orderBy('dueAt', 'asc'),
+        limit(pageSize),
+      )
+    } else constraints.push(orderBy('sortOrder', 'asc'), limit(pageSize))
+  }
+  if (filters.cursor) constraints.push(startAfter(filters.cursor))
+  const snapshot = await getDocs(query(collectionRef, ...constraints))
+  return {
+    tasks: snapshot.docs.map((document) => document.data() as HouseholdTask),
+    cursor: snapshot.docs.at(-1),
+    hasMore: snapshot.size === pageSize,
+  }
+}
+
+export async function getTask(householdId: string, taskId: string): Promise<HouseholdTask | null> {
+  const snapshot = await getDoc(doc(firestore, `households/${householdId}/tasks/${taskId}`))
+  if (!snapshot.exists() || snapshot.get('isDeleted') === true) return null
+  return snapshot.data() as HouseholdTask
+}
+
+export const listTaskLists = (householdId: string) =>
+  listCollection<TaskList>(`households/${householdId}/taskLists`)
+
+export const listSubtasks = (householdId: string, taskId: string) =>
+  listCollection<TaskSubtask>(`households/${householdId}/tasks/${taskId}/subtasks`)
+
+export async function listTaskActivity(householdId: string, taskId: string) {
+  const snapshot = await getDocs(
+    query(
+      collection(firestore, `households/${householdId}/taskActivity`),
+      where('taskId', '==', taskId),
+      orderBy('timestamp', 'desc'),
+      limit(50),
+    ),
+  )
+  return snapshot.docs.map((document) => document.data() as TaskActivity)
+}
+
+export async function taskDueCount(
+  householdId: string,
+  todayKey: string,
+  timeZone: string,
+): Promise<number> {
+  const result = await getCountFromServer(
+    query(
+      collection(firestore, `households/${householdId}/tasks`),
+      where('isDeleted', '==', false),
+      where('status', 'in', ['TODO', 'IN_PROGRESS']),
+      where('dueAt', '<=', taskDueAt(todayKey, null, timeZone)),
+    ),
+  )
+  return result.data().count
+}
+
+export async function listTaskNotifications(userId: string): Promise<TaskNotification[]> {
+  const snapshot = await getDocs(
+    query(
+      collection(firestore, `users/${userId}/taskNotifications`),
+      orderBy('createdAt', 'desc'),
+      limit(20),
+    ),
+  )
+  return snapshot.docs.map((document) => document.data() as TaskNotification)
+}
+
+export async function getTaskNotificationSettings(userId: string, householdId: string) {
+  const snapshot = await getDoc(
+    doc(firestore, `users/${userId}/taskNotificationSettings/${householdId}`),
+  )
+  return snapshot.exists()
+    ? (snapshot.data() as TaskNotificationSettings)
+    : {
+        householdId,
+        dueReminders: false,
+        assignmentNotifications: false,
+        overdueReminders: false,
+        updatedAt: new Date(0),
+      }
 }

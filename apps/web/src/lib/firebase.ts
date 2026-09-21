@@ -18,7 +18,7 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:000000000000:web:demo',
 }
 
-const app = initializeApp(config)
+export const app = initializeApp(config)
 
 const appCheckSiteKey = import.meta.env.VITE_FIREBASE_APPCHECK_SITE_KEY
 if (appCheckSiteKey) {

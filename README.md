@@ -42,6 +42,7 @@ npm run build
 - Monthly aggregate analytics; transfers and deleted records are excluded
 - Installable PWA with offline shell and Firestore persistence
 - Provider-independent PSD2 integration with Salt Edge API V6 and a deterministic local mock
+- Household tasks with assignment, lists, subtasks, recurring occurrences, reminders, and PWA push
 
 Explicit non-goals include budgets, net worth, investments, loans, receipt OCR, recurring billing, and Splitwise-style settlement.
 
@@ -62,6 +63,10 @@ Copy `.env.example` to `apps/web/.env.local`. Firebase web configuration values 
 App Check is initialized with a reCAPTCHA v3 provider when `VITE_FIREBASE_APPCHECK_SITE_KEY` is configured. Local emulator mode uses the App Check debug token. Callable Functions also enforce authentication, membership, roles, ownership constraints, and server-side Zod validation.
 
 ## Firebase setup and deployment
+
+For the complete production checklist—including Git upload, production environment values,
+`VITE_FIREBASE_VAPID_KEY`, FCM, App Check, Salt Edge secrets, staged deployment, smoke tests, and
+rollback—use the [Production deployment guide](docs/PRODUCTION_DEPLOYMENT.md).
 
 1. Create Firebase projects for development and production.
 2. Enable Email/Password and Google providers, Firestore, Functions, Hosting, and App Check with a reCAPTCHA v3 site key.
@@ -98,6 +103,41 @@ All amounts are positive integers in currency minor units. Transaction type dete
 - App Check enforcement is configurable during rollout; authentication and authorization never depend on App Check alone.
 
 See [Security](docs/SECURITY.md), [Firestore model](docs/FIRESTORE.md), and `firestore.rules` for details.
+
+## Household tasks
+
+`/tasks` is a household-scoped Todoist-style workspace with Today, Upcoming, All, and Completed
+views. It supports quick add, household assignees, custom lists, priorities, tags, date/time and
+reminder shortcuts, subtasks, activity, soft deletion, URL-backed filters, search, keyboard and
+pointer reordering, and a compact dashboard widget. Existing households are initialized lazily
+with idempotent Home, Shopping, Appointments, Bills & Admin, and Car lists; `npm run seed` creates
+the same deterministic lists for emulator demo data.
+
+Task writes use callable Functions. Completion, activity/audit records, and recurring occurrence
+creation are one Firestore transaction. Each recurring occurrence is a separate task with a
+deterministic series/occurrence ID, so retries cannot create duplicate future tasks and completed
+history is retained. Date-only deadlines retain an explicit household-local `dueDate`; `dueAt` is
+the UTC end of that local day. Timed deadlines use an explicit IANA household timezone.
+
+The scheduled `scheduledTaskReminders` Function runs every five minutes. Deterministic private
+delivery documents and task reminder state make due/overdue delivery idempotent. The emulator logs
+mock push deliveries while still creating in-app notifications. Notification preferences are off
+by default and are enabled under **Settings → Task notifications**.
+
+For production Web Push:
+
+1. Enable Firebase Cloud Messaging for the Firebase web app and create a Web Push certificate.
+2. Set the public key as `VITE_FIREBASE_VAPID_KEY` for the web build. It is public configuration,
+   not an Admin credential.
+3. Deploy Hosting and Functions so the injected PWA service worker and notification trigger are
+   available over HTTPS: `firebase deploy --only hosting,functions,firestore`.
+4. In Settings, explicitly enable the desired policies and click **Enable browser push** on each
+   device. Tokens are stored only in backend-readable `/userDevices` documents; invalid tokens are
+   removed after FCM responses.
+
+Local task testing uses the normal `npm run emulators`, `npm run dev`, and optional `npm run seed`
+commands. Rules tests cover task/list/subtask/activity isolation, and the Playwright household flow
+includes task creation, completion/reopen, recurrence, and duplicate-completion behavior.
 
 ## Open Banking
 

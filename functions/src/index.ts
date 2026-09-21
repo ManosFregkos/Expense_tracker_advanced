@@ -25,6 +25,30 @@ export {
 } from './services/merchant-rules.js'
 export { rebuildMonthlyAnalytics } from './services/rebuild-analytics.js'
 export {
+  initializeTaskModule,
+  createTask,
+  updateTask,
+  completeTask,
+  reopenTask,
+  cancelTask,
+  deleteTask,
+  restoreTask,
+  createTaskList,
+  updateTaskList,
+  archiveTaskList,
+  createSubtask,
+  updateSubtask,
+  deleteSubtask,
+  reorderTasks,
+} from './services/tasks.js'
+export {
+  registerDeviceToken,
+  updateTaskNotificationSettings,
+  markTaskNotificationRead,
+  scheduledTaskReminders,
+  sendTaskNotificationPush,
+} from './services/task-notifications.js'
+export {
   openBankingWebhook,
   processOpenBankingWebhook,
   scheduledBankRefresh,

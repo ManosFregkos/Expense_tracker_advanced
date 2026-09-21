@@ -21,6 +21,20 @@ Every financial document is scoped beneath a household. IDs sent by clients are 
 | `/openBankingWebhookEvents/{eventHash}`                         | Replay-safe callback work queue                                                     | Backend only                                       |
 | `/households/{householdId}/auditLogs/{logId}`                   | Actor, action, entity, safe before/after snapshot                                   | Admin/owner read; backend write                    |
 | `/invitations/{invitationId}`                                   | Email-bound, expiring membership invitation                                         | Recipient or household member read; Function write |
+| `/households/{householdId}/tasks/{taskId}`                      | Task occurrence, due/reminder state, soft deletion, concurrency version             | Member read when active; Function write            |
+| `/households/{householdId}/tasks/{taskId}/subtasks/{subtaskId}` | Checklist items; completion does not implicitly complete the parent                 | Member read when parent active; Function write     |
+| `/households/{householdId}/taskLists/{listId}`                  | Lightweight household task organization                                             | Member read; Function write                        |
+| `/households/{householdId}/taskActivity/{activityId}`           | User-facing task history with bounded safe metadata                                 | Member read; Function write                        |
+| `/users/{uid}/taskNotificationSettings/{householdId}`           | Conservative reminder/assignment preferences                                        | Own user read; Function write                      |
+| `/users/{uid}/taskNotifications/{notificationId}`               | Durable in-app task notifications                                                   | Own user read; Function write                      |
+| `/userDevices/{uid}/devices/{tokenHash}`                        | Backend-only FCM tokens for multiple devices                                        | Backend only                                       |
+| `/privateTaskReminderDeliveries/{deliveryId}`                   | Idempotent scheduled reminder claims                                                | Backend only                                       |
+| `/privateTaskPushDeliveries/{deliveryId}`                       | Idempotent FCM trigger claims                                                       | Backend only                                       |
+
+Completed tasks are retained and paginated by `updatedAt`; normal task queries always include
+`isDeleted == false`. Soft-deleted documents cannot be fetched directly by clients. Composite
+indexes cover active due/manual views, assignee/list dimensions, completed history, search, task
+activity, and collection-group reminder scheduling.
 
 The specification’s illustrative `analytics/monthly/{yyyyMM}` path has an odd number of Firestore path segments and therefore cannot identify a document. `monthlyAnalytics/{yyyy-MM}` is the valid household subcollection equivalent.
 

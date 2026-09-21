@@ -13,6 +13,7 @@ interface ImportMetaEnv {
   readonly VITE_AUTH_EMULATOR_PORT?: string
   readonly VITE_FIRESTORE_EMULATOR_PORT?: string
   readonly VITE_FUNCTIONS_EMULATOR_PORT?: string
+  readonly VITE_FIREBASE_VAPID_KEY?: string
 }
 
 interface WorkerGlobalScope {

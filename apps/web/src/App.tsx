@@ -56,6 +56,9 @@ const ReviewTransactionsPage = lazy(() =>
     default: module.ReviewTransactionsPage,
   })),
 )
+const TasksPage = lazy(() =>
+  import('./features/tasks/TasksPage').then((module) => ({ default: module.TasksPage })),
+)
 
 export default function App() {
   return (
@@ -90,6 +93,8 @@ export default function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/bank-connections" element={<BankConnectionsPage />} />
               <Route path="/transactions/review" element={<ReviewTransactionsPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/tasks/:taskId" element={<TasksPage />} />
             </Route>
           </Route>
         </Route>

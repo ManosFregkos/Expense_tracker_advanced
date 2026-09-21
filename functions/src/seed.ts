@@ -82,6 +82,29 @@ async function seed() {
       updatedAt: now,
     })
   }
+  for (const [index, list] of (
+    [
+      ['task-list-home', 'Home', 'home'],
+      ['task-list-shopping', 'Shopping', 'shopping-cart'],
+      ['task-list-appointments', 'Appointments', 'calendar'],
+      ['task-list-bills-admin', 'Bills & Admin', 'file-invoice'],
+      ['task-list-car', 'Car', 'car'],
+    ] as const
+  ).entries()) {
+    const [id, name, icon] = list
+    batch.set(db.doc(`households/${householdId}/taskLists/${id}`), {
+      id,
+      householdId,
+      name,
+      normalizedName: name.toLowerCase(),
+      icon,
+      sortOrder: index * 1000,
+      isArchived: false,
+      createdBy: 'emmanouil',
+      createdAt: now,
+      updatedAt: now,
+    })
+  }
   const accounts = [
     ['em-eurobank', 'emmanouil', 'Eurobank', 'BANK', 510000],
     ['em-alpha', 'emmanouil', 'Alpha Bank', 'BANK', 320000],

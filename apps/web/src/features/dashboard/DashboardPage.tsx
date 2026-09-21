@@ -39,6 +39,7 @@ import {
 import { formatDate } from '../../lib/date'
 import { useHousehold } from '../households/HouseholdProvider'
 import { useAddTransaction } from '../transactions/AddTransactionProvider'
+import { DashboardTasksWidget } from '../tasks/components/DashboardTasksWidget'
 
 const COLORS = ['#145f52', '#2f8b7b', '#63b6a8', '#e4b85c', '#c47b54', '#758d88']
 
@@ -128,6 +129,9 @@ export function DashboardPage() {
         </Paper>
       )}
       <Grid>
+        <Grid.Col span={12}>
+          <DashboardTasksWidget />
+        </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 8 }}>
           <Paper withBorder p="lg" h="100%">
             <Title order={3} mb="md">

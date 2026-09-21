@@ -19,6 +19,7 @@ import {
   IconPlus,
   IconReceipt,
   IconSettings,
+  IconChecklist,
   IconUsers,
 } from '@tabler/icons-react'
 import { signOut } from 'firebase/auth'
@@ -28,6 +29,8 @@ import { useAuth } from '../features/auth/AuthProvider'
 import { useHousehold } from '../features/households/HouseholdProvider'
 import { useAddTransaction } from '../features/transactions/AddTransactionProvider'
 import { OfflineBanner } from './OfflineBanner'
+import { useTaskDueCount } from '../features/tasks/hooks'
+import { TaskNotificationMenu } from '../features/tasks/components/TaskNotificationMenu'
 
 const nav = [
   ['/dashboard', 'Dashboard', IconHome],
@@ -36,6 +39,7 @@ const nav = [
   ['/accounts', 'Accounts', IconCreditCard],
   ['/analytics', 'Analytics', IconChartBar],
   ['/members', 'Members', IconUsers],
+  ['/tasks', 'Tasks', IconChecklist],
   ['/settings', 'Settings', IconSettings],
 ] as const
 
@@ -45,6 +49,7 @@ export function AppLayout() {
   const { user } = useAuth()
   const { household, households, setActiveHouseholdId } = useHousehold()
   const add = useAddTransaction()
+  const taskCount = useTaskDueCount()
   return (
     <AppShell
       header={{ height: 68 }}
@@ -66,6 +71,7 @@ export function AppLayout() {
             </Text>
           </Group>
           <Group>
+            <TaskNotificationMenu />
             <Select
               className="desktop-only"
               w={220}
@@ -95,10 +101,17 @@ export function AppLayout() {
               key={to}
               component={RouterNavLink}
               to={to}
-              label={label}
+              label={
+                label === 'Tasks' && (taskCount.data ?? 0) > 0
+                  ? `${label}  ${taskCount.data}`
+                  : label
+              }
               leftSection={<Icon size={19} />}
               active={location.pathname.startsWith(to)}
               onClick={close}
+              mt={label === 'Tasks' ? 'md' : undefined}
+              pt={label === 'Tasks' ? 'sm' : undefined}
+              style={label === 'Tasks' ? { borderTop: '1px solid #dde5e2' } : undefined}
             />
           ))}
           <NavLink
@@ -129,9 +142,7 @@ export function AppLayout() {
           justify="space-around"
         >
           {nav
-            .filter(([to]) =>
-              ['/dashboard', '/transactions', '/analytics', '/settings'].includes(to),
-            )
+            .filter(([to]) => ['/dashboard', '/transactions', '/tasks', '/settings'].includes(to))
             .map(([to, label, Icon]) => (
               <UnstyledButton
                 key={to}

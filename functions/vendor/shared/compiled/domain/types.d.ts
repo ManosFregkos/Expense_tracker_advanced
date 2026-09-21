@@ -15,8 +15,16 @@ export declare const BANK_TRANSACTION_STATUSES: readonly ["PENDING", "BOOKED", "
 export type BankTransactionStatus = (typeof BANK_TRANSACTION_STATUSES)[number];
 export declare const BANK_PROCESSING_STATUSES: readonly ["UNPROCESSED", "NORMALIZED", "IGNORED", "ERROR"];
 export type BankProcessingStatus = (typeof BANK_PROCESSING_STATUSES)[number];
-export declare const AUDIT_ACTIONS: readonly ["CREATE_TRANSACTION", "UPDATE_TRANSACTION", "DELETE_TRANSACTION", "RESTORE_TRANSACTION", "CREATE_ACCOUNT", "UPDATE_ACCOUNT", "ARCHIVE_ACCOUNT", "CREATE_CATEGORY", "UPDATE_CATEGORY", "CREATE_INVITATION", "ACCEPT_INVITATION", "REVOKE_INVITATION", "MEMBER_ROLE_CHANGE", "UPDATE_HOUSEHOLD", "CREATE_BANK_CONNECTION", "PROCESS_BANK_TRANSACTION", "BANK_CONNECTION_CREATED", "BANK_CONNECTION_RECONNECTED", "BANK_CONNECTION_REFRESHED", "BANK_CONNECTION_DISCONNECTED", "BANK_TRANSACTION_IMPORTED", "BANK_TRANSACTION_MATCHED", "BANK_TRANSACTION_UNMATCHED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "CATEGORY_ARCHIVED", "MERCHANT_RULE_CREATED", "MERCHANT_RULE_UPDATED", "MERCHANT_RULE_DELETED", "TRANSACTION_SPLIT_CREATED"];
+export declare const AUDIT_ACTIONS: readonly ["CREATE_TRANSACTION", "UPDATE_TRANSACTION", "DELETE_TRANSACTION", "RESTORE_TRANSACTION", "CREATE_ACCOUNT", "UPDATE_ACCOUNT", "ARCHIVE_ACCOUNT", "CREATE_CATEGORY", "UPDATE_CATEGORY", "CREATE_INVITATION", "ACCEPT_INVITATION", "REVOKE_INVITATION", "MEMBER_ROLE_CHANGE", "UPDATE_HOUSEHOLD", "CREATE_BANK_CONNECTION", "PROCESS_BANK_TRANSACTION", "BANK_CONNECTION_CREATED", "BANK_CONNECTION_RECONNECTED", "BANK_CONNECTION_REFRESHED", "BANK_CONNECTION_DISCONNECTED", "BANK_TRANSACTION_IMPORTED", "BANK_TRANSACTION_MATCHED", "BANK_TRANSACTION_UNMATCHED", "CATEGORY_CREATED", "CATEGORY_UPDATED", "CATEGORY_ARCHIVED", "MERCHANT_RULE_CREATED", "MERCHANT_RULE_UPDATED", "MERCHANT_RULE_DELETED", "TRANSACTION_SPLIT_CREATED", "TASK_CREATED", "TASK_UPDATED", "TASK_COMPLETED", "TASK_REOPENED", "TASK_CANCELLED", "TASK_DELETED", "TASK_RESTORED", "TASK_ASSIGNED", "TASK_LIST_CREATED", "TASK_LIST_UPDATED", "TASK_LIST_ARCHIVED", "TASK_SUBTASK_CREATED", "TASK_SUBTASK_COMPLETED", "TASK_RECURRENCE_CREATED", "TASK_REMINDER_SENT"];
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+export declare const TASK_STATUSES: readonly ["TODO", "IN_PROGRESS", "DONE", "CANCELLED"];
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+export declare const TASK_PRIORITIES: readonly ["NONE", "LOW", "MEDIUM", "HIGH", "URGENT"];
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+export declare const TASK_RECURRENCE_FREQUENCIES: readonly ["DAILY", "WEEKLY", "MONTHLY", "YEARLY", "CUSTOM"];
+export type TaskRecurrenceFrequency = (typeof TASK_RECURRENCE_FREQUENCIES)[number];
+export declare const TASK_RECURRENCE_END_TYPES: readonly ["NEVER", "UNTIL_DATE", "AFTER_OCCURRENCES"];
+export type TaskRecurrenceEndType = (typeof TASK_RECURRENCE_END_TYPES)[number];
 export interface TimestampLike {
     readonly seconds: number;
     readonly nanoseconds: number;
@@ -159,6 +167,112 @@ export interface AuditLog {
         before?: Record<string, unknown>;
         after?: Record<string, unknown>;
     };
+}
+export interface TaskRecurrence {
+    frequency: TaskRecurrenceFrequency;
+    interval: number;
+    daysOfWeek?: number[];
+    customUnit?: 'DAY' | 'WEEK' | 'MONTH' | 'YEAR';
+    endType: TaskRecurrenceEndType;
+    untilDate?: StoredDate;
+    untilDateKey?: string;
+    maxOccurrences?: number;
+}
+/**
+ * A recurring task document is one immutable occurrence after completion. Completing it creates
+ * the next occurrence with a deterministic ID, preserving history and making retries idempotent.
+ */
+export interface HouseholdTask {
+    id: string;
+    householdId: string;
+    title: string;
+    description?: string;
+    status: TaskStatus;
+    priority: TaskPriority;
+    assigneeUserId?: string | null;
+    assigneeDisplayName?: string | null;
+    listId?: string | null;
+    dueDate?: string | null;
+    dueTime?: string | null;
+    dueAt?: StoredDate | null;
+    reminderAt?: StoredDate | null;
+    reminderOffsetMinutes?: number | null;
+    reminderState?: 'PENDING' | 'SENT' | 'CANCELLED' | null;
+    overdueReminderState?: 'PENDING' | 'SENT' | 'CANCELLED' | null;
+    recurrence?: TaskRecurrence | null;
+    tags: string[];
+    searchPrefixes: string[];
+    sortOrder: number;
+    version: number;
+    seriesId?: string | null;
+    occurrenceNumber?: number | null;
+    previousOccurrenceId?: string | null;
+    nextOccurrenceId?: string | null;
+    relatedTransactionId?: string | null;
+    createdBy: string;
+    createdAt: StoredDate;
+    updatedAt: StoredDate;
+    completedAt?: StoredDate | null;
+    completedBy?: string | null;
+    cancelledAt?: StoredDate | null;
+    cancelledBy?: string | null;
+    isDeleted: boolean;
+    deletedAt?: StoredDate | null;
+    deletedBy?: string | null;
+}
+export interface TaskList {
+    id: string;
+    householdId: string;
+    name: string;
+    normalizedName: string;
+    icon?: string;
+    color?: string;
+    sortOrder: number;
+    isArchived: boolean;
+    createdBy: string;
+    createdAt: StoredDate;
+    updatedAt: StoredDate;
+}
+export interface TaskSubtask {
+    id: string;
+    householdId: string;
+    taskId: string;
+    title: string;
+    isCompleted: boolean;
+    sortOrder: number;
+    completedAt?: StoredDate | null;
+    completedBy?: string | null;
+    createdAt: StoredDate;
+    updatedAt: StoredDate;
+}
+export declare const TASK_ACTIVITY_ACTIONS: readonly ["CREATED", "UPDATED", "COMPLETED", "REOPENED", "CANCELLED", "DELETED", "RESTORED", "ASSIGNED", "DUE_DATE_CHANGED", "SUBTASK_CREATED", "SUBTASK_UPDATED", "SUBTASK_COMPLETED"];
+export type TaskActivityAction = (typeof TASK_ACTIVITY_ACTIONS)[number];
+export interface TaskActivity {
+    id: string;
+    householdId: string;
+    taskId: string;
+    userId: string;
+    userDisplayName: string;
+    action: TaskActivityAction;
+    timestamp: StoredDate;
+    metadata?: Record<string, string | number | boolean | null>;
+}
+export interface TaskNotificationSettings {
+    householdId: string;
+    dueReminders: boolean;
+    assignmentNotifications: boolean;
+    overdueReminders: boolean;
+    updatedAt: StoredDate;
+}
+export interface TaskNotification {
+    id: string;
+    householdId: string;
+    taskId: string;
+    title: string;
+    body: string;
+    type: 'DUE' | 'ASSIGNED' | 'OVERDUE';
+    createdAt: StoredDate;
+    readAt?: StoredDate | null;
 }
 export interface BankConnection {
     id: string;

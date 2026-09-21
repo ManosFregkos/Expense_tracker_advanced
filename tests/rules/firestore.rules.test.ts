@@ -39,6 +39,39 @@ describeWithEmulator('Firestore household isolation', () => {
         setDoc(doc(database, 'households/h2/accounts/a2'), { id: 'a2', householdId: 'h2' }),
         setDoc(doc(database, 'households/h1/monthlyAnalytics/2026-09'), { incomeMinor: 100 }),
         setDoc(doc(database, 'households/h1/auditLogs/log1'), { action: 'CREATE_ACCOUNT' }),
+        setDoc(doc(database, 'households/h1/taskLists/list1'), {
+          id: 'list1',
+          householdId: 'h1',
+          isArchived: false,
+        }),
+        setDoc(doc(database, 'households/h1/tasks/task1'), {
+          id: 'task1',
+          householdId: 'h1',
+          isDeleted: false,
+          status: 'TODO',
+        }),
+        setDoc(doc(database, 'households/h1/tasks/deleted-task'), {
+          id: 'deleted-task',
+          householdId: 'h1',
+          isDeleted: true,
+          status: 'TODO',
+        }),
+        setDoc(doc(database, 'households/h1/tasks/task1/subtasks/sub1'), {
+          id: 'sub1',
+          householdId: 'h1',
+          taskId: 'task1',
+        }),
+        setDoc(doc(database, 'households/h1/taskActivity/activity1'), {
+          id: 'activity1',
+          householdId: 'h1',
+          taskId: 'task1',
+        }),
+        setDoc(doc(database, 'households/h2/tasks/task2'), {
+          id: 'task2',
+          householdId: 'h2',
+          isDeleted: false,
+          status: 'TODO',
+        }),
       ])
     })
   })
@@ -78,6 +111,28 @@ describeWithEmulator('Firestore household isolation', () => {
       .firestore()
     await assertFails(
       getDocs(query(collection(alice, 'households/h2/accounts'), where('householdId', '==', 'h2'))),
+    )
+  })
+
+  it('isolates tasks, subtasks, lists, and activity by household', async () => {
+    const alice = environment.authenticatedContext('alice').firestore()
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/tasks/task1')))
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/tasks/task1/subtasks/sub1')))
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/taskLists/list1')))
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/taskActivity/activity1')))
+    await assertFails(getDoc(doc(alice, 'households/h2/tasks/task2')))
+    await assertFails(getDoc(doc(alice, 'households/h1/tasks/deleted-task')))
+  })
+
+  it('denies all direct task-domain writes', async () => {
+    const alice = environment.authenticatedContext('alice').firestore()
+    await assertFails(setDoc(doc(alice, 'households/h1/tasks/task3'), { isDeleted: false }))
+    await assertFails(
+      setDoc(doc(alice, 'households/h1/tasks/task1/subtasks/sub2'), { title: 'Injected' }),
+    )
+    await assertFails(setDoc(doc(alice, 'households/h1/taskLists/list2'), { name: 'Injected' }))
+    await assertFails(
+      setDoc(doc(alice, 'households/h1/taskActivity/activity2'), { action: 'FAKE' }),
     )
   })
 })

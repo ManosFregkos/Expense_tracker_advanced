@@ -17,3 +17,21 @@ export const bankingKeys = {
   review: (householdId: string) => ['banking', householdId, 'review'] as const,
   pending: (householdId: string) => ['banking', householdId, 'pending'] as const,
 }
+export const taskKeys = {
+  all: (householdId: string) => ['tasks', householdId] as const,
+  list: (householdId: string, filters: object) => ['tasks', householdId, 'list', filters] as const,
+  detail: (householdId: string, taskId: string) => ['tasks', householdId, 'detail', taskId] as const,
+  subtasks: (householdId: string, taskId: string) =>
+    ['tasks', householdId, 'detail', taskId, 'subtasks'] as const,
+  activity: (householdId: string, taskId: string) =>
+    ['tasks', householdId, 'detail', taskId, 'activity'] as const,
+  dueCount: (householdId: string) => ['tasks', householdId, 'due-count'] as const,
+}
+export const taskListKeys = {
+  all: (householdId: string) => ['task-lists', householdId] as const,
+}
+export const taskNotificationKeys = {
+  all: (userId: string) => ['task-notifications', userId] as const,
+  settings: (userId: string, householdId: string) =>
+    ['task-notifications', userId, 'settings', householdId] as const,
+}

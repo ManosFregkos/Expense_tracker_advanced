@@ -22,6 +22,28 @@ Transactions store server-derived `searchPrefixes` from normalized merchant and 
 
 Source timestamps are UTC. Month keys are derived in an explicit IANA timezone. Callable input uses ISO strings; Functions convert them to Firestore timestamps. UI display uses `Intl.DateTimeFormat` and user locale.
 
+Task date-only values additionally store a `yyyy-MM-dd` household-local key. Their query deadline
+is the final millisecond before the next local day; timed tasks convert the selected wall-clock
+time through the household IANA timezone. This prevents UTC midnight and DST changes from moving a
+task to another Today group.
+
+## Household tasks
+
+Tasks, lists, subtasks, and user-facing activity are household collections. Direct writes are
+denied; callable Functions revalidate membership, assignee, list, task version, and task state in a
+Firestore transaction. `version` provides optimistic concurrency for edits and reorder anchors.
+
+Recurring tasks are occurrence documents rather than a mutable due date. Completion atomically
+closes the current occurrence and creates a deterministic `{seriesId}__occurrence_{number}` next
+document. A retry sees the closed occurrence and cannot duplicate the next one. Reopening removes a
+pristine generated next occurrence; if later activity exists, reopening is rejected rather than
+silently losing work.
+
+Reminder workers claim deterministic backend-only delivery records before creating a user in-app
+notification. Notification-created triggers claim a second push-delivery record before FCM. This
+provides at-most-once push attempts and duplicate-callback protection; the in-app notification is
+the durable source when a push transport attempt fails.
+
 ## Open Banking boundary
 
 Only Functions instantiate `OpenBankingProvider`. Public connection documents contain display/status metadata; `/privateBankConnections` contains provider customer/connection identifiers and is denied by Firestore Rules. Salt Edge Connect/Reconnect URLs are created server-side. Signed callbacks create deterministic queue events, and a Firestore trigger runs the same sync pipeline used by manual and scheduled refreshes.

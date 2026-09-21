@@ -10,6 +10,7 @@ import { householdKeys } from '../../lib/query-keys'
 import { listTransactions } from '../../lib/repositories'
 import { downloadCsv, transactionsToCsv } from '../../utils/csv'
 import { useHousehold } from '../households/HouseholdProvider'
+import { TaskNotificationSettingsCard } from '../tasks/components/TaskNotificationSettingsCard'
 
 export function SettingsPage() {
   const { household } = useHousehold()
@@ -106,6 +107,7 @@ export function SettingsPage() {
             </Button>
           </Stack>
         </Paper>
+        <TaskNotificationSettingsCard />
         <Paper withBorder p="xl">
           <Title order={3}>Your data</Title>
           <Text c="dimmed" mt={4} mb="md">

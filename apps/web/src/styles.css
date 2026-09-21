@@ -77,6 +77,25 @@ textarea {
   width: 100%;
   height: 280px;
 }
+.task-row {
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.task-row:hover {
+  border-color: #9fc8c0;
+  box-shadow: 0 4px 16px rgba(24, 48, 43, 0.05);
+}
+.task-fab {
+  position: fixed;
+  right: 18px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 190;
+  color: white;
+  background: #145f52;
+  box-shadow: 0 8px 24px rgba(20, 95, 82, 0.3);
+}
 @media (max-width: 48em) {
   .page {
     padding: 20px 16px 96px;

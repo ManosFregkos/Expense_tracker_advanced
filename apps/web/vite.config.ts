@@ -14,12 +14,15 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-icon.svg'],
       manifest: {
         name: 'Family Expense Tracker',
         short_name: 'Family Finance',
-        description: 'Private household income and expense tracking',
+        description: 'Private household finance and task tracking',
         theme_color: '#145f52',
         background_color: '#f5f7f6',
         display: 'standalone',
@@ -30,11 +33,7 @@ export default defineConfig({
           { src: '/pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        navigateFallback: '/index.html',
-        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
-        runtimeCaching: [],
-      },
+      injectManifest: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
       devOptions: { enabled: true },
     }),
   ],
