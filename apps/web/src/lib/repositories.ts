@@ -194,6 +194,7 @@ export async function getTaskNotificationSettings(userId: string, householdId: s
         dueReminders: false,
         assignmentNotifications: false,
         overdueReminders: false,
+        emailReminders: false,
         updatedAt: new Date(0),
       }
 }

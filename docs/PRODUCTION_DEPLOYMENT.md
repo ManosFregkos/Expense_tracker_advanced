@@ -10,11 +10,12 @@ The repository is configured with these Firebase aliases:
 - `default`: `demo-family-expense-tracker`
 - `production`: `expense-tracker-v2-9520e`
 
-The local `apps/web/.env.production` already targets the production project and has Firebase
-emulators disabled. The following items still need attention before the first Tasks deployment:
+The local `apps/web/.env.production` already targets the production project, has Firebase
+emulators disabled, and has a Web Push public key configured. The following items still need
+attention before the first Tasks deployment:
 
-- **Required for task browser push:** add `VITE_FIREBASE_VAPID_KEY` to
-  `apps/web/.env.production` before building the web application.
+- **Required for task email to all users:** verify a sending domain with Resend, set
+  `TASK_EMAIL_FROM` in the Functions environment, and set the `RESEND_API_KEY` Functions secret.
 - **Recommended hardening:** add `VITE_FIREBASE_APPCHECK_SITE_KEY`. App Check enforcement must
   remain disabled until the production web app is registered and verified.
 - **Required for all configured banks:** `OPEN_BANKING_PROVIDER` is set to Salt Edge, but the
@@ -23,8 +24,7 @@ emulators disabled. The following items still need attention before the first Ta
   unavailable intentionally.
 - **Verify manually:** confirm enabled Secret Manager versions exist for `SALTEDGE_APP_ID`,
   `SALTEDGE_SECRET`, and `SALTEDGE_PRIVATE_KEY`.
-- **Source hosting:** this local Git repository currently has no Git remote. Add one before pushing
-  the source code to GitHub, GitLab, or another remote.
+- **Source hosting:** `origin` currently points to the GitHub project. Verify it before pushing.
 
 The `.env.production`, Functions `.env.<project-id>`, private keys, and local `.env` files are
 ignored by Git. Do not force-add them.
@@ -114,6 +114,53 @@ pair, Firebase Admin credentials, or a service-account key in a `VITE_` variable
 FCM Web Push needs HTTPS and a service worker. Firebase Hosting supplies HTTPS, and this repository
 builds `apps/web/src/sw.ts` into the production service worker. Notification permission is requested
 only when a signed-in user selects **Settings → Task notifications → Enable browser push**.
+
+## Task reminder email setup
+
+Email reminders use Resend. Keep the API key private. Store it in Firebase Secret Manager from the
+repository root; the command prompts for the key without putting it in source code or shell history:
+
+```bash
+firebase functions:secrets:set RESEND_API_KEY --project production
+```
+
+Do not add `RESEND_API_KEY` to a Functions `.env` file. Keep only `TASK_EMAIL_FROM` there.
+
+### Test with no domain
+
+Resend's shared sender is suitable for testing with the email address used to create the Resend
+account. Put this in the ignored `functions/.env.expense-tracker-v2-9520e` file:
+
+```dotenv
+TASK_EMAIL_FROM="Expense Tracker <onboarding@resend.dev>"
+```
+
+The Firebase Authentication account receiving the reminder must use the same email address as the
+Resend account for this test. Resend will reject emails to other users from this sender. Do not use
+this setup as the production email sender for a household with multiple users.
+
+### Send to all users
+
+1. Obtain a domain you control with access to its DNS settings. The Firebase `web.app` domain
+   cannot be used as your Resend sender domain because you cannot add its required DNS records.
+2. In the Resend dashboard, open **Domains**, add the domain, and copy the DNS records that Resend
+   shows for sending. Add those exact records in the domain registrar's DNS settings.
+3. Wait until Resend marks sending as **Verified**. Use an address at that domain in the ignored
+   Functions environment file; for example:
+
+   ```dotenv
+   TASK_EMAIL_FROM="Expense Tracker <reminders@your-domain.example>"
+   ```
+
+4. Deploy Functions again so `sendTaskReminderEmail` uses the new sender. Send a short reminder to
+   a second verified Firebase Authentication user and confirm delivery in that user's inbox and
+   in Resend's email log.
+
+Users enable **Due reminders** or **One overdue reminder**, plus **Email due and overdue
+reminders**, under Settings. The scheduled worker creates the notification and the email trigger
+sends to the assignee's verified Firebase Authentication email. Delivery attempts are recorded in
+the backend-only `/privateTaskEmailDeliveries` collection. No email is sent for task assignments.
+The Functions emulator logs a mock delivery instead of contacting Resend.
 
 ## 4. Complete the production web environment
 
@@ -273,6 +320,8 @@ Use a normal browser and a second private/incognito session where noted:
    exists. That collection is intentionally unreadable from the client.
 10. Create a short reminder and verify one in-app notification and at most one push. The scheduled
     worker runs every five minutes, so allow for its interval.
+    With **Email due and overdue reminders** enabled, verify one email arrives at the assignee's
+    verified sign-in address. The browser tab can be closed while waiting.
 11. In a second household/user session, verify another household's task URL cannot be read or
     mutated.
 12. Test one production bank connection for every institution whose provider code is enabled.

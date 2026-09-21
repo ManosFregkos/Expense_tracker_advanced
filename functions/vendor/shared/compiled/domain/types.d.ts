@@ -262,6 +262,7 @@ export interface TaskNotificationSettings {
     dueReminders: boolean;
     assignmentNotifications: boolean;
     overdueReminders: boolean;
+    emailReminders?: boolean;
     updatedAt: StoredDate;
 }
 export interface TaskNotification {
@@ -271,6 +272,7 @@ export interface TaskNotification {
     title: string;
     body: string;
     type: 'DUE' | 'ASSIGNED' | 'OVERDUE';
+    emailRequested?: boolean;
     createdAt: StoredDate;
     readAt?: StoredDate | null;
 }

@@ -18,11 +18,13 @@ export function TaskNotificationSettingsCard() {
   const [dueReminders, setDueReminders] = useState(false)
   const [assignmentNotifications, setAssignmentNotifications] = useState(false)
   const [overdueReminders, setOverdueReminders] = useState(false)
+  const [emailReminders, setEmailReminders] = useState(false)
   useEffect(() => {
     if (!settings.data) return
     setDueReminders(settings.data.dueReminders)
     setAssignmentNotifications(settings.data.assignmentNotifications)
     setOverdueReminders(settings.data.overdueReminders)
+    setEmailReminders(settings.data.emailReminders === true)
   }, [settings.data])
   const save = useMutation({
     mutationFn: () =>
@@ -31,6 +33,7 @@ export function TaskNotificationSettingsCard() {
         dueReminders,
         assignmentNotifications,
         overdueReminders,
+        emailReminders,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
@@ -56,7 +59,7 @@ export function TaskNotificationSettingsCard() {
     <Paper withBorder p="xl">
       <Title order={3}>Task notifications</Title>
       <Text c="dimmed" mt={4} mb="md">
-        Notifications are off by default. Each reminder or assignment is delivered at most once.
+        Notifications are off by default. Email reminders go to your verified sign-in email.
       </Text>
       <Stack>
         <Switch
@@ -73,6 +76,12 @@ export function TaskNotificationSettingsCard() {
           label="One overdue reminder"
           checked={overdueReminders}
           onChange={(event) => setOverdueReminders(event.currentTarget.checked)}
+        />
+        <Switch
+          label="Email due and overdue reminders"
+          description="Receive an email even when this website is closed. Turn on the matching reminder switches above."
+          checked={emailReminders}
+          onChange={(event) => setEmailReminders(event.currentTarget.checked)}
         />
         <Group>
           <Button loading={save.isPending} onClick={() => save.mutate()}>

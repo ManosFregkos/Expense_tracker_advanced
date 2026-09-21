@@ -27,10 +27,10 @@ export declare const taskCoreInputSchema: z.ZodObject<{
     title: z.ZodString;
     description: z.ZodOptional<z.ZodString>;
     status: z.ZodDefault<z.ZodEnum<{
+        CANCELLED: "CANCELLED";
         TODO: "TODO";
         IN_PROGRESS: "IN_PROGRESS";
         DONE: "DONE";
-        CANCELLED: "CANCELLED";
     }>>;
     priority: z.ZodDefault<z.ZodEnum<{
         NONE: "NONE";
@@ -79,10 +79,10 @@ export declare const createTaskSchema: z.ZodIntersection<z.ZodObject<{
     title: z.ZodString;
     description: z.ZodOptional<z.ZodString>;
     status: z.ZodDefault<z.ZodEnum<{
+        CANCELLED: "CANCELLED";
         TODO: "TODO";
         IN_PROGRESS: "IN_PROGRESS";
         DONE: "DONE";
-        CANCELLED: "CANCELLED";
     }>>;
     priority: z.ZodDefault<z.ZodEnum<{
         NONE: "NONE";
@@ -132,10 +132,10 @@ export declare const updateTaskSchema: z.ZodObject<{
         title: z.ZodString;
         description: z.ZodOptional<z.ZodString>;
         status: z.ZodDefault<z.ZodEnum<{
+            CANCELLED: "CANCELLED";
             TODO: "TODO";
             IN_PROGRESS: "IN_PROGRESS";
             DONE: "DONE";
-            CANCELLED: "CANCELLED";
         }>>;
         priority: z.ZodDefault<z.ZodEnum<{
             NONE: "NONE";
@@ -234,6 +234,7 @@ export declare const notificationSettingsSchema: z.ZodObject<{
     dueReminders: z.ZodBoolean;
     assignmentNotifications: z.ZodBoolean;
     overdueReminders: z.ZodBoolean;
+    emailReminders: z.ZodDefault<z.ZodBoolean>;
 }, z.core.$strip>;
 export declare const taskNotificationIdSchema: z.ZodObject<{
     notificationId: z.ZodString;

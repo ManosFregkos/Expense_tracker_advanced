@@ -124,6 +124,11 @@ delivery documents and task reminder state make due/overdue delivery idempotent.
 mock push deliveries while still creating in-app notifications. Notification preferences are off
 by default and are enabled under **Settings → Task notifications**.
 
+Users can also opt into due and overdue emails from that settings card. Emails go to the verified
+sign-in address, including when the website is closed. Production requires a verified sending
+domain, `TASK_EMAIL_FROM` in the Functions environment, and a `RESEND_API_KEY` Functions secret.
+The Functions emulator logs mock email deliveries.
+
 For production Web Push:
 
 1. Enable Firebase Cloud Messaging for the Firebase web app and create a Web Push certificate.

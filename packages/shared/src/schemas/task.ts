@@ -151,6 +151,7 @@ export const notificationSettingsSchema = z.object({
   dueReminders: z.boolean(),
   assignmentNotifications: z.boolean(),
   overdueReminders: z.boolean(),
+  emailReminders: z.boolean().default(false),
 })
 
 export const taskNotificationIdSchema = z.object({

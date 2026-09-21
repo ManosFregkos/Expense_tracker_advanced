@@ -68,6 +68,7 @@ export const updateTaskNotificationSettings = secureCallable(
       dueReminders: input.dueReminders,
       assignmentNotifications: input.assignmentNotifications,
       overdueReminders: input.overdueReminders,
+      emailReminders: input.emailReminders,
       updatedAt: FieldValue.serverTimestamp(),
     })
     return { householdId: input.householdId }
@@ -136,6 +137,7 @@ async function claimReminder(
       createdAt: FieldValue.serverTimestamp(),
       readAt: null,
       pushState: 'PENDING',
+      emailRequested: settings.get('emailReminders') === true,
     })
     transaction.set(db.doc(`privateTaskReminderDeliveries/${notificationId}`), {
       id: notificationId,

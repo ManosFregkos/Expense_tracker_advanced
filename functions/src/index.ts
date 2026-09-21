@@ -48,6 +48,7 @@ export {
   scheduledTaskReminders,
   sendTaskNotificationPush,
 } from './services/task-notifications.js'
+export { sendTaskReminderEmail } from './services/task-email.js'
 export {
   openBankingWebhook,
   processOpenBankingWebhook,

@@ -65,6 +65,6 @@ export const api = {
   deleteSubtask: (input: { householdId: string; taskId: string; subtaskId: string }) => call<typeof input, { subtaskId: string }>('deleteSubtask', input),
   reorderTasks: (input: ReorderTasksInput) => call<typeof input, { reordered: number }>('reorderTasks', input),
   registerDeviceToken: (input: { householdId: string; token: string; platform: string }) => call<typeof input, { deviceId: string }>('registerDeviceToken', input),
-  updateTaskNotificationSettings: (input: { householdId: string; dueReminders: boolean; assignmentNotifications: boolean; overdueReminders: boolean }) => call<typeof input, { householdId: string }>('updateTaskNotificationSettings', input),
+  updateTaskNotificationSettings: (input: { householdId: string; dueReminders: boolean; assignmentNotifications: boolean; overdueReminders: boolean; emailReminders: boolean }) => call<typeof input, { householdId: string }>('updateTaskNotificationSettings', input),
   markTaskNotificationRead: (input: { notificationId: string }) => call<typeof input, { notificationId: string }>('markTaskNotificationRead', input),
 }

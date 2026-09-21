@@ -30,6 +30,7 @@ Every financial document is scoped beneath a household. IDs sent by clients are 
 | `/userDevices/{uid}/devices/{tokenHash}`                        | Backend-only FCM tokens for multiple devices                                        | Backend only                                       |
 | `/privateTaskReminderDeliveries/{deliveryId}`                   | Idempotent scheduled reminder claims                                                | Backend only                                       |
 | `/privateTaskPushDeliveries/{deliveryId}`                       | Idempotent FCM trigger claims                                                       | Backend only                                       |
+| `/privateTaskEmailDeliveries/{deliveryId}`                      | Idempotent email trigger claims                                                     | Backend only                                       |
 
 Completed tasks are retained and paginated by `updatedAt`; normal task queries always include
 `isDeleted == false`. Soft-deleted documents cannot be fetched directly by clients. Composite

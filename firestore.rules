@@ -64,6 +64,7 @@ service cloud.firestore {
     match /userDevices/{userId}/devices/{deviceId} { allow read, write: if false; }
     match /privateTaskReminderDeliveries/{deliveryId} { allow read, write: if false; }
     match /privateTaskPushDeliveries/{deliveryId} { allow read, write: if false; }
+    match /privateTaskEmailDeliveries/{deliveryId} { allow read, write: if false; }
     match /privateDeviceTokenOwners/{deviceId} { allow read, write: if false; }
 
     match /invitations/{invitationId} {
