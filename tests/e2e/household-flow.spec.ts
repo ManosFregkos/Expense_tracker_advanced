@@ -21,7 +21,7 @@ test('register, onboard, and complete the core household finance workflow', asyn
 
   await page.getByRole('button', { name: 'I have verified my email' }).click()
   await expect(page.getByRole('heading', { name: 'Set up your household' })).toBeVisible()
-  await page.getByLabel('Household name').fill('Fregkos E2E Family')
+  await page.getByLabel('Household name').fill('E2E Family')
   await page.getByRole('button', { name: 'Create household' }).click()
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible()
   await page.getByRole('button', { name: 'Continue' }).click()

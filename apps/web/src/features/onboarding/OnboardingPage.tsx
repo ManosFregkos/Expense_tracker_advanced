@@ -29,6 +29,12 @@ const onboardingSchema = z.object({
   displayName: z.string().trim().min(1).max(100),
 })
 type Values = z.infer<typeof onboardingSchema>
+
+function suggestedHouseholdName(displayName: string | null | undefined) {
+  const name = displayName?.trim()
+  return name ? `${name}'s Household` : ''
+}
+
 export function OnboardingPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -43,7 +49,7 @@ export function OnboardingPage() {
   } = useForm<Values>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
-      name: 'Fregkos Family',
+      name: suggestedHouseholdName(user?.displayName),
       displayName: user?.displayName ?? '',
       defaultCurrency: 'EUR',
       timeZone:
@@ -93,6 +99,7 @@ export function OnboardingPage() {
               <Stack>
                 <TextInput
                   label="Household name"
+                  placeholder="Enter your household name"
                   error={errors.name?.message}
                   {...register('name')}
                 />

@@ -47,7 +47,7 @@ async function seed() {
   const batch = db.batch()
   batch.set(db.doc(`households/${householdId}`), {
     id: householdId,
-    name: 'Fregkos Family',
+    name: 'Demo Family',
     defaultCurrency: 'EUR',
     timeZone: 'Europe/Athens',
     createdBy: 'emmanouil',
