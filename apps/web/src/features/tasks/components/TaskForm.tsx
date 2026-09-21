@@ -116,7 +116,7 @@ export function TaskForm({
             />
           )}
         />
-        <Group grow align="flex-start">
+        <Group grow align="flex-start" className="responsive-fields">
           <Controller
             control={form.control}
             name="assigneeUserId"
@@ -210,7 +210,7 @@ export function TaskForm({
               No date
             </Button>
           </Group>
-          <Group grow align="flex-start">
+          <Group grow align="flex-start" className="responsive-fields">
             <TextInput
               type="date"
               aria-label="Due date"
@@ -282,7 +282,7 @@ export function TaskForm({
         />
         {recurrence && (
           <Stack>
-            <Group grow align="flex-start">
+            <Group grow align="flex-start" className="responsive-fields">
               <Controller
                 control={form.control}
                 name="recurrence.frequency"
@@ -312,7 +312,7 @@ export function TaskForm({
                 />
               )}
             </Group>
-            <Group grow align="flex-start">
+            <Group grow align="flex-start" className="responsive-fields">
               <Controller
                 control={form.control}
                 name="recurrence.endType"

@@ -12,6 +12,7 @@ import {
   Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
+import { useMediaQuery } from '@mantine/hooks'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -37,6 +38,7 @@ function suggestedHouseholdName(displayName: string | null | undefined) {
 
 export function OnboardingPage() {
   const { user } = useAuth()
+  const narrow = useMediaQuery('(max-width: 30em)')
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [step, setStep] = useState(0)
@@ -88,7 +90,7 @@ export function OnboardingPage() {
             </Title>
             <Text c="dimmed">A few details now; you can refine everything later.</Text>
           </div>
-          <Stepper active={step} size="sm">
+          <Stepper active={step} size="sm" orientation={narrow ? 'vertical' : 'horizontal'}>
             <Stepper.Step label="Household" />
             <Stepper.Step label="Accounts" />
             <Stepper.Step label="Invite" />
@@ -108,7 +110,7 @@ export function OnboardingPage() {
                   error={errors.displayName?.message}
                   {...register('displayName')}
                 />
-                <Group grow>
+                <Group grow className="responsive-fields">
                   <TextInput label="Currency" disabled {...register('defaultCurrency')} />
                   <TextInput label="Time zone" {...register('timeZone')} />
                 </Group>

@@ -8,13 +8,14 @@ import {
   Paper,
   SegmentedControl,
   Select,
+  SimpleGrid,
   Stack,
   Text,
   TextInput,
   Title,
 } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
-import { useDisclosure } from '@mantine/hooks'
+import { useDisclosure, useMediaQuery } from '@mantine/hooks'
 import { IconArchive, IconPlus } from '@tabler/icons-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
@@ -57,8 +58,10 @@ export function TasksPage() {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateTasks()
   const [createOpened, createDrawer] = useDisclosure(false)
+  const mobile = useMediaQuery('(max-width: 48em)')
   const [listOpened, listModal] = useDisclosure(false)
   const [listName, setListName] = useState('')
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [page, setPage] = useState(0)
   const [cursors, setCursors] = useState<Array<TaskQueryFilters['cursor']>>([undefined])
   const rawView = params.get('view') as TaskView | null
@@ -218,16 +221,34 @@ export function TasksPage() {
         <TaskQuickAdd onCreated={(id) => void navigate(`/tasks/${id}${window.location.search}`)} />
       </Paper>
       <Stack gap="md">
-        <SegmentedControl
-          fullWidth
+        <Select
+          className="task-view-select"
+          aria-label="Task view"
           value={view}
-          onChange={(value) => updateParam('view', value)}
+          onChange={(value) => value && updateParam('view', value)}
           data={VIEWS.map((item) => ({
             value: item,
             label: item[0]!.toUpperCase() + item.slice(1),
           }))}
         />
-        <Group grow align="flex-end">
+        <div className="segment-scroll task-view-tabs">
+          <SegmentedControl
+            fullWidth
+            miw={350}
+            value={view}
+            onChange={(value) => updateParam('view', value)}
+            data={VIEWS.map((item) => ({
+              value: item,
+              label: item[0]!.toUpperCase() + item.slice(1),
+            }))}
+          />
+        </div>
+        <SimpleGrid
+          className="filter-grid"
+          data-expanded={filtersExpanded}
+          cols={{ base: 1, xs: 2, md: 3, lg: 5 }}
+          spacing="sm"
+        >
           <TextInput
             label="Search"
             placeholder="Title, description, list, or tag"
@@ -244,36 +265,48 @@ export function TasksPage() {
               { value: 'unassigned', label: 'Unassigned' },
             ]}
           />
-          <Select
-            label="List"
-            clearable
-            value={listId || null}
-            onChange={(value) => updateParam('list', value ?? '')}
-            data={(lists.data ?? [])
-              .filter((list) => !list.isArchived)
-              .map((list) => ({ value: list.id, label: list.name }))}
-          />
-          <Select
-            label="Priority"
-            clearable
-            value={priority || null}
-            onChange={(value) => updateParam('priority', value ?? '')}
-            data={['URGENT', 'HIGH', 'MEDIUM', 'LOW', 'NONE']}
-          />
-          <Select
-            label="Sort"
-            value={sort}
-            onChange={(value) => updateParam('sort', value ?? 'due')}
-            data={[
-              { value: 'manual', label: 'Manual order' },
-              { value: 'due', label: 'Due date' },
-              { value: 'priority', label: 'Priority' },
-              { value: 'created', label: 'Created' },
-              { value: 'updated', label: 'Recently updated' },
-            ]}
-          />
-        </Group>
-        <Group justify="flex-end">
+          <Button
+            className="mobile-only filter-toggle"
+            variant="light"
+            aria-expanded={filtersExpanded}
+            onClick={() => setFiltersExpanded((current) => !current)}
+          >
+            {filtersExpanded
+              ? 'Hide filters'
+              : `More filters${listId || priority || params.get('sort') ? ' • active' : ''}`}
+          </Button>
+          <div className="filter-extra">
+            <Select
+              label="List"
+              clearable
+              value={listId || null}
+              onChange={(value) => updateParam('list', value ?? '')}
+              data={(lists.data ?? [])
+                .filter((list) => !list.isArchived)
+                .map((list) => ({ value: list.id, label: list.name }))}
+            />
+            <Select
+              label="Priority"
+              clearable
+              value={priority || null}
+              onChange={(value) => updateParam('priority', value ?? '')}
+              data={['URGENT', 'HIGH', 'MEDIUM', 'LOW', 'NONE']}
+            />
+            <Select
+              label="Sort"
+              value={sort}
+              onChange={(value) => updateParam('sort', value ?? 'due')}
+              data={[
+                { value: 'manual', label: 'Manual order' },
+                { value: 'due', label: 'Due date' },
+                { value: 'priority', label: 'Priority' },
+                { value: 'created', label: 'Created' },
+                { value: 'updated', label: 'Recently updated' },
+              ]}
+            />
+          </div>
+        </SimpleGrid>
+        <Group justify="flex-end" className="task-list-actions">
           <Button variant="subtle" size="xs" onClick={listModal.open}>
             + Create list
           </Button>
@@ -356,8 +389,9 @@ export function TasksPage() {
         opened={createOpened}
         onClose={createDrawer.close}
         title="Add task"
-        position="right"
-        size="lg"
+        position={mobile ? 'bottom' : 'right'}
+        size={mobile ? '100%' : 'lg'}
+        styles={mobile ? { content: { height: '100%' } } : undefined}
       >
         <TaskForm submitting={create.isPending} onSubmit={(values) => create.mutate(values)} />
       </Drawer>

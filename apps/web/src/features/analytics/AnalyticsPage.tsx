@@ -171,18 +171,20 @@ export function AnalyticsPage() {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <Table verticalSpacing="xs">
-                      <Table.Tbody>
-                        {rows.slice(0, 5).map(([id, value]) => (
-                          <Table.Tr key={id}>
-                            <Table.Td>{dimension.label(id)}</Table.Td>
-                            <Table.Td ta="right" fw={650}>
-                              {formatMoney(value, currency)}
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
+                    <Table.ScrollContainer minWidth={280}>
+                      <Table verticalSpacing="xs">
+                        <Table.Tbody>
+                          {rows.slice(0, 5).map(([id, value]) => (
+                            <Table.Tr key={id}>
+                              <Table.Td>{dimension.label(id)}</Table.Td>
+                              <Table.Td ta="right" fw={650}>
+                                {formatMoney(value, currency)}
+                              </Table.Td>
+                            </Table.Tr>
+                          ))}
+                        </Table.Tbody>
+                      </Table>
+                    </Table.ScrollContainer>
                   </>
                 ) : (
                   <EmptyState title="No data" message="No expenses match this period." />

@@ -68,17 +68,17 @@ export function TaskQuickAdd({ onCreated }: { onCreated?(taskId: string): void }
     mutation.mutate({ taskTitle: value, clientRequestId })
   }
   return (
-    <Group align="flex-end" wrap="nowrap">
+    <Group align="flex-end" wrap="nowrap" className="quick-add">
       <TextInput
         aria-label="Quick task title"
-        placeholder="What needs to be done?"
+        placeholder="Quick task"
         value={title}
         onChange={(event) => setTitle(event.currentTarget.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') submit()
         }}
         maxLength={200}
-        style={{ flex: 1 }}
+        style={{ flex: 1, minWidth: 0 }}
       />
       <Button onClick={submit} loading={mutation.isPending} disabled={!title.trim()}>
         Add

@@ -218,34 +218,59 @@ export function DashboardPage() {
               </Text>
             </Group>
             {transactions.data?.transactions.length ? (
-              <Table.ScrollContainer minWidth={560}>
-                <Table verticalSpacing="sm">
-                  <Table.Tbody>
-                    {transactions.data.transactions.map((item) => (
-                      <Table.Tr key={item.id}>
-                        <Table.Td>
-                          <Text fw={600}>{item.description}</Text>
-                          <Text size="xs" c="dimmed">
-                            {formatDate(item.transactionDate)}
-                          </Text>
-                        </Table.Td>
-                        <Table.Td>
-                          <Badge variant="light" color="gray">
-                            {item.type.replace('_', ' ')}
-                          </Badge>
-                        </Table.Td>
-                        <Table.Td ta="right">
-                          <Amount
-                            amountMinor={item.amountMinor}
-                            currency={item.currency}
-                            type={item.type}
-                          />
-                        </Table.Td>
-                      </Table.Tr>
-                    ))}
-                  </Table.Tbody>
-                </Table>
-              </Table.ScrollContainer>
+              <>
+                <Table.ScrollContainer className="desktop-only" minWidth={560}>
+                  <Table verticalSpacing="sm">
+                    <Table.Tbody>
+                      {transactions.data.transactions.map((item) => (
+                        <Table.Tr key={item.id}>
+                          <Table.Td>
+                            <Text fw={600}>{item.description}</Text>
+                            <Text size="xs" c="dimmed">
+                              {formatDate(item.transactionDate)}
+                            </Text>
+                          </Table.Td>
+                          <Table.Td>
+                            <Badge variant="light" color="gray">
+                              {item.type.replace('_', ' ')}
+                            </Badge>
+                          </Table.Td>
+                          <Table.Td ta="right">
+                            <Amount
+                              amountMinor={item.amountMinor}
+                              currency={item.currency}
+                              type={item.type}
+                            />
+                          </Table.Td>
+                        </Table.Tr>
+                      ))}
+                    </Table.Tbody>
+                  </Table>
+                </Table.ScrollContainer>
+                <Stack className="mobile-transaction-list" gap="xs">
+                  {transactions.data.transactions.map((item) => (
+                    <Group
+                      key={item.id}
+                      justify="space-between"
+                      align="flex-start"
+                      wrap="nowrap"
+                      className="mobile-stack-on-small"
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <Text fw={600}>{item.description}</Text>
+                        <Text size="xs" c="dimmed">
+                          {formatDate(item.transactionDate)}
+                        </Text>
+                      </div>
+                      <Amount
+                        amountMinor={item.amountMinor}
+                        currency={item.currency}
+                        type={item.type}
+                      />
+                    </Group>
+                  ))}
+                </Stack>
+              </>
             ) : (
               <EmptyState
                 title="No transactions"

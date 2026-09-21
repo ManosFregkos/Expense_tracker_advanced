@@ -52,13 +52,19 @@ export function AppLayout() {
   const taskCount = useTaskDueCount()
   return (
     <AppShell
-      header={{ height: 68 }}
+      header={{ height: { base: 60, sm: 68 } }}
       navbar={{ width: 250, breakpoint: 'sm', collapsed: { mobile: !opened } }}
       padding={0}
     >
       <AppShell.Header>
-        <Group h="100%" px={{ base: 'md', sm: 'xl' }} justify="space-between">
-          <Group>
+        <Group
+          className="app-header"
+          h="100%"
+          px={{ base: 'sm', sm: 'xl' }}
+          justify="space-between"
+          wrap="nowrap"
+        >
+          <Group gap="xs" wrap="nowrap" className="app-header-brand">
             <Burger
               opened={opened}
               onClick={toggle}
@@ -66,11 +72,11 @@ export function AppLayout() {
               size="sm"
               aria-label="Toggle navigation"
             />
-            <Text fw={800} c="teal.9" size="lg">
+            <Text fw={800} c="teal.9" size="lg" className="app-brand">
               Family Finance
             </Text>
           </Group>
-          <Group>
+          <Group gap="xs" wrap="nowrap" className="app-header-actions">
             <TaskNotificationMenu />
             <Select
               className="desktop-only"
@@ -80,7 +86,11 @@ export function AppLayout() {
               onChange={(value) => value && setActiveHouseholdId(value)}
               data={households.map((item) => ({ value: item.id, label: item.name }))}
             />
-            <Button leftSection={<IconPlus size={17} />} onClick={add.open}>
+            <Button
+              className="desktop-only"
+              leftSection={<IconPlus size={17} />}
+              onClick={add.open}
+            >
               Add transaction
             </Button>
             <UnstyledButton component={RouterNavLink} to="/profile" aria-label="Profile">
@@ -91,11 +101,19 @@ export function AppLayout() {
           </Group>
         </Group>
       </AppShell.Header>
-      <AppShell.Navbar p="md">
+      <AppShell.Navbar p="md" className="app-navbar">
         <Stack h="100%" gap={4}>
           <Text px="sm" py="md" size="xs" fw={700} c="dimmed">
             {household?.name ?? 'HOUSEHOLD'}
           </Text>
+          <Select
+            className="mobile-only mobile-household-select"
+            aria-label="Active household"
+            value={household?.id ?? null}
+            onChange={(value) => value && setActiveHouseholdId(value)}
+            data={households.map((item) => ({ value: item.id, label: item.name }))}
+            mb="sm"
+          />
           {nav.map(([to, label, Icon]) => (
             <NavLink
               key={to}
@@ -126,21 +144,8 @@ export function AppLayout() {
         <OfflineBanner />
         <Outlet />
       </AppShell.Main>
-      <nav className="mobile-only" aria-label="Primary">
-        <Group
-          pos="fixed"
-          bottom={0}
-          left={0}
-          right={0}
-          bg="white"
-          style={{
-            zIndex: 200,
-            borderTop: '1px solid #dde5e2',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          }}
-          h={70}
-          justify="space-around"
-        >
+      <nav className="mobile-only mobile-bottom-nav" aria-label="Primary">
+        <div className="mobile-bottom-nav-inner">
           {nav
             .filter(([to]) => ['/dashboard', '/transactions', '/tasks', '/settings'].includes(to))
             .map(([to, label, Icon]) => (
@@ -148,18 +153,35 @@ export function AppLayout() {
                 key={to}
                 component={RouterNavLink}
                 to={to}
+                className="mobile-nav-link"
+                aria-label={label}
+                aria-current={location.pathname.startsWith(to) ? 'page' : undefined}
                 ta="center"
                 c={location.pathname.startsWith(to) ? 'teal.9' : 'gray.6'}
               >
                 <Icon size={22} />
-                <Text size="xs">{label === 'Settings' ? 'More' : label}</Text>
+                <Text size="xs">
+                  {label === 'Dashboard'
+                    ? 'Home'
+                    : label === 'Transactions'
+                      ? 'Activity'
+                      : label === 'Settings'
+                        ? 'More'
+                        : label}
+                </Text>
               </UnstyledButton>
             ))}
-          <UnstyledButton onClick={add.open} ta="center" c="teal.9" aria-label="Add transaction">
+          <UnstyledButton
+            className="mobile-nav-link"
+            onClick={add.open}
+            ta="center"
+            c="teal.9"
+            aria-label="Add transaction"
+          >
             <IconPlus size={30} />
             <Text size="xs">Add</Text>
           </UnstyledButton>
-        </Group>
+        </div>
       </nav>
     </AppShell>
   )

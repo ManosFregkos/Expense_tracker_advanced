@@ -335,7 +335,7 @@ export function TransactionForm({
           )}
         />
         {type === 'TRANSFER' ? (
-          <Group grow align="start">
+          <Group grow align="start" className="responsive-fields">
             <Controller
               name="sourceAccountId"
               control={control}
@@ -437,7 +437,7 @@ export function TransactionForm({
                   </Button>
                 </Group>
                 {splits.map((split, index) => (
-                  <Group key={split.id} align="end" grow>
+                  <Group key={split.id} align="end" grow className="responsive-fields">
                     <Controller
                       name={`splits.${index}.categoryId`}
                       control={control}

@@ -97,7 +97,7 @@ export function ReviewTransactionsPage() {
       ) : (
         <Stack>
           <Paper withBorder p="md">
-            <Group align="end">
+            <Group align="end" className="mobile-stack-on-small">
               <Select
                 searchable
                 label="Bulk expense category"
@@ -123,9 +123,9 @@ export function ReviewTransactionsPage() {
               .map((category) => ({ value: category.id, label: category.name }))
             return (
               <Card withBorder key={transaction.id}>
-                <Group justify="space-between" align="start">
+                <Group justify="space-between" align="start" className="mobile-stack-on-small">
                   <div>
-                    <Group>
+                    <Group className="review-transaction-heading">
                       {transaction.direction !== 'CREDIT' && (
                         <Checkbox
                           aria-label={`Select ${transaction.merchantName ?? transaction.rawDescription}`}
@@ -165,7 +165,7 @@ export function ReviewTransactionsPage() {
                     {formatMoney(transaction.amountMinor, transaction.currency)}
                   </Text>
                 </Group>
-                <Group mt="md" align="end">
+                <Group mt="md" align="end" className="mobile-stack-on-small">
                   {transaction.suggestedTransactionId && (
                     <Button
                       color="orange"

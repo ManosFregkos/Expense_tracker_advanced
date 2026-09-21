@@ -5,10 +5,14 @@ import { promisify } from 'node:util'
 
 const execFileAsync = promisify(execFile)
 
-test('register, onboard, and complete the core household finance workflow', async ({ page }) => {
-  test.setTimeout(120_000)
+test('register, onboard, and complete the core household finance workflow', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(240_000)
   const email = `family-${Date.now()}@example.test`
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/register')
+  await page.screenshot({ path: testInfo.outputPath('mobile-register.png') })
   await page.getByLabel('Your name').fill('Emmanouil Test')
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill('DemoPass123!')
@@ -21,6 +25,7 @@ test('register, onboard, and complete the core household finance workflow', asyn
 
   await page.getByRole('button', { name: 'I have verified my email' }).click()
   await expect(page.getByRole('heading', { name: 'Set up your household' })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('mobile-onboarding.png') })
   await page.getByLabel('Household name').fill('E2E Family')
   await page.getByRole('button', { name: 'Create household' }).click()
   await expect(page.getByRole('button', { name: 'Continue' })).toBeVisible()
@@ -28,6 +33,7 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await expect(page.getByRole('button', { name: 'Go to accounts' })).toBeVisible()
   await page.getByRole('button', { name: 'Go to accounts' }).click()
   await expect(page.getByRole('heading', { name: 'Accounts', exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 1280, height: 720 })
 
   await page.getByRole('button', { name: 'Add account' }).first().click()
   await page.getByLabel('Account name').fill('Eurobank')
@@ -130,4 +136,49 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await page.keyboard.press('Escape')
   await page.goto('/tasks?view=all')
   await expect(page.getByText('Weekly house cleaning')).toHaveCount(1)
+
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const route of [
+      '/dashboard',
+      '/transactions?period=THIS_YEAR',
+      '/accounts',
+      '/analytics',
+      '/categories',
+      '/members',
+      '/tasks?view=all',
+      '/settings',
+      '/profile',
+      '/bank-connections',
+      '/transactions/review',
+    ]) {
+      await page.goto(route)
+      await expect(page.locator('.page')).toBeVisible()
+      await expect
+        .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+        .toBeLessThanOrEqual(1)
+      if (
+        ['/dashboard', '/transactions?period=THIS_YEAR', '/tasks?view=all', '/settings'].includes(
+          route,
+        )
+      ) {
+        const name = route.split('?')[0]!.slice(1)
+        await page.screenshot({ path: testInfo.outputPath(`mobile-${width}-${name}.png`) })
+      }
+    }
+    await page.goto('/dashboard')
+    await page
+      .getByRole('navigation', { name: 'Primary' })
+      .getByRole('link', { name: 'Tasks' })
+      .click()
+    await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: /More filters/ }).click()
+    await expect(page.getByRole('textbox', { name: 'Priority' })).toBeVisible()
+    await page.getByRole('button', { name: 'Add task' }).first().click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await page.goto('/transactions?period=THIS_YEAR')
+    await page.getByRole('button', { name: /More filters/ }).click()
+    await expect(page.getByRole('textbox', { name: 'Type' })).toBeVisible()
+  }
 })

@@ -94,7 +94,7 @@ export function SettingsPage() {
               value={name}
               onChange={(event) => setName(event.currentTarget.value)}
             />
-            <Group grow>
+            <Group grow className="responsive-fields">
               <TextInput label="Default currency" disabled value={household.defaultCurrency} />
               <TextInput
                 label="Time zone"

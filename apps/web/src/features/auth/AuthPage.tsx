@@ -92,7 +92,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           <Text fw={800} size="xl">
             Family Finance
           </Text>
-          <Title mt={70} order={1} size={48} maw={520}>
+          <Title className="auth-title" mt={70} order={1} size={48} maw={520}>
             A clear view of the money your household shares.
           </Title>
           <Text mt="lg" size="lg" c="teal.1" maw={520}>

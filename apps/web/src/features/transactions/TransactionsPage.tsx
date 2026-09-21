@@ -151,69 +151,71 @@ export function TransactionsPage() {
       ) : (
         <>
           <Paper withBorder className="desktop-only">
-            <Table highlightOnHover verticalSpacing="md">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Date</Table.Th>
-                  <Table.Th>Description</Table.Th>
-                  <Table.Th>Category</Table.Th>
-                  <Table.Th>Account</Table.Th>
-                  <Table.Th>Member</Table.Th>
-                  <Table.Th>Type</Table.Th>
-                  <Table.Th ta="right">Amount</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {result.data.transactions.map((item) => (
-                  <Table.Tr
-                    key={item.id}
-                    onClick={() => void navigate(`/transactions/${item.id}`)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <Table.Td>{formatDate(item.transactionDate)}</Table.Td>
-                    <Table.Td>
-                      <Text fw={600}>{item.description}</Text>
-                      <Text size="xs" c="dimmed">
-                        {item.merchant}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      {categoryName(item.type === 'TRANSFER' ? undefined : item.categoryId)}
-                    </Table.Td>
-                    <Table.Td>
-                      {accountName(
-                        item.type === 'TRANSFER' ? item.transfer.sourceAccountId : item.accountId,
-                      )}
-                    </Table.Td>
-                    <Table.Td>
-                      {memberName(item.type === 'TRANSFER' ? undefined : item.ownerUserId)}
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge variant="light" color="gray">
-                        {item.type}
-                      </Badge>
-                    </Table.Td>
-                    <Table.Td ta="right">
-                      <Amount
-                        amountMinor={item.amountMinor}
-                        currency={item.currency}
-                        type={item.type}
-                      />
-                    </Table.Td>
+            <Table.ScrollContainer minWidth={980}>
+              <Table highlightOnHover verticalSpacing="md">
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Date</Table.Th>
+                    <Table.Th>Description</Table.Th>
+                    <Table.Th>Category</Table.Th>
+                    <Table.Th>Account</Table.Th>
+                    <Table.Th>Member</Table.Th>
+                    <Table.Th>Type</Table.Th>
+                    <Table.Th ta="right">Amount</Table.Th>
                   </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
+                </Table.Thead>
+                <Table.Tbody>
+                  {result.data.transactions.map((item) => (
+                    <Table.Tr
+                      key={item.id}
+                      onClick={() => void navigate(`/transactions/${item.id}`)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <Table.Td>{formatDate(item.transactionDate)}</Table.Td>
+                      <Table.Td>
+                        <Text fw={600}>{item.description}</Text>
+                        <Text size="xs" c="dimmed">
+                          {item.merchant}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {categoryName(item.type === 'TRANSFER' ? undefined : item.categoryId)}
+                      </Table.Td>
+                      <Table.Td>
+                        {accountName(
+                          item.type === 'TRANSFER' ? item.transfer.sourceAccountId : item.accountId,
+                        )}
+                      </Table.Td>
+                      <Table.Td>
+                        {memberName(item.type === 'TRANSFER' ? undefined : item.ownerUserId)}
+                      </Table.Td>
+                      <Table.Td>
+                        <Badge variant="light" color="gray">
+                          {item.type}
+                        </Badge>
+                      </Table.Td>
+                      <Table.Td ta="right">
+                        <Amount
+                          amountMinor={item.amountMinor}
+                          currency={item.currency}
+                          type={item.type}
+                        />
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Table.ScrollContainer>
           </Paper>
-          <Stack className="mobile-only">
+          <Stack className="mobile-transaction-list">
             {result.data.transactions.map((item) => (
               <Card
                 key={item.id}
                 withBorder
                 onClick={() => void navigate(`/transactions/${item.id}`)}
               >
-                <Group justify="space-between" wrap="nowrap">
-                  <div>
+                <Group justify="space-between" wrap="nowrap" className="mobile-stack-on-small">
+                  <div style={{ minWidth: 0 }}>
                     <Text fw={650}>{item.description}</Text>
                     <Text size="xs" c="dimmed">
                       {formatDate(item.transactionDate)} ·{' '}
