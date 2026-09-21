@@ -11,11 +11,26 @@ test-results/
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
+# Local and deployed environment files
 .env
 .env.*
 !.env.example
+apps/web/.env.production
+functions/.env.*
 *.local
+
+# Private keys and downloaded cloud credentials
 saltedge-*.pem
+salt-edge-*.pem
+saltedge-*.key
+salt-edge-*.key
+*service-account*.json
+*service_account*.json
+*-firebase-adminsdk-*.json
+firebase-admin*.json
+firebase_admin*.json
+serviceAccountKey.json
+google-application-credentials*.json
 .DS_Store
 .idea/
 *.tsbuildinfo
