@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" preserveAspectRatio="xMidYMid slice">
+  <defs><linearGradient id="sea" x2="0" y2="1"><stop stop-color="#9fe4eb"/><stop offset="1" stop-color="#276f9d"/></linearGradient></defs>
+  <rect width="1200" height="680" fill="url(#sea)"/>
+  <path d="M0 560 Q120 510 240 555 T480 545 T720 560 T960 540 T1200 560 V680 H0Z" fill="#e8ca97"/>
+  <g fill="none" stroke="#ffffff88" stroke-width="7"><circle cx="120" cy="120" r="18"/><circle cx="100" cy="80" r="9"/><circle cx="980" cy="100" r="25"/><circle cx="1020" cy="55" r="12"/><circle cx="570" cy="90" r="13"/></g>
+  <g fill="#317f78"><path d="M25 600 Q5 455 80 420 Q45 500 80 600Z"/><path d="M150 610 Q120 470 205 435 Q165 510 190 610Z"/><path d="M1080 610 Q1035 470 1125 430 Q1085 500 1140 610Z"/></g>
+</svg>

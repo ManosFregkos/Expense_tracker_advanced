@@ -1,0 +1,2 @@
+export declare function nextKidsDifficulty(current: number, recentResults: readonly boolean[], roundsSinceChange: number, mode: 'AUTO' | 'EASY' | 'MEDIUM' | 'HARD', maximum?: number): number;
+//# sourceMappingURL=kids-difficulty.d.ts.map

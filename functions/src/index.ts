@@ -50,6 +50,14 @@ export {
 } from './services/task-notifications.js'
 export { sendTaskReminderEmail } from './services/task-email.js'
 export {
+  saveChildProfile,
+  saveKidsCustomContent,
+  archiveKidsCustomContent,
+  startKidsSession,
+  completeKidsRound,
+  completeKidsSession,
+} from './services/kids.js'
+export {
   openBankingWebhook,
   processOpenBankingWebhook,
   scheduledBankRefresh,

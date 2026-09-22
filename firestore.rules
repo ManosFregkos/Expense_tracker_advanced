@@ -59,6 +59,11 @@ service cloud.firestore {
       }
       match /taskLists/{taskListId} { allow read: if isMember(householdId); allow write: if false; }
       match /taskActivity/{activityId} { allow read: if isMember(householdId); allow write: if false; }
+      match /childProfiles/{profileId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsSessions/{sessionId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsAttempts/{attemptId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsProgress/{progressId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsCustomContent/{contentId} { allow read: if isMember(householdId); allow write: if false; }
     }
 
     match /userDevices/{userId}/devices/{deviceId} { allow read, write: if false; }

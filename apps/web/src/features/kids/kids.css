@@ -1,0 +1,457 @@
+.kids-root {
+  --ink: #17394b;
+  --cream: #fff9ed;
+  min-height: 100dvh;
+  background:
+    radial-gradient(circle at 20% 10%, #fff8d9, transparent 35%),
+    linear-gradient(135deg, #d9f4ed, #e8ebff);
+  color: var(--ink);
+  font-family: system-ui, sans-serif;
+  padding: clamp(18px, 2.5vw, 58px);
+  overflow-x: hidden;
+}
+.kids-root * {
+  box-sizing: border-box;
+}
+.kids-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 72px;
+}
+.kids-brand {
+  font-size: clamp(1.4rem, 2vw, 2.6rem);
+  font-weight: 800;
+}
+.kids-button {
+  border: 4px solid transparent;
+  border-radius: 28px;
+  background: var(--cream);
+  color: var(--ink);
+  box-shadow: 0 10px 25px #23445622;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: clamp(1.2rem, 2.2vw, 2.5rem);
+  min-height: 80px;
+  padding: 20px 30px;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+.kids-button:focus-visible,
+.kids-button:focus {
+  outline: 6px solid #193e88;
+  outline-offset: 5px;
+  transform: scale(1.045);
+  box-shadow:
+    0 0 0 13px #fdf29b,
+    0 18px 38px #23445655;
+  z-index: 5;
+}
+.kids-button:disabled {
+  opacity: 0.8;
+  cursor: default;
+}
+.kids-small {
+  font-size: clamp(1rem, 1.4vw, 1.5rem);
+  min-height: 64px;
+  padding: 12px 22px;
+  border-radius: 20px;
+}
+.kids-center {
+  min-height: calc(100dvh - 170px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: clamp(20px, 3vw, 54px);
+}
+.kids-root h1 {
+  font-size: clamp(2.4rem, 4vw, 5.5rem);
+  line-height: 1.1;
+  margin: 0;
+  max-width: 1100px;
+}
+.kids-hub-cards,
+.kids-world-list,
+.kids-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: center;
+  gap: clamp(14px, 2vw, 34px);
+  width: 100%;
+}
+.kids-hub-cards .kids-button {
+  width: min(30%, 500px);
+  min-width: 250px;
+  min-height: clamp(230px, 30vh, 390px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: #fffdf6;
+}
+.kids-hub-cards .kids-button span {
+  font-size: clamp(4rem, 8vw, 9rem);
+}
+.kids-world-list .kids-button {
+  min-width: 250px;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(4rem, 7vw, 8rem);
+}
+.kids-world-list .kids-button span {
+  font-size: clamp(1.4rem, 2.3vw, 2.5rem);
+}
+.kids-world-card.underwater,
+.kids-world.underwater {
+  background: #2d709f url('/kids/underwater.svg') center/cover;
+}
+.kids-world-card.jungle,
+.kids-world.jungle {
+  background: #3f826b url('/kids/jungle.svg') center/cover;
+}
+.kids-world-card.space,
+.kids-world.space {
+  background: #222c58 url('/kids/space.svg') center/cover;
+  color: white;
+}
+.kids-game {
+  height: calc(100dvh - 160px);
+  min-height: 600px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5vh;
+  text-align: center;
+}
+.kids-game h1 {
+  font-size: clamp(1.9rem, 3.3vw, 4.3rem);
+  min-height: 1.2em;
+}
+.kids-progress {
+  display: flex;
+  gap: 12px;
+  height: 20px;
+}
+.kids-progress span {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: #abc2c8;
+}
+.kids-progress .active {
+  background: #346e85;
+}
+.kids-round {
+  flex: 1;
+  width: min(1500px, 100%);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-around;
+  gap: 2vh;
+}
+.kids-asset {
+  width: clamp(95px, 10vw, 190px);
+  height: clamp(95px, 10vw, 190px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 32%;
+  font-size: clamp(4rem, 7vw, 9rem);
+  line-height: 1;
+  box-shadow:
+    inset 0 -10px 22px #0001,
+    0 10px 22px #0002;
+}
+.kids-memory-scene {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2vw, 32px);
+  min-height: 35%;
+  width: 100%;
+  flex-wrap: wrap;
+}
+.kids-curtain {
+  font-size: 8rem;
+}
+.kids-observe {
+  height: 15px;
+  width: min(500px, 90%);
+  border-radius: 20px;
+  background: #adc4cd;
+  overflow: hidden;
+}
+.kids-observe span {
+  display: block;
+  height: 100%;
+  background: #367b8b;
+  transition: width 0.1s linear;
+}
+.kids-choices .kids-button {
+  min-width: clamp(110px, 14vw, 220px);
+  min-height: clamp(120px, 14vw, 220px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+}
+.kids-choices .kids-asset {
+  width: clamp(95px, 9vw, 175px);
+  height: clamp(95px, 9vw, 175px);
+}
+.kids-world {
+  position: relative;
+  width: min(100%, 1100px);
+  height: min(54vh, 600px);
+  min-height: 340px;
+  border: 9px solid #fff;
+  border-radius: 42px;
+  box-shadow: 0 22px 50px #1235;
+  overflow: hidden;
+}
+.kids-hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-height: 0;
+  padding: 6px;
+  border-radius: 50%;
+  background: #ffffff66;
+  box-shadow: 0 5px 20px #1234;
+}
+.kids-hotspot .kids-asset {
+  width: clamp(65px, 8vw, 128px);
+  height: clamp(65px, 8vw, 128px);
+  font-size: clamp(3rem, 5vw, 6rem);
+}
+.kids-hotspot:focus {
+  transform: translate(-50%, -50%) scale(1.13);
+}
+.kids-hint {
+  box-shadow:
+    0 0 0 10px #f8e596,
+    0 12px 32px #2b526c77;
+}
+@media (min-width: 2500px) {
+  .kids-root {
+    padding: 70px;
+  }
+  .kids-root h1 {
+    font-size: 7rem;
+  }
+  .kids-button {
+    font-size: 3.5rem;
+    min-height: 120px;
+  }
+  .kids-hub-cards .kids-button {
+    width: 30%;
+    max-width: 850px;
+    min-height: 570px;
+  }
+  .kids-hub-cards .kids-button span {
+    font-size: 13rem;
+  }
+  .kids-world {
+    width: min(1800px, 100%);
+    height: 60vh;
+    max-height: none;
+  }
+  .kids-asset {
+    width: 270px;
+    height: 270px;
+    font-size: 12rem;
+  }
+  .kids-hotspot .kids-asset {
+    width: 190px;
+    height: 190px;
+    font-size: 9rem;
+  }
+  .kids-choices .kids-asset {
+    width: 230px;
+    height: 230px;
+    font-size: 10rem;
+  }
+}
+.kids-logic-scene .kids-asset {
+  width: clamp(150px, 17vw, 270px);
+  height: clamp(150px, 17vw, 270px);
+  font-size: clamp(7rem, 12vw, 13rem);
+}
+.kids-game-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  min-height: 80px;
+  font-size: clamp(1.3rem, 2vw, 2.4rem);
+  font-weight: 800;
+}
+.kids-game-footer [role='status'] {
+  flex: 1;
+}
+.kids-reward {
+  font-size: clamp(7rem, 15vw, 16rem);
+}
+.kids-message {
+  font-size: clamp(1.2rem, 1.8vw, 2rem);
+  min-height: 1.2em;
+}
+.kids-parent {
+  max-width: 1100px;
+  margin: auto;
+  background: #fffdf8;
+  border-radius: 30px;
+  padding: clamp(20px, 3vw, 50px);
+  font-size: 1.2rem;
+  min-height: 80vh;
+}
+.kids-parent header,
+.kids-parent nav {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.kids-parent h1 {
+  font-size: 2rem;
+}
+.kids-parent h2 {
+  font-size: 1.6rem;
+}
+.kids-parent .kids-button {
+  font-size: 1.1rem;
+  min-height: 55px;
+  padding: 10px 18px;
+  border-radius: 14px;
+}
+.kids-parent section {
+  display: grid;
+  gap: 16px;
+  max-width: 650px;
+  margin: 35px auto;
+}
+.kids-parent label {
+  display: grid;
+  gap: 5px;
+  font-weight: 700;
+}
+.kids-parent input,
+.kids-parent select {
+  font: inherit;
+  min-height: 50px;
+  padding: 8px;
+  border: 2px solid #85a6a9;
+  border-radius: 10px;
+}
+.kids-parent input[type='checkbox'],
+.kids-parent input[type='radio'] {
+  min-height: 20px;
+  width: 25px;
+}
+@media (max-width: 800px) {
+  .kids-root {
+    padding: 14px;
+  }
+  .kids-header {
+    min-height: 65px;
+  }
+  .kids-header .kids-button {
+    font-size: 1rem;
+    min-height: 50px;
+    padding: 7px;
+  }
+  .kids-hub-cards .kids-button {
+    width: 100%;
+    min-height: 150px;
+    flex-direction: row;
+  }
+  .kids-hub-cards .kids-button span {
+    font-size: 4rem;
+  }
+  .kids-center {
+    min-height: calc(100dvh - 110px);
+  }
+  .kids-game {
+    height: auto;
+    min-height: calc(100dvh - 100px);
+  }
+  .kids-round {
+    gap: 18px;
+  }
+  .kids-memory-scene {
+    min-height: 180px;
+  }
+  .kids-world {
+    min-height: 330px;
+    height: 45vh;
+  }
+  .kids-game-footer {
+    flex-wrap: wrap;
+  }
+  .kids-asset {
+    width: 80px;
+    height: 80px;
+    font-size: 3.8rem;
+  }
+  .kids-choices .kids-button {
+    min-width: 105px;
+    min-height: 105px;
+  }
+  .kids-choices .kids-asset {
+    width: 75px;
+    height: 75px;
+    font-size: 3.7rem;
+  }
+}
+@media (max-width: 480px) {
+  .kids-world {
+    min-height: 290px;
+  }
+  .kids-hotspot .kids-asset {
+    width: 56px;
+    height: 56px;
+    font-size: 2.7rem;
+  }
+  .kids-choices {
+    gap: 8px;
+  }
+  .kids-choices .kids-button {
+    padding: 5px;
+    min-width: 85px;
+    min-height: 85px;
+  }
+  .kids-choices .kids-asset {
+    width: 70px;
+    height: 70px;
+    font-size: 3rem;
+  }
+  .kids-memory-scene {
+    gap: 5px;
+  }
+  .kids-memory-scene .kids-asset {
+    width: 58px;
+    height: 58px;
+    font-size: 2.8rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kids-root .kids-button {
+    transition: none;
+  }
+}
+.kids-root[data-animations='off'] .kids-button {
+  transition: none;
+}
