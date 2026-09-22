@@ -21,7 +21,6 @@ import {
   IconSettings,
   IconChecklist,
   IconUsers,
-  IconMoodKid,
 } from '@tabler/icons-react'
 import { signOut } from 'firebase/auth'
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom'
@@ -133,13 +132,6 @@ export function AppLayout() {
               style={label === 'Tasks' ? { borderTop: '1px solid #dde5e2' } : undefined}
             />
           ))}
-          <NavLink
-            component={RouterNavLink}
-            to="/kids"
-            label="Kids"
-            leftSection={<IconMoodKid size={19} />}
-            onClick={close}
-          />
           <NavLink
             mt="auto"
             label="Sign out"

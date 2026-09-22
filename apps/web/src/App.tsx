@@ -59,9 +59,6 @@ const ReviewTransactionsPage = lazy(() =>
 const TasksPage = lazy(() =>
   import('./features/tasks/TasksPage').then((module) => ({ default: module.TasksPage })),
 )
-const KidsApp = lazy(() =>
-  import('./features/kids/KidsApp').then((module) => ({ default: module.KidsApp })),
-)
 
 export default function App() {
   return (
@@ -78,8 +75,6 @@ export default function App() {
             }
           >
             <Route path="/onboarding" element={<OnboardingPage />} />
-            <Route path="/kids/*" element={<KidsApp />} />
-            <Route path="/kids" element={<KidsApp />} />
             <Route
               element={
                 <AddTransactionProvider>

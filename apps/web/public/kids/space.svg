@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" preserveAspectRatio="xMidYMid slice">
-  <defs><radialGradient id="night"><stop stop-color="#526a9b"/><stop offset="1" stop-color="#1b2857"/></radialGradient></defs>
-  <rect width="1200" height="680" fill="url(#night)"/>
-  <g fill="#f8eec8"><circle cx="90" cy="90" r="4"/><circle cx="200" cy="270" r="3"/><circle cx="320" cy="80" r="5"/><circle cx="460" cy="180" r="3"/><circle cx="650" cy="75" r="4"/><circle cx="850" cy="240" r="4"/><circle cx="980" cy="65" r="5"/><circle cx="1120" cy="200" r="3"/><circle cx="70" cy="480" r="4"/><circle cx="430" cy="540" r="4"/><circle cx="780" cy="460" r="3"/><circle cx="1080" cy="530" r="5"/></g>
-  <path d="M0 620 Q300 580 600 625 T1200 610 V680 H0Z" fill="#364a7d"/>
-</svg>

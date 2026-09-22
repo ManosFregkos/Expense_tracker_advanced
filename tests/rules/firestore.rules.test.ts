@@ -72,16 +72,6 @@ describeWithEmulator('Firestore household isolation', () => {
           isDeleted: false,
           status: 'TODO',
         }),
-        ...[
-          'childProfiles',
-          'kidsSessions',
-          'kidsAttempts',
-          'kidsProgress',
-          'kidsCustomContent',
-        ].flatMap((name) => [
-          setDoc(doc(database, `households/h1/${name}/one`), { id: 'one', householdId: 'h1' }),
-          setDoc(doc(database, `households/h2/${name}/two`), { id: 'two', householdId: 'h2' }),
-        ]),
       ])
     })
   })
@@ -144,21 +134,5 @@ describeWithEmulator('Firestore household isolation', () => {
     await assertFails(
       setDoc(doc(alice, 'households/h1/taskActivity/activity2'), { action: 'FAKE' }),
     )
-  })
-
-  it('isolates all Kids data and denies direct writes', async () => {
-    const alice = environment.authenticatedContext('alice').firestore()
-    for (const name of [
-      'childProfiles',
-      'kidsSessions',
-      'kidsAttempts',
-      'kidsProgress',
-      'kidsCustomContent',
-    ]) {
-      await assertSucceeds(getDoc(doc(alice, `households/h1/${name}/one`)))
-      await assertFails(getDoc(doc(alice, `households/h2/${name}/two`)))
-      await assertFails(setDoc(doc(alice, `households/h1/${name}/injected`), { householdId: 'h1' }))
-      await assertFails(setDoc(doc(alice, `households/h2/${name}/injected`), { householdId: 'h2' }))
-    }
   })
 })
