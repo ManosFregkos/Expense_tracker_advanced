@@ -106,6 +106,164 @@ export interface TimestampLike {
 
 export type StoredDate = TimestampLike | Date
 
+export const KIDS_CARD_GAME_MODES = [
+  'LEARN_AND_CHOOSE',
+  'SAME_OR_DIFFERENT',
+  'MATCHING',
+  'ODD_ONE_OUT',
+  'COMPARE',
+] as const
+export type KidsCardGameMode = (typeof KIDS_CARD_GAME_MODES)[number]
+
+export const KIDS_COMPARISON_DIMENSIONS = [
+  'OBJECT',
+  'COLOR',
+  'SIZE',
+  'SHAPE',
+  'COUNT',
+  'ORIENTATION',
+  'DETAIL',
+] as const
+export type KidsComparisonDimension = (typeof KIDS_COMPARISON_DIMENSIONS)[number]
+
+export const KIDS_COMPARE_RELATIONS = [
+  'BIGGER',
+  'SMALLER',
+  'MORE',
+  'LESS',
+  'TALLER',
+  'SHORTER',
+  'FULL',
+  'EMPTY',
+  'INSIDE',
+  'OUTSIDE',
+  'UP',
+  'DOWN',
+] as const
+export type KidsCompareRelation = (typeof KIDS_COMPARE_RELATIONS)[number]
+
+export const KIDS_RELATIONSHIP_TYPES = [
+  'MATCHES',
+  'USED_WITH',
+  'LIVES_IN',
+  'BELONGS_IN',
+  'PRODUCES',
+  'WEARS',
+  'PART_OF',
+] as const
+export type KidsRelationshipType = (typeof KIDS_RELATIONSHIP_TYPES)[number]
+
+export type LearningOrigin = 'SYSTEM' | 'CUSTOM'
+export type CardFamiliarity = 'NEW' | 'LEARNING' | 'FAMILIAR'
+export type KidsDifficulty = 1 | 2 | 3 | 4
+
+export interface LearningCard {
+  id: string
+  deckId: string
+  title: string
+  narration: string
+  assetId: string
+  category: string
+  subcategory?: string
+  tags: string[]
+  attributes?: {
+    color?: string
+    size?: string
+    shape?: string
+    habitat?: string
+    location?: string
+    type?: string
+    count?: number
+  }
+  difficulty: KidsDifficulty
+  enabled: boolean
+  origin: LearningOrigin
+}
+
+export interface LearningDeck {
+  id: string
+  title: string
+  description?: string
+  narrationTitle?: string
+  category: string
+  ageBand?: string
+  supportedModes: KidsCardGameMode[]
+  cardIds: string[]
+  enabled: boolean
+  origin: LearningOrigin
+}
+
+export interface LearningRelationship {
+  id: string
+  sourceCardId: string
+  targetCardId: string
+  type: KidsRelationshipType
+  narration?: string
+}
+
+export interface KidsChildProfile {
+  id: string
+  householdId: string
+  displayName: string
+  avatar: string
+  createdBy: string
+  createdAt: StoredDate
+  updatedAt: StoredDate
+}
+
+export interface KidsSettings {
+  childProfileId: string
+  narrationEnabled: boolean
+  soundEffectsEnabled: boolean
+  animationsEnabled: boolean
+  sessionLength: 5 | 10 | 15
+  difficultyMode: 'AUTO' | 'EASY' | 'MEDIUM' | 'HARD'
+  currentDifficulty: KidsDifficulty
+  updatedAt: StoredDate
+}
+
+export interface KidsCardSession {
+  id: string
+  householdId: string
+  childProfileId: string
+  mode: KidsCardGameMode
+  deckIds: string[]
+  difficulty: KidsDifficulty
+  plannedRounds: number
+  completedRounds: number
+  status: 'ACTIVE' | 'COMPLETED'
+  startedAt: StoredDate
+  completedAt?: StoredDate
+  createdAt: StoredDate
+}
+
+export interface KidsCardAttempt {
+  id: string
+  sessionId: string
+  householdId: string
+  childProfileId: string
+  mode: KidsCardGameMode
+  roundId: string
+  contentId: string
+  selectedOptionIds: string[]
+  isCorrect: boolean
+  attemptCount: number
+  difficulty: KidsDifficulty
+  createdAt: StoredDate
+}
+
+export interface CardLearningProgress {
+  childProfileId: string
+  cardId: string
+  deckId: string
+  exposureCount: number
+  recognitionAttempts: number
+  recognitionSuccesses: number
+  status: CardFamiliarity
+  lastSeenAt?: StoredDate
+  updatedAt: StoredDate
+}
+
 export interface User {
   id: string
   email: string

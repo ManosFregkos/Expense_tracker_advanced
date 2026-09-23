@@ -59,6 +59,28 @@ const ReviewTransactionsPage = lazy(() =>
 const TasksPage = lazy(() =>
   import('./features/tasks/TasksPage').then((module) => ({ default: module.TasksPage })),
 )
+const KidsShell = lazy(() =>
+  import('./features/kids/components/KidsShell').then((module) => ({ default: module.KidsShell })),
+)
+const KidsHubPage = lazy(() =>
+  import('./features/kids/pages/KidsHubPage').then((module) => ({ default: module.KidsHubPage })),
+)
+const KidsModePage = lazy(() =>
+  import('./features/kids/pages/KidsModePage').then((module) => ({ default: module.KidsModePage })),
+)
+const KidsDeckPage = lazy(() =>
+  import('./features/kids/pages/KidsDeckPage').then((module) => ({ default: module.KidsDeckPage })),
+)
+const KidsSessionPage = lazy(() =>
+  import('./features/kids/pages/KidsSessionPage').then((module) => ({
+    default: module.KidsSessionPage,
+  })),
+)
+const KidsParentSettingsPage = lazy(() =>
+  import('./features/kids/pages/KidsParentSettingsPage').then((module) => ({
+    default: module.KidsParentSettingsPage,
+  })),
+)
 
 export default function App() {
   return (
@@ -95,6 +117,16 @@ export default function App() {
               <Route path="/transactions/review" element={<ReviewTransactionsPage />} />
               <Route path="/tasks" element={<TasksPage />} />
               <Route path="/tasks/:taskId" element={<TasksPage />} />
+              <Route path="/settings/kids" element={<KidsParentSettingsPage />} />
+            </Route>
+            <Route element={<KidsShell />}>
+              <Route path="/kids" element={<KidsHubPage />} />
+              <Route path="/kids/modes/:category" element={<KidsModePage />} />
+              <Route path="/kids/decks/:mode" element={<KidsDeckPage />} />
+              <Route path="/kids/play/:mode/:deckId" element={<KidsSessionPage />} />
+              <Route path="/kids/learn" element={<Navigate to="/kids/modes/learn" replace />} />
+              <Route path="/kids/observe" element={<Navigate to="/kids/modes/observe" replace />} />
+              <Route path="/kids/think" element={<Navigate to="/kids/modes/think" replace />} />
             </Route>
           </Route>
         </Route>

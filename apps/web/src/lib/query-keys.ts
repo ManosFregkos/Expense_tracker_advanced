@@ -35,3 +35,12 @@ export const taskNotificationKeys = {
   settings: (userId: string, householdId: string) =>
     ['task-notifications', userId, 'settings', householdId] as const,
 }
+export const kidsKeys = {
+  profiles: (householdId: string) => ['kids', householdId, 'profiles'] as const,
+  settings: (householdId: string, profileId: string) =>
+    ['kids', householdId, 'settings', profileId] as const,
+  progress: (householdId: string, profileId: string) =>
+    ['kids', householdId, 'progress', profileId] as const,
+  sessions: (householdId: string, profileId: string) =>
+    ['kids', householdId, 'sessions', profileId] as const,
+}

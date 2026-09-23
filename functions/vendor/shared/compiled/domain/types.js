@@ -72,6 +72,45 @@ export const TASK_RECURRENCE_FREQUENCIES = [
     'CUSTOM',
 ];
 export const TASK_RECURRENCE_END_TYPES = ['NEVER', 'UNTIL_DATE', 'AFTER_OCCURRENCES'];
+export const KIDS_CARD_GAME_MODES = [
+    'LEARN_AND_CHOOSE',
+    'SAME_OR_DIFFERENT',
+    'MATCHING',
+    'ODD_ONE_OUT',
+    'COMPARE',
+];
+export const KIDS_COMPARISON_DIMENSIONS = [
+    'OBJECT',
+    'COLOR',
+    'SIZE',
+    'SHAPE',
+    'COUNT',
+    'ORIENTATION',
+    'DETAIL',
+];
+export const KIDS_COMPARE_RELATIONS = [
+    'BIGGER',
+    'SMALLER',
+    'MORE',
+    'LESS',
+    'TALLER',
+    'SHORTER',
+    'FULL',
+    'EMPTY',
+    'INSIDE',
+    'OUTSIDE',
+    'UP',
+    'DOWN',
+];
+export const KIDS_RELATIONSHIP_TYPES = [
+    'MATCHES',
+    'USED_WITH',
+    'LIVES_IN',
+    'BELONGS_IN',
+    'PRODUCES',
+    'WEARS',
+    'PART_OF',
+];
 export const TASK_ACTIVITY_ACTIONS = [
     'CREATED',
     'UPDATED',

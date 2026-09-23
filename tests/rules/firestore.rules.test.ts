@@ -72,6 +72,31 @@ describeWithEmulator('Firestore household isolation', () => {
           isDeleted: false,
           status: 'TODO',
         }),
+        setDoc(doc(database, 'households/h1/childProfiles/child1'), {
+          id: 'child1',
+          householdId: 'h1',
+          displayName: 'Kid',
+        }),
+        setDoc(doc(database, 'households/h1/kidsSessions/session1'), {
+          id: 'session1',
+          householdId: 'h1',
+          childProfileId: 'child1',
+        }),
+        setDoc(doc(database, 'households/h1/kidsAttempts/attempt1'), {
+          id: 'attempt1',
+          householdId: 'h1',
+          childProfileId: 'child1',
+        }),
+        setDoc(doc(database, 'households/h1/kidsCardProgress/child1_apple'), {
+          householdId: 'h1',
+          childProfileId: 'child1',
+          cardId: 'apple',
+        }),
+        setDoc(doc(database, 'households/h2/kidsSessions/session2'), {
+          id: 'session2',
+          householdId: 'h2',
+          childProfileId: 'child2',
+        }),
       ])
     })
   })
@@ -133,6 +158,21 @@ describeWithEmulator('Firestore household isolation', () => {
     await assertFails(setDoc(doc(alice, 'households/h1/taskLists/list2'), { name: 'Injected' }))
     await assertFails(
       setDoc(doc(alice, 'households/h1/taskActivity/activity2'), { action: 'FAKE' }),
+    )
+  })
+
+  it('isolates Kids learning data and denies all direct writes', async () => {
+    const alice = environment.authenticatedContext('alice').firestore()
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/childProfiles/child1')))
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/kidsSessions/session1')))
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/kidsAttempts/attempt1')))
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/kidsCardProgress/child1_apple')))
+    await assertFails(getDoc(doc(alice, 'households/h2/kidsSessions/session2')))
+    await assertFails(
+      setDoc(doc(alice, 'households/h1/kidsAttempts/injected'), { isCorrect: true }),
+    )
+    await assertFails(
+      setDoc(doc(alice, 'households/h2/kidsCardProgress/injected'), { cardId: 'apple' }),
     )
   })
 })

@@ -34,7 +34,7 @@ export default defineConfig({
         ],
       },
       injectManifest: { globPatterns: ['**/*.{js,css,html,svg,woff2}'] },
-      devOptions: { enabled: true },
+      devOptions: { enabled: process.env.VITE_USE_FIREBASE_EMULATORS !== 'true' },
     }),
   ],
   build: {

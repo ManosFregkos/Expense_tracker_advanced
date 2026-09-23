@@ -1,7 +1,8 @@
 # Production deployment guide
 
-This runbook publishes the current finance, banking, and household Tasks work to the Firebase
-production project `expense-tracker-v2-9520e`. Run commands from the repository root.
+This runbook publishes the current finance, banking, household Tasks, and Kids Card Learning work
+to the Firebase production project `expense-tracker-v2-9520e`. Run commands from the repository
+root.
 
 ## Current production-readiness check
 
@@ -269,6 +270,9 @@ Deploy Firestore rules and indexes first:
 firebase deploy --only firestore --project production
 ```
 
+The Kids release adds no composite index. Confirm that the deployed rules expose Kids collections
+only to household members and keep all Kids writes callable-only before continuing.
+
 In **Firestore → Indexes**, wait until every new task index reports **Enabled**. Building indexes can
 take time on an existing database. Deploying the UI before the indexes are ready can make Tasks
 queries fail temporarily.
@@ -325,6 +329,22 @@ Use a normal browser and a second private/incognito session where noted:
 11. In a second household/user session, verify another household's task URL cannot be read or
     mutated.
 12. Test one production bank connection for every institution whose provider code is enabled.
+13. Open **Settings -> Kids settings**, create or select a child profile, and verify narration,
+    sounds, animations, session length, and difficulty persist after refresh.
+14. Enter `/kids` and confirm no dashboard balances, transactions, accounts, or administrative
+    controls are visible in the child-facing shell.
+15. Start one Learn & Choose Animals session. Complete five rounds with only arrow keys and Enter,
+    including three rapid Enter presses on one answer. Verify only one round advances and the
+    session completes once.
+16. Open Observe and Think and start each available mode/deck combination. Confirm unsupported
+    combinations are not offered and that Same/Different, Matching, Odd One Out, and Compare each
+    produce an unambiguous first round.
+17. During a Kids session, use the repeat-audio button, Escape/Back navigation, and a wrong answer.
+    Confirm narration does not overlap, the wrong answer permits a retry, and focus remains visible.
+18. In browser developer tools, temporarily switch the network offline after a session starts.
+    Finish the session, reconnect, and verify its attempts synchronize exactly once.
+19. In a second household/user session, verify another household's child profiles, sessions,
+    attempts, settings, and card progress cannot be read or mutated.
 
 Inspect operational state without exposing private data:
 
@@ -348,8 +368,9 @@ and FCM delivery/error metrics in the consoles.
 - **Secrets:** select or create a known-good secret version, then redeploy every Function that
   references it.
 
-The Tasks release adds collections but requires no destructive data migration. Existing households
-receive default task lists lazily on first use, and initialization is idempotent.
+The Tasks and Kids releases add collections but require no destructive data migration. Existing
+households receive default task lists lazily on first use. Kids data is created only after a parent
+creates a child profile or starts a session. Both initialization paths are idempotent.
 
 ## Official Firebase references
 

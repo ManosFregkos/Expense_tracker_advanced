@@ -141,6 +141,13 @@ export function SettingsPage() {
             <Button variant="subtle" justify="flex-start" onClick={() => void navigate('/profile')}>
               Profile
             </Button>
+            <Button
+              variant="subtle"
+              justify="flex-start"
+              onClick={() => void navigate('/settings/kids')}
+            >
+              Kids learning settings
+            </Button>
           </Stack>
         </Paper>
         <Paper withBorder p="xl" style={{ borderColor: '#e5b7b7' }}>

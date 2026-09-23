@@ -17,6 +17,11 @@ import type {
   CreateSubtaskInput,
   UpdateSubtaskInput,
   ReorderTasksInput,
+  CompleteKidsSessionInput,
+  CreateKidsChildProfileInput,
+  PersistKidsAttemptInput,
+  StartKidsSessionInput,
+  UpdateKidsSettingsInput,
 } from '@family-expense-tracker/shared'
 import { functions } from './firebase'
 
@@ -67,4 +72,9 @@ export const api = {
   registerDeviceToken: (input: { householdId: string; token: string; platform: string }) => call<typeof input, { deviceId: string }>('registerDeviceToken', input),
   updateTaskNotificationSettings: (input: { householdId: string; dueReminders: boolean; assignmentNotifications: boolean; overdueReminders: boolean; emailReminders: boolean }) => call<typeof input, { householdId: string }>('updateTaskNotificationSettings', input),
   markTaskNotificationRead: (input: { notificationId: string }) => call<typeof input, { notificationId: string }>('markTaskNotificationRead', input),
+  createKidsChildProfile: (input: CreateKidsChildProfileInput) => call<typeof input, { childProfileId: string }>('createKidsChildProfile', input),
+  updateKidsSettings: (input: UpdateKidsSettingsInput) => call<typeof input, { childProfileId: string }>('updateKidsSettings', input),
+  startKidsSession: (input: StartKidsSessionInput) => call<typeof input, { sessionId: string }>('startKidsSession', input),
+  persistKidsAttempt: (input: PersistKidsAttemptInput) => call<typeof input, { attemptId: string; duplicate: boolean }>('persistKidsAttempt', input),
+  completeKidsSession: (input: CompleteKidsSessionInput) => call<typeof input, { sessionId: string; duplicate: boolean }>('completeKidsSession', input),
 }
