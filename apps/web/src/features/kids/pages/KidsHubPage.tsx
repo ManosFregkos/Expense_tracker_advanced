@@ -7,6 +7,12 @@ const categories = [
   { id: 'learn', icon: '🎴', title: kidsStrings.learn, subtitle: 'Γνωρίζω νέες κάρτες' },
   { id: 'observe', icon: '👀', title: kidsStrings.observe, subtitle: 'Κοιτάζω προσεκτικά' },
   { id: 'think', icon: '🧠', title: kidsStrings.think, subtitle: 'Βρίσκω τι ταιριάζει' },
+  {
+    id: 'everyday',
+    icon: '🤝',
+    title: kidsStrings.everyday,
+    subtitle: 'Μαθαίνω για κάθε μέρα',
+  },
 ] as const
 
 export function KidsHubPage() {

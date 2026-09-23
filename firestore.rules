@@ -64,6 +64,13 @@ service cloud.firestore {
       match /kidsSessions/{sessionId} { allow read: if isMember(householdId); allow write: if false; }
       match /kidsAttempts/{attemptId} { allow read: if isMember(householdId); allow write: if false; }
       match /kidsCardProgress/{progressId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsCustomDecks/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsCustomCards/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsRelationships/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsEverydayScenarios/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsSequences/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsEmotionScenarios/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsAssets/{contentId} { allow read: if isMember(householdId); allow write: if false; }
     }
 
     match /userDevices/{userId}/devices/{deviceId} { allow read, write: if false; }

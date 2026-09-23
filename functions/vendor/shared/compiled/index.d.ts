@@ -14,4 +14,5 @@ export * from './utils/search.js';
 export * from './utils/analytics.js';
 export * from './utils/balance.js';
 export * from './utils/tasks.js';
+export * from './utils/kids-learning.js';
 //# sourceMappingURL=index.d.ts.map

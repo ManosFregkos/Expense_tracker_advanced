@@ -7,10 +7,17 @@ const categoryModes: Record<string, { mode: KidsCardGameMode; icon: string }[]> 
   observe: [
     { mode: 'SAME_OR_DIFFERENT', icon: '👀' },
     { mode: 'COMPARE', icon: '⚖️' },
+    { mode: 'MEMORY_PAIRS', icon: '🃏' },
   ],
   think: [
     { mode: 'MATCHING', icon: '🧩' },
     { mode: 'ODD_ONE_OUT', icon: '🔎' },
+    { mode: 'CLASSIFY', icon: '🏠' },
+    { mode: 'SEQUENCE', icon: '➡️' },
+  ],
+  everyday: [
+    { mode: 'EVERYDAY_CHOICE', icon: '🤝' },
+    { mode: 'EMOTION', icon: '🙂' },
   ],
 }
 

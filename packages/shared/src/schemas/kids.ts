@@ -4,6 +4,8 @@ import {
   KIDS_COMPARE_RELATIONS,
   KIDS_COMPARISON_DIMENSIONS,
   KIDS_RELATIONSHIP_TYPES,
+  EMOTION_TYPES,
+  EVERYDAY_TOPICS,
 } from '../domain/types.js'
 import { idSchema } from './common.js'
 
@@ -38,6 +40,14 @@ export const learningCardSchema = z.object({
   difficulty: kidsDifficultySchema,
   enabled: z.boolean(),
   origin: z.enum(['SYSTEM', 'CUSTOM']),
+  contentVersion: z.number().int().positive().optional(),
+  householdId: documentIdSchema.optional(),
+  createdBy: documentIdSchema.optional(),
+  createdAt: z.unknown().optional(),
+  updatedAt: z.unknown().optional(),
+  archivedAt: z.unknown().optional(),
+  alternativeNarration: z.string().trim().max(240).optional(),
+  assetUrl: z.string().url().max(2048).optional(),
 })
 
 export const learningDeckSchema = z.object({
@@ -48,9 +58,16 @@ export const learningDeckSchema = z.object({
   category: z.string().trim().min(1).max(60),
   ageBand: z.string().trim().max(20).optional(),
   supportedModes: z.array(z.enum(KIDS_CARD_GAME_MODES)).min(1),
-  cardIds: z.array(documentIdSchema).min(2),
+  cardIds: z.array(documentIdSchema),
   enabled: z.boolean(),
   origin: z.enum(['SYSTEM', 'CUSTOM']),
+  contentVersion: z.number().int().positive().optional(),
+  householdId: documentIdSchema.optional(),
+  createdBy: documentIdSchema.optional(),
+  createdAt: z.unknown().optional(),
+  updatedAt: z.unknown().optional(),
+  archivedAt: z.unknown().optional(),
+  icon: z.string().trim().max(12).optional(),
 })
 
 export const learningRelationshipSchema = z.object({
@@ -59,6 +76,168 @@ export const learningRelationshipSchema = z.object({
   targetCardId: documentIdSchema,
   type: z.enum(KIDS_RELATIONSHIP_TYPES),
   narration: z.string().trim().max(240).optional(),
+  householdId: documentIdSchema.optional(),
+  createdBy: documentIdSchema.optional(),
+  createdAt: z.unknown().optional(),
+  updatedAt: z.unknown().optional(),
+  enabled: z.boolean().optional(),
+  origin: z.enum(['SYSTEM', 'CUSTOM']).optional(),
+  archivedAt: z.unknown().optional(),
+}).refine((value) => value.sourceCardId !== value.targetCardId, {
+  path: ['targetCardId'],
+  message: 'Relationship target must differ from its source.',
+})
+
+export const everydayScenarioSchema = z
+  .object({
+    id: documentIdSchema,
+    topic: z.enum(EVERYDAY_TOPICS),
+    narration: z.string().trim().min(1).max(240),
+    situationAssetId: documentIdSchema.optional(),
+    choices: z
+      .array(
+        z.object({
+          id: documentIdSchema,
+          assetId: documentIdSchema,
+          narration: z.string().trim().min(1).max(160),
+        }),
+      )
+      .min(2)
+      .max(3),
+    preferredChoiceId: documentIdSchema,
+    explanationNarration: z.string().trim().min(1).max(240),
+    difficulty: kidsDifficultySchema,
+    enabled: z.boolean(),
+    origin: z.enum(['SYSTEM', 'CUSTOM']),
+    householdId: documentIdSchema.optional(),
+    createdBy: documentIdSchema.optional(),
+    createdAt: z.unknown().optional(),
+    updatedAt: z.unknown().optional(),
+    archivedAt: z.unknown().optional(),
+  })
+  .superRefine((value, context) => {
+    const ids = value.choices.map((choice) => choice.id)
+    if (new Set(ids).size !== ids.length)
+      context.addIssue({ code: 'custom', path: ['choices'], message: 'Choice IDs must be unique.' })
+    if (ids.filter((id) => id === value.preferredChoiceId).length !== 1)
+      context.addIssue({
+        code: 'custom',
+        path: ['preferredChoiceId'],
+        message: 'Preferred choice must appear exactly once.',
+      })
+  })
+
+export const sequenceDefinitionSchema = z
+  .object({
+    id: documentIdSchema,
+    title: z.string().trim().max(80).optional(),
+    steps: z
+      .array(
+        z.object({
+          id: documentIdSchema,
+          assetId: documentIdSchema,
+          narration: z.string().trim().min(1).max(160),
+        }),
+      )
+      .min(3)
+      .max(5),
+    narration: z.string().trim().min(1).max(240),
+    explanationNarration: z.string().trim().max(240).optional(),
+    difficulty: kidsDifficultySchema,
+    category: z.string().trim().min(1).max(60),
+    enabled: z.boolean(),
+    origin: z.enum(['SYSTEM', 'CUSTOM']),
+    householdId: documentIdSchema.optional(),
+    createdBy: documentIdSchema.optional(),
+    createdAt: z.unknown().optional(),
+    updatedAt: z.unknown().optional(),
+    archivedAt: z.unknown().optional(),
+  })
+  .superRefine((value, context) => {
+    const ids = value.steps.map((step) => step.id)
+    if (new Set(ids).size !== ids.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['steps'],
+        message: 'Sequence steps must be unique.',
+      })
+    const assetIds = value.steps.map((step) => step.assetId)
+    if (new Set(assetIds).size !== assetIds.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['steps'],
+        message: 'Sequence step images must be unique.',
+      })
+  })
+
+export const emotionScenarioSchema = z
+  .object({
+    id: documentIdSchema,
+    sceneAssetId: documentIdSchema,
+    narration: z.string().trim().min(1).max(240),
+    options: z.array(z.enum(EMOTION_TYPES)).min(2).max(3),
+    expectedEmotion: z.enum(EMOTION_TYPES),
+    explanationNarration: z.string().trim().max(240).optional(),
+    difficulty: kidsDifficultySchema,
+    enabled: z.boolean(),
+    origin: z.enum(['SYSTEM', 'CUSTOM']),
+    householdId: documentIdSchema.optional(),
+    createdBy: documentIdSchema.optional(),
+    createdAt: z.unknown().optional(),
+    updatedAt: z.unknown().optional(),
+    archivedAt: z.unknown().optional(),
+  })
+  .superRefine((value, context) => {
+    if (new Set(value.options).size !== value.options.length)
+      context.addIssue({
+        code: 'custom',
+        path: ['options'],
+        message: 'Emotion options must be unique.',
+      })
+    if (value.options.filter((option) => option === value.expectedEmotion).length !== 1)
+      context.addIssue({
+        code: 'custom',
+        path: ['expectedEmotion'],
+        message: 'Expected emotion must appear exactly once.',
+      })
+  })
+
+export const kidsAssetMetadataSchema = z.object({
+  id: documentIdSchema,
+  householdId: documentIdSchema,
+  storagePath: z.string().min(1).max(500),
+  downloadUrl: z.string().url().max(2048),
+  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+  size: z
+    .number()
+    .int()
+    .positive()
+    .max(5 * 1024 * 1024),
+  width: z.number().int().positive().max(8192).optional(),
+  height: z.number().int().positive().max(8192).optional(),
+  createdBy: documentIdSchema,
+  createdAt: z.unknown(),
+})
+
+export const kidsCustomContentKindSchema = z.enum([
+  'DECK',
+  'CARD',
+  'RELATIONSHIP',
+  'EVERYDAY_SCENARIO',
+  'SEQUENCE',
+  'EMOTION_SCENARIO',
+])
+
+export const saveKidsCustomContentSchema = z.object({
+  householdId: documentIdSchema,
+  kind: kidsCustomContentKindSchema,
+  content: z.record(z.string(), z.unknown()),
+})
+
+export const archiveKidsCustomContentSchema = z.object({
+  householdId: documentIdSchema,
+  kind: kidsCustomContentKindSchema,
+  contentId: documentIdSchema,
 })
 
 export const createKidsChildProfileSchema = z.object({
@@ -117,3 +296,5 @@ export type UpdateKidsSettingsInput = z.infer<typeof updateKidsSettingsSchema>
 export type StartKidsSessionInput = z.infer<typeof startKidsSessionSchema>
 export type PersistKidsAttemptInput = z.infer<typeof persistKidsAttemptSchema>
 export type CompleteKidsSessionInput = z.infer<typeof completeKidsSessionSchema>
+export type SaveKidsCustomContentInput = z.infer<typeof saveKidsCustomContentSchema>
+export type ArchiveKidsCustomContentInput = z.infer<typeof archiveKidsCustomContentSchema>

@@ -4,21 +4,25 @@ import {
   type KidsDifficulty,
 } from '@family-expense-tracker/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useHousehold } from '../../households/HouseholdProvider'
 import { LearningCardView } from '../components/LearningCardView'
+import { AssetChoiceCard } from '../components/AssetChoiceCard'
+import { MemoryPairsBoard } from '../components/MemoryPairsBoard'
 import { RepeatNarrationButton } from '../components/RepeatNarrationButton'
 import { TVCardGrid } from '../components/TVCardGrid'
 import {
   CARDS_BY_ID,
   DECKS_BY_ID,
+  KIDS_ASSETS,
   SYSTEM_RELATIONSHIPS,
   getSupportedModes,
 } from '../content/system'
+import { CLASSIFICATION_DESTINATIONS } from '../content/system/advanced'
 import { KidsRoundGenerator } from '../engine/KidsRoundGenerator'
 import type { KidsCardRound } from '../engine/types'
 import { kidsStrings } from '../i18n'
-import { useKidsProfiles, useKidsSettings } from '../hooks'
+import { useKidsContent, useKidsProfiles, useKidsProgress, useKidsSettings } from '../hooks'
 import { kidsNarration } from '../services/KidsNarrationService'
 import { kidsPersistence } from '../services/kidsPersistence'
 
@@ -48,7 +52,13 @@ function cardOptions(round: KidsCardRound): string[] {
 }
 
 function correctAnswer(round: KidsCardRound): string {
-  return round.mode === 'SAME_OR_DIFFERENT' ? round.correctAnswer : round.correctCardId
+  if (round.mode === 'SAME_OR_DIFFERENT') return round.correctAnswer
+  if (round.mode === 'EVERYDAY_CHOICE') return round.correctChoiceId
+  if (round.mode === 'CLASSIFY') return round.correctDestinationId
+  if (round.mode === 'SEQUENCE') return round.correctStepId
+  if (round.mode === 'EMOTION') return round.expectedEmotion
+  if (round.mode === 'MEMORY_PAIRS') return round.contentIds[0] ?? round.id
+  return round.correctCardId
 }
 
 function feedbackFor(round: KidsCardRound): string {
@@ -56,6 +66,13 @@ function feedbackFor(round: KidsCardRound): string {
     return `Ναι! Είναι ${round.correctAnswer === 'SAME' ? 'ίδια' : 'διαφορετικά'}.`
   if (round.mode === 'MATCHING')
     return `Μπράβο! ${SYSTEM_RELATIONSHIPS.find((item) => item.id === round.relationshipId)?.narration ?? 'Αυτά ταιριάζουν.'}`
+  if (round.mode === 'EVERYDAY_CHOICE') return round.explanationNarration
+  if (round.mode === 'CLASSIFY') return round.explanationNarration
+  if (round.mode === 'SEQUENCE')
+    return round.explanationNarration ?? 'Ναι! Αυτή είναι η σωστή σειρά.'
+  if (round.mode === 'EMOTION')
+    return round.explanationNarration ?? 'Ναι! Αυτό ταιριάζει στην ιστορία.'
+  if (round.mode === 'MEMORY_PAIRS') return 'Μπράβο! Βρήκες όλα τα ζευγάρια.'
   const card = CARDS_BY_ID.get(round.correctCardId)
   if (round.mode === 'ODD_ONE_OUT')
     return `Μπράβο! ${card?.title ?? 'Αυτό'} δεν ταιριάζει με τα άλλα.`
@@ -73,6 +90,20 @@ function createSessionId() {
       ? crypto.randomUUID().replaceAll('-', '')
       : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`
   return `kids-${randomId}`
+}
+
+function readRecentContent(profileId: string | undefined): string[] {
+  if (!profileId) return []
+  try {
+    const value: unknown = JSON.parse(
+      localStorage.getItem(`kids-recent-content-${profileId}`) ?? '[]',
+    )
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === 'string')
+      : []
+  } catch {
+    return []
+  }
 }
 
 function playFeedbackSound(correct: boolean, enabled: boolean) {
@@ -97,15 +128,19 @@ function playFeedbackSound(correct: boolean, enabled: boolean) {
 export function KidsSessionPage() {
   const { mode = '', deckId = '' } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { household } = useHousehold()
   const profiles = useKidsProfiles()
-  const storedProfileId = localStorage.getItem('activeKidsProfileId')
+  const content = useKidsContent()
+  const requestedProfileId = searchParams.get('profile')
+  const storedProfileId = requestedProfileId ?? localStorage.getItem('activeKidsProfileId')
   const profileId = profiles.data
     ? profiles.data.some((profile) => profile.id === storedProfileId)
       ? (storedProfileId ?? undefined)
       : profiles.data[0]?.id
     : (storedProfileId ?? undefined)
   const settings = useKidsSettings(profileId)
+  const progress = useKidsProgress(profileId)
   const sessionId = useRef(createSessionId())
   const lock = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -115,17 +150,45 @@ export function KidsSessionPage() {
   const [selected, setSelected] = useState<string>()
   const [feedback, setFeedback] = useState('')
   const deck = DECKS_BY_ID.get(deckId)
-  const valid = isMode(mode) && deck?.enabled && getSupportedModes(deck).includes(mode)
+  const preview = searchParams.get('preview') === 'true'
+  const requestedDifficulty = Number(searchParams.get('difficulty'))
+  const requestedRounds = Number(searchParams.get('rounds'))
+  const recentContentIds = useMemo(() => readRecentContent(profileId), [profileId])
+  const valid =
+    isMode(mode) &&
+    deck !== undefined &&
+    (deck.enabled || preview) &&
+    (mode === 'MIXED_PLAY' || getSupportedModes(deck).includes(mode))
   const rounds = useMemo(() => {
     if (!valid || !settings.data || !isMode(mode)) return []
+    const fixedDifficulty = { EASY: 1, MEDIUM: 2, HARD: 4 } as const
+    const difficulty =
+      requestedDifficulty >= 1 && requestedDifficulty <= 4
+        ? (requestedDifficulty as KidsDifficulty)
+        : settings.data.difficultyMode === 'AUTO'
+          ? (settings.data.modeDifficulties?.[mode] ?? settings.data.currentDifficulty)
+          : fixedDifficulty[settings.data.difficultyMode]
     return new KidsRoundGenerator().generateSession({
       mode,
       deckId,
-      difficulty: settings.data.currentDifficulty as KidsDifficulty,
-      roundCount: settings.data.sessionLength,
+      difficulty: difficulty as KidsDifficulty,
+      roundCount: [5, 10, 15].includes(requestedRounds)
+        ? requestedRounds
+        : settings.data.sessionLength,
       seed: seedFrom(sessionId.current),
+      cardProgress: progress.data ?? [],
+      recentContentIds,
     })
-  }, [deckId, mode, settings.data, valid])
+  }, [
+    deckId,
+    mode,
+    progress.data,
+    recentContentIds,
+    requestedDifficulty,
+    requestedRounds,
+    settings.data,
+    valid,
+  ])
   const round = rounds[roundIndex]
 
   const narrate = useCallback(
@@ -149,17 +212,34 @@ export function KidsSessionPage() {
       setState('ERROR')
       return
     }
-    kidsPersistence.start({
-      householdId: household.id,
-      sessionId: sessionId.current,
-      childProfileId: profileId,
-      mode: mode as KidsCardGameMode,
-      deckIds: [deckId],
-      difficulty: settings.data.currentDifficulty,
-      plannedRounds: settings.data.sessionLength,
-    })
+    if (!preview)
+      kidsPersistence.start({
+        householdId: household.id,
+        sessionId: sessionId.current,
+        childProfileId: profileId,
+        mode: mode as KidsCardGameMode,
+        deckIds: [deckId],
+        difficulty:
+          requestedDifficulty >= 1 && requestedDifficulty <= 4
+            ? (requestedDifficulty as KidsDifficulty)
+            : settings.data.difficultyMode === 'AUTO'
+              ? (settings.data.modeDifficulties?.[mode as KidsCardGameMode] ??
+                settings.data.currentDifficulty)
+              : ({ EASY: 1, MEDIUM: 2, HARD: 4 } as const)[settings.data.difficultyMode],
+        plannedRounds: rounds.length as 5 | 10 | 15,
+      })
     setState(rounds[0]?.mode === 'LEARN_AND_CHOOSE' ? 'TEACHING' : 'READY')
-  }, [deckId, household, mode, profileId, rounds, settings.data, valid])
+  }, [
+    deckId,
+    household,
+    mode,
+    preview,
+    profileId,
+    requestedDifficulty,
+    rounds,
+    settings.data,
+    valid,
+  ])
 
   useEffect(() => {
     if (!round) return
@@ -177,6 +257,19 @@ export function KidsSessionPage() {
     window.dispatchEvent(new Event('kids:focus-reset'))
   }, [roundIndex, state])
 
+  useEffect(() => {
+    const assetIds = [round, rounds[roundIndex + 1]].flatMap((item) => item?.contentIds ?? [])
+    for (const id of assetIds) {
+      const card = CARDS_BY_ID.get(id)
+      const url = card?.assetUrl ?? KIDS_ASSETS.get(card?.assetId ?? id)?.url
+      if (url) {
+        const image = new Image()
+        image.decoding = 'async'
+        image.src = url
+      }
+    }
+  }, [round, roundIndex, rounds])
+
   const answer = (answerId: string) => {
     if (!round || state !== 'READY' || lock.current || !household || !profileId || !settings.data)
       return
@@ -187,26 +280,35 @@ export function KidsSessionPage() {
     const isCorrect = answerId === correctAnswer(round)
     playFeedbackSound(isCorrect, settings.data.soundEffectsEnabled)
     setAttemptCount(nextAttempt)
-    kidsPersistence.attempt({
-      householdId: household.id,
-      sessionId: sessionId.current,
-      attemptId: `${sessionId.current}-${round.id}-${nextAttempt}`,
-      childProfileId: profileId,
-      mode: round.mode,
-      roundId: round.id,
-      contentId: correctAnswer(round),
-      deckId: round.deckId,
-      selectedOptionIds: [answerId],
-      isCorrect,
-      attemptCount: nextAttempt,
-      difficulty: round.difficulty,
-    })
-    const message = isCorrect ? feedbackFor(round) : kidsStrings.tryAgain
+    if (!preview)
+      kidsPersistence.attempt({
+        householdId: household.id,
+        sessionId: sessionId.current,
+        attemptId: `${sessionId.current}-${round.id}-${nextAttempt}`,
+        childProfileId: profileId,
+        mode: round.mode,
+        roundId: round.id,
+        contentId: correctAnswer(round),
+        deckId: round.deckId,
+        selectedOptionIds: [answerId],
+        isCorrect,
+        attemptCount: nextAttempt,
+        difficulty: round.difficulty,
+      })
+    const shouldAdvance = isCorrect || nextAttempt >= 3
+    if (shouldAdvance) {
+      const recent = [...round.contentIds, ...readRecentContent(profileId)]
+      localStorage.setItem(
+        `kids-recent-content-${profileId}`,
+        JSON.stringify([...new Set(recent)].slice(0, 20)),
+      )
+    }
+    const message = shouldAdvance ? feedbackFor(round) : kidsStrings.tryAgain
     setFeedback(message)
     setState('FEEDBACK')
     timer.current = setTimeout(
       () => {
-        if (!isCorrect) {
+        if (!shouldAdvance) {
           setSelected(undefined)
           setFeedback('')
           setState('READY')
@@ -215,12 +317,13 @@ export function KidsSessionPage() {
         }
         setState('TRANSITIONING')
         if (roundIndex + 1 >= rounds.length) {
-          kidsPersistence.complete({
-            householdId: household.id,
-            sessionId: sessionId.current,
-            childProfileId: profileId,
-            completedRounds: rounds.length,
-          })
+          if (!preview)
+            kidsPersistence.complete({
+              householdId: household.id,
+              sessionId: sessionId.current,
+              childProfileId: profileId,
+              completedRounds: rounds.length,
+            })
           setState('COMPLETE')
           return
         }
@@ -232,7 +335,7 @@ export function KidsSessionPage() {
         setState(next?.mode === 'LEARN_AND_CHOOSE' ? 'TEACHING' : 'READY')
         lock.current = false
       },
-      isCorrect ? 1500 : 1100,
+      shouldAdvance ? 1800 : 1100,
     )
   }
 
@@ -251,7 +354,13 @@ export function KidsSessionPage() {
         </button>
       </section>
     )
-  if (profiles.isLoading || settings.isLoading || state === 'LOADING')
+  if (
+    profiles.isLoading ||
+    content.isLoading ||
+    progress.isLoading ||
+    settings.isLoading ||
+    state === 'LOADING'
+  )
     return <div className="kids-center">Ετοιμαζόμαστε…</div>
   if (!profileId)
     return (
@@ -357,6 +466,7 @@ export function KidsSessionPage() {
           <button
             type="button"
             className="kids-primary-action kids-continue"
+            autoFocus
             data-tv-focusable="true"
             data-tv-autofocus="true"
             onClick={() => {
@@ -371,6 +481,12 @@ export function KidsSessionPage() {
         <>
           <h1>{round.instructionText}</h1>
           {round.mode === 'MATCHING' && CARDS_BY_ID.get(round.sourceCardId) ? (
+            <div className="kids-matching-source">
+              <LearningCardView card={CARDS_BY_ID.get(round.sourceCardId)!} interactive={false} />
+              <span aria-hidden="true">→</span>
+            </div>
+          ) : null}
+          {round.mode === 'CLASSIFY' && CARDS_BY_ID.get(round.sourceCardId) ? (
             <div className="kids-matching-source">
               <LearningCardView card={CARDS_BY_ID.get(round.sourceCardId)!} interactive={false} />
               <span aria-hidden="true">→</span>
@@ -408,6 +524,137 @@ export function KidsSessionPage() {
                 </button>
               </div>
             </>
+          ) : round.mode === 'EVERYDAY_CHOICE' ? (
+            <TVCardGrid>
+              {round.options.map((option, index) => (
+                <AssetChoiceCard
+                  key={option.id}
+                  assetId={option.assetId}
+                  label={option.narration}
+                  autofocus={index === 0}
+                  disabled={isDisabled}
+                  selected={selected === option.id}
+                  correct={
+                    state === 'FEEDBACK' &&
+                    selected === option.id &&
+                    option.id === round.correctChoiceId
+                  }
+                  hint={showHint && option.id === round.correctChoiceId}
+                  onActivate={() => answer(option.id)}
+                />
+              ))}
+            </TVCardGrid>
+          ) : round.mode === 'CLASSIFY' ? (
+            <TVCardGrid>
+              {round.destinationIds.map((id, index) => {
+                const destination = CLASSIFICATION_DESTINATIONS.get(id)
+                const destinationCard = CARDS_BY_ID.get(id)
+                if (destinationCard)
+                  return (
+                    <LearningCardView
+                      key={id}
+                      card={destinationCard}
+                      autofocus={index === 0}
+                      disabled={isDisabled}
+                      selected={selected === id}
+                      correct={
+                        state === 'FEEDBACK' && selected === id && id === round.correctDestinationId
+                      }
+                      hint={showHint && id === round.correctDestinationId}
+                      onActivate={() => answer(id)}
+                    />
+                  )
+                return (
+                  <AssetChoiceCard
+                    key={id}
+                    assetId={id}
+                    label={destination?.label ?? 'θέση'}
+                    autofocus={index === 0}
+                    disabled={isDisabled}
+                    selected={selected === id}
+                    correct={
+                      state === 'FEEDBACK' && selected === id && id === round.correctDestinationId
+                    }
+                    hint={showHint && id === round.correctDestinationId}
+                    onActivate={() => answer(id)}
+                  />
+                )
+              })}
+            </TVCardGrid>
+          ) : round.mode === 'SEQUENCE' ? (
+            <>
+              <div className="kids-sequence">
+                {round.slots.map((slot, index) => {
+                  const asset = slot.assetId ? KIDS_ASSETS.get(slot.assetId) : undefined
+                  return (
+                    <div
+                      className="kids-sequence-slot"
+                      key={slot.stepId}
+                      data-missing={slot.missing}
+                    >
+                      <span>{slot.missing ? '?' : (asset?.symbol ?? '⭐')}</span>
+                      <small>{slot.missing ? 'Τι λείπει;' : slot.narration}</small>
+                      {index < round.slots.length - 1 ? <b aria-hidden="true">→</b> : null}
+                    </div>
+                  )
+                })}
+              </div>
+              <TVCardGrid>
+                {round.optionSteps.map((step, index) => (
+                  <AssetChoiceCard
+                    key={step.id}
+                    assetId={step.assetId}
+                    label={step.narration}
+                    autofocus={index === 0}
+                    disabled={isDisabled}
+                    selected={selected === step.id}
+                    correct={
+                      state === 'FEEDBACK' &&
+                      selected === step.id &&
+                      step.id === round.correctStepId
+                    }
+                    hint={showHint && step.id === round.correctStepId}
+                    onActivate={() => answer(step.id)}
+                  />
+                ))}
+              </TVCardGrid>
+            </>
+          ) : round.mode === 'EMOTION' ? (
+            <>
+              <div className="emotion-scene" aria-label={round.narrationText}>
+                {KIDS_ASSETS.get(round.sceneAssetId)?.symbol ?? '🙂'}
+              </div>
+              <TVCardGrid>
+                {round.options.map((emotion, index) => (
+                  <AssetChoiceCard
+                    key={emotion}
+                    assetId={`emotion-${emotion.toLowerCase()}`}
+                    label={
+                      {
+                        HAPPY: 'χαρούμενος',
+                        SAD: 'λυπημένος',
+                        ANGRY: 'θυμωμένος',
+                        SCARED: 'φοβισμένος',
+                        SURPRISED: 'έκπληκτος',
+                        TIRED: 'κουρασμένος',
+                      }[emotion]
+                    }
+                    autofocus={index === 0}
+                    disabled={isDisabled}
+                    selected={selected === emotion}
+                    correct={
+                      state === 'FEEDBACK' &&
+                      selected === emotion &&
+                      emotion === round.expectedEmotion
+                    }
+                    hint={showHint && emotion === round.expectedEmotion}
+                    onActivate={() => answer(emotion)}
+                  />
+                ))}
+              </TVCardGrid>
+            </>
+          ) : round.mode === 'MEMORY_PAIRS' ? (
+            <MemoryPairsBoard round={round} onComplete={() => answer(correctAnswer(round))} />
           ) : (
             <TVCardGrid>
               {cardOptions(round).map((id, index) => {

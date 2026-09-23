@@ -112,6 +112,12 @@ export const KIDS_CARD_GAME_MODES = [
   'MATCHING',
   'ODD_ONE_OUT',
   'COMPARE',
+  'EVERYDAY_CHOICE',
+  'CLASSIFY',
+  'SEQUENCE',
+  'EMOTION',
+  'MEMORY_PAIRS',
+  'MIXED_PLAY',
 ] as const
 export type KidsCardGameMode = (typeof KIDS_CARD_GAME_MODES)[number]
 
@@ -147,8 +153,11 @@ export const KIDS_RELATIONSHIP_TYPES = [
   'USED_WITH',
   'LIVES_IN',
   'BELONGS_IN',
+  'STORED_IN',
+  'USED_IN',
   'PRODUCES',
   'WEARS',
+  'WORN_ON',
   'PART_OF',
 ] as const
 export type KidsRelationshipType = (typeof KIDS_RELATIONSHIP_TYPES)[number]
@@ -178,6 +187,14 @@ export interface LearningCard {
   difficulty: KidsDifficulty
   enabled: boolean
   origin: LearningOrigin
+  contentVersion?: number
+  householdId?: string
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+  alternativeNarration?: string
+  assetUrl?: string
 }
 
 export interface LearningDeck {
@@ -191,6 +208,13 @@ export interface LearningDeck {
   cardIds: string[]
   enabled: boolean
   origin: LearningOrigin
+  contentVersion?: number
+  householdId?: string
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+  icon?: string
 }
 
 export interface LearningRelationship {
@@ -199,6 +223,104 @@ export interface LearningRelationship {
   targetCardId: string
   type: KidsRelationshipType
   narration?: string
+  householdId?: string
+  enabled?: boolean
+  origin?: LearningOrigin
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+}
+
+export const EVERYDAY_TOPICS = [
+  'HYGIENE',
+  'KINDNESS',
+  'SAFETY',
+  'HOME',
+  'ROUTINE',
+  'ANIMALS',
+  'SOCIAL',
+  'FOOD',
+] as const
+export type EverydayTopic = (typeof EVERYDAY_TOPICS)[number]
+
+export const EMOTION_TYPES = ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'SURPRISED', 'TIRED'] as const
+export type EmotionType = (typeof EMOTION_TYPES)[number]
+
+export interface EverydayScenario {
+  id: string
+  topic: EverydayTopic
+  narration: string
+  situationAssetId?: string
+  choices: Array<{ id: string; assetId: string; narration: string }>
+  preferredChoiceId: string
+  explanationNarration: string
+  difficulty: KidsDifficulty
+  enabled: boolean
+  origin: LearningOrigin
+  householdId?: string
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+}
+
+export interface SequenceDefinition {
+  id: string
+  title?: string
+  steps: Array<{ id: string; assetId: string; narration: string }>
+  narration: string
+  explanationNarration?: string
+  difficulty: KidsDifficulty
+  category: string
+  enabled: boolean
+  origin: LearningOrigin
+  householdId?: string
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+}
+
+export interface EmotionScenario {
+  id: string
+  sceneAssetId: string
+  narration: string
+  options: EmotionType[]
+  expectedEmotion: EmotionType
+  explanationNarration?: string
+  difficulty: KidsDifficulty
+  enabled: boolean
+  origin: LearningOrigin
+  householdId?: string
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+}
+
+export interface KidsAssetMetadata {
+  id: string
+  householdId: string
+  storagePath: string
+  downloadUrl: string
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
+  size: number
+  width?: number
+  height?: number
+  createdBy: string
+  createdAt: StoredDate
+}
+
+export interface KidsDeckCapabilities {
+  learnAndChoose: boolean
+  sameDifferent: boolean
+  matching: boolean
+  oddOneOut: boolean
+  compare: boolean
+  classify: boolean
+  memoryPairs: boolean
+  reasons: Partial<Record<KidsCardGameMode, string>>
 }
 
 export interface KidsChildProfile {
@@ -219,6 +341,19 @@ export interface KidsSettings {
   sessionLength: 5 | 10 | 15
   difficultyMode: 'AUTO' | 'EASY' | 'MEDIUM' | 'HARD'
   currentDifficulty: KidsDifficulty
+  modeDifficulties?: Partial<Record<KidsCardGameMode, KidsDifficulty>>
+  modeDifficultyState?: Partial<
+    Record<
+      KidsCardGameMode,
+      {
+        level: KidsDifficulty
+        totalSamples: number
+        lastChangeAtSample: number
+        recent: Array<{ success: boolean; usedHint: boolean }>
+      }
+    >
+  >
+  hintsEnabled?: boolean
   updatedAt: StoredDate
 }
 
@@ -259,8 +394,12 @@ export interface CardLearningProgress {
   exposureCount: number
   recognitionAttempts: number
   recognitionSuccesses: number
+  consecutiveSuccesses?: number
+  recentMisses?: number
   status: CardFamiliarity
   lastSeenAt?: StoredDate
+  lastCorrectAt?: StoredDate
+  nextSuggestedAt?: StoredDate
   updatedAt: StoredDate
 }
 

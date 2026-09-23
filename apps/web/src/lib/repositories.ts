@@ -12,7 +12,7 @@ import {
   type DocumentSnapshot,
   type QueryConstraint,
 } from 'firebase/firestore'
-import { normalizeSearchText, taskDueAt, type BankConnection, type BankTransaction, type CardLearningProgress, type Category, type FinancialAccount, type Household, type HouseholdMember, type HouseholdTask, type Invitation, type KidsChildProfile, type KidsSettings, type MonthlyAnalytics, type TaskActivity, type TaskList, type TaskNotification, type TaskNotificationSettings, type TaskSubtask, type Transaction } from '@family-expense-tracker/shared'
+import { normalizeSearchText, taskDueAt, type BankConnection, type BankTransaction, type CardLearningProgress, type Category, type FinancialAccount, type Household, type HouseholdMember, type HouseholdTask, type Invitation, type KidsCardSession, type KidsChildProfile, type KidsSettings, type MonthlyAnalytics, type TaskActivity, type TaskList, type TaskNotification, type TaskNotificationSettings, type TaskSubtask, type Transaction } from '@family-expense-tracker/shared'
 import { firestore } from './firebase'
 
 export async function listHouseholds(userId: string): Promise<Household[]> {
@@ -56,6 +56,21 @@ export async function listKidsProgress(householdId: string, profileId: string) {
     ),
   )
   return snapshot.docs.map((document) => document.data() as CardLearningProgress)
+}
+export async function listKidsSessions(householdId: string, profileId: string) {
+  const snapshot = await getDocs(
+    query(
+      collection(firestore, `households/${householdId}/kidsSessions`),
+      where('childProfileId', '==', profileId),
+    ),
+  )
+  return snapshot.docs
+    .map((document) => document.data() as KidsCardSession)
+    .sort((left, right) => {
+      const rightDate = right.startedAt instanceof Date ? right.startedAt : right.startedAt.toDate()
+      const leftDate = left.startedAt instanceof Date ? left.startedAt : left.startedAt.toDate()
+      return Number(rightDate) - Number(leftDate)
+    })
 }
 export async function listReviewBankTransactions(householdId: string): Promise<BankTransaction[]> {
   const snapshot = await getDocs(query(collection(firestore, `households/${householdId}/bankTransactions`), where('reconciliationStatus', '==', 'REVIEW'), orderBy('bookingDate', 'desc')))

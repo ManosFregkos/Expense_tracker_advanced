@@ -21,9 +21,17 @@ export declare const learningCardSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>;
+    contentVersion: z.ZodOptional<z.ZodNumber>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+    alternativeNarration: z.ZodOptional<z.ZodString>;
+    assetUrl: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const learningDeckSchema: z.ZodObject<{
     id: z.ZodString;
@@ -38,13 +46,26 @@ export declare const learningDeckSchema: z.ZodObject<{
         MATCHING: "MATCHING";
         ODD_ONE_OUT: "ODD_ONE_OUT";
         COMPARE: "COMPARE";
+        EVERYDAY_CHOICE: "EVERYDAY_CHOICE";
+        CLASSIFY: "CLASSIFY";
+        SEQUENCE: "SEQUENCE";
+        EMOTION: "EMOTION";
+        MEMORY_PAIRS: "MEMORY_PAIRS";
+        MIXED_PLAY: "MIXED_PLAY";
     }>>;
     cardIds: z.ZodArray<z.ZodString>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>;
+    contentVersion: z.ZodOptional<z.ZodNumber>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+    icon: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const learningRelationshipSchema: z.ZodObject<{
     id: z.ZodString;
@@ -55,11 +76,161 @@ export declare const learningRelationshipSchema: z.ZodObject<{
         USED_WITH: "USED_WITH";
         LIVES_IN: "LIVES_IN";
         BELONGS_IN: "BELONGS_IN";
+        STORED_IN: "STORED_IN";
+        USED_IN: "USED_IN";
         PRODUCES: "PRODUCES";
         WEARS: "WEARS";
+        WORN_ON: "WORN_ON";
         PART_OF: "PART_OF";
     }>;
     narration: z.ZodOptional<z.ZodString>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    enabled: z.ZodOptional<z.ZodBoolean>;
+    origin: z.ZodOptional<z.ZodEnum<{
+        SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
+    }>>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const everydayScenarioSchema: z.ZodObject<{
+    id: z.ZodString;
+    topic: z.ZodEnum<{
+        HYGIENE: "HYGIENE";
+        KINDNESS: "KINDNESS";
+        SAFETY: "SAFETY";
+        HOME: "HOME";
+        ROUTINE: "ROUTINE";
+        ANIMALS: "ANIMALS";
+        SOCIAL: "SOCIAL";
+        FOOD: "FOOD";
+    }>;
+    narration: z.ZodString;
+    situationAssetId: z.ZodOptional<z.ZodString>;
+    choices: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodString;
+    }, z.core.$strip>>;
+    preferredChoiceId: z.ZodString;
+    explanationNarration: z.ZodString;
+    difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    enabled: z.ZodBoolean;
+    origin: z.ZodEnum<{
+        SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
+    }>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const sequenceDefinitionSchema: z.ZodObject<{
+    id: z.ZodString;
+    title: z.ZodOptional<z.ZodString>;
+    steps: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodString;
+    }, z.core.$strip>>;
+    narration: z.ZodString;
+    explanationNarration: z.ZodOptional<z.ZodString>;
+    difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    category: z.ZodString;
+    enabled: z.ZodBoolean;
+    origin: z.ZodEnum<{
+        SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
+    }>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const emotionScenarioSchema: z.ZodObject<{
+    id: z.ZodString;
+    sceneAssetId: z.ZodString;
+    narration: z.ZodString;
+    options: z.ZodArray<z.ZodEnum<{
+        HAPPY: "HAPPY";
+        SAD: "SAD";
+        ANGRY: "ANGRY";
+        SCARED: "SCARED";
+        SURPRISED: "SURPRISED";
+        TIRED: "TIRED";
+    }>>;
+    expectedEmotion: z.ZodEnum<{
+        HAPPY: "HAPPY";
+        SAD: "SAD";
+        ANGRY: "ANGRY";
+        SCARED: "SCARED";
+        SURPRISED: "SURPRISED";
+        TIRED: "TIRED";
+    }>;
+    explanationNarration: z.ZodOptional<z.ZodString>;
+    difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    enabled: z.ZodBoolean;
+    origin: z.ZodEnum<{
+        SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
+    }>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const kidsAssetMetadataSchema: z.ZodObject<{
+    id: z.ZodString;
+    householdId: z.ZodString;
+    storagePath: z.ZodString;
+    downloadUrl: z.ZodString;
+    mimeType: z.ZodEnum<{
+        "image/jpeg": "image/jpeg";
+        "image/png": "image/png";
+        "image/webp": "image/webp";
+    }>;
+    size: z.ZodNumber;
+    width: z.ZodOptional<z.ZodNumber>;
+    height: z.ZodOptional<z.ZodNumber>;
+    createdBy: z.ZodString;
+    createdAt: z.ZodUnknown;
+}, z.core.$strip>;
+export declare const kidsCustomContentKindSchema: z.ZodEnum<{
+    SEQUENCE: "SEQUENCE";
+    DECK: "DECK";
+    CARD: "CARD";
+    RELATIONSHIP: "RELATIONSHIP";
+    EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
+    EMOTION_SCENARIO: "EMOTION_SCENARIO";
+}>;
+export declare const saveKidsCustomContentSchema: z.ZodObject<{
+    householdId: z.ZodString;
+    kind: z.ZodEnum<{
+        SEQUENCE: "SEQUENCE";
+        DECK: "DECK";
+        CARD: "CARD";
+        RELATIONSHIP: "RELATIONSHIP";
+        EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
+        EMOTION_SCENARIO: "EMOTION_SCENARIO";
+    }>;
+    content: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const archiveKidsCustomContentSchema: z.ZodObject<{
+    householdId: z.ZodString;
+    kind: z.ZodEnum<{
+        SEQUENCE: "SEQUENCE";
+        DECK: "DECK";
+        CARD: "CARD";
+        RELATIONSHIP: "RELATIONSHIP";
+        EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
+        EMOTION_SCENARIO: "EMOTION_SCENARIO";
+    }>;
+    contentId: z.ZodString;
 }, z.core.$strip>;
 export declare const createKidsChildProfileSchema: z.ZodObject<{
     householdId: z.ZodString;
@@ -74,9 +245,9 @@ export declare const updateKidsSettingsSchema: z.ZodObject<{
     animationsEnabled: z.ZodBoolean;
     sessionLength: z.ZodUnion<readonly [z.ZodLiteral<5>, z.ZodLiteral<10>, z.ZodLiteral<15>]>;
     difficultyMode: z.ZodEnum<{
-        MEDIUM: "MEDIUM";
         AUTO: "AUTO";
         EASY: "EASY";
+        MEDIUM: "MEDIUM";
         HARD: "HARD";
     }>;
 }, z.core.$strip>;
@@ -90,6 +261,12 @@ export declare const startKidsSessionSchema: z.ZodObject<{
         MATCHING: "MATCHING";
         ODD_ONE_OUT: "ODD_ONE_OUT";
         COMPARE: "COMPARE";
+        EVERYDAY_CHOICE: "EVERYDAY_CHOICE";
+        CLASSIFY: "CLASSIFY";
+        SEQUENCE: "SEQUENCE";
+        EMOTION: "EMOTION";
+        MEMORY_PAIRS: "MEMORY_PAIRS";
+        MIXED_PLAY: "MIXED_PLAY";
     }>;
     deckIds: z.ZodArray<z.ZodString>;
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
@@ -106,6 +283,12 @@ export declare const persistKidsAttemptSchema: z.ZodObject<{
         MATCHING: "MATCHING";
         ODD_ONE_OUT: "ODD_ONE_OUT";
         COMPARE: "COMPARE";
+        EVERYDAY_CHOICE: "EVERYDAY_CHOICE";
+        CLASSIFY: "CLASSIFY";
+        SEQUENCE: "SEQUENCE";
+        EMOTION: "EMOTION";
+        MEMORY_PAIRS: "MEMORY_PAIRS";
+        MIXED_PLAY: "MIXED_PLAY";
     }>;
     roundId: z.ZodString;
     contentId: z.ZodString;
@@ -149,4 +332,6 @@ export type UpdateKidsSettingsInput = z.infer<typeof updateKidsSettingsSchema>;
 export type StartKidsSessionInput = z.infer<typeof startKidsSessionSchema>;
 export type PersistKidsAttemptInput = z.infer<typeof persistKidsAttemptSchema>;
 export type CompleteKidsSessionInput = z.infer<typeof completeKidsSessionSchema>;
+export type SaveKidsCustomContentInput = z.infer<typeof saveKidsCustomContentSchema>;
+export type ArchiveKidsCustomContentInput = z.infer<typeof archiveKidsCustomContentSchema>;
 //# sourceMappingURL=kids.d.ts.map

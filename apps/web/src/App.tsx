@@ -81,6 +81,36 @@ const KidsParentSettingsPage = lazy(() =>
     default: module.KidsParentSettingsPage,
   })),
 )
+const KidsParentHubPage = lazy(() =>
+  import('./features/kids/pages/parent/KidsParentHubPage').then((module) => ({
+    default: module.KidsParentHubPage,
+  })),
+)
+const KidsParentDecksPage = lazy(() =>
+  import('./features/kids/pages/parent/KidsParentDecksPage').then((module) => ({
+    default: module.KidsParentDecksPage,
+  })),
+)
+const KidsParentDeckEditorPage = lazy(() =>
+  import('./features/kids/pages/parent/KidsParentDeckEditorPage').then((module) => ({
+    default: module.KidsParentDeckEditorPage,
+  })),
+)
+const KidsParentScenariosPage = lazy(() =>
+  import('./features/kids/pages/parent/KidsParentScenariosPage').then((module) => ({
+    default: module.KidsParentScenariosPage,
+  })),
+)
+const KidsParentProgressPage = lazy(() =>
+  import('./features/kids/pages/parent/KidsParentProgressPage').then((module) => ({
+    default: module.KidsParentProgressPage,
+  })),
+)
+const KidsParentPlayPage = lazy(() =>
+  import('./features/kids/pages/parent/KidsParentPlayPage').then((module) => ({
+    default: module.KidsParentPlayPage,
+  })),
+)
 
 export default function App() {
   return (
@@ -118,6 +148,14 @@ export default function App() {
               <Route path="/tasks" element={<TasksPage />} />
               <Route path="/tasks/:taskId" element={<TasksPage />} />
               <Route path="/settings/kids" element={<KidsParentSettingsPage />} />
+              <Route path="/kids/parent" element={<KidsParentHubPage />} />
+              <Route path="/kids/parent/play" element={<KidsParentPlayPage />} />
+              <Route path="/kids/parent/decks" element={<KidsParentDecksPage />} />
+              <Route path="/kids/parent/decks/new" element={<KidsParentDeckEditorPage />} />
+              <Route path="/kids/parent/decks/:deckId" element={<KidsParentDeckEditorPage />} />
+              <Route path="/kids/parent/scenarios" element={<KidsParentScenariosPage />} />
+              <Route path="/kids/parent/progress" element={<KidsParentProgressPage />} />
+              <Route path="/kids/parent/settings" element={<KidsParentSettingsPage />} />
             </Route>
             <Route element={<KidsShell />}>
               <Route path="/kids" element={<KidsHubPage />} />

@@ -8,6 +8,9 @@ import {
   updateKidsSettingsSchema,
   type CardLearningProgress,
   type KidsCardSession,
+  applySpacedLearning,
+  updateModeDifficulty,
+  type KidsSettings,
 } from '@family-expense-tracker/shared'
 import { secureCallable } from '../callable.js'
 import { db } from '../firebase.js'
@@ -127,21 +130,23 @@ export const persistKidsAttempt = secureCallable(persistKidsAttemptSchema, async
   const progressRef = db.doc(
     `households/${input.householdId}/kidsCardProgress/${input.childProfileId}_${input.contentId}`,
   )
+  const settingsRef = db.doc(`households/${input.householdId}/kidsSettings/${input.childProfileId}`)
   let duplicate = false
   await db.runTransaction(async (transaction) => {
-    const [member, profile, session, attempt, progress] = await Promise.all([
+    const [member, profile, session, attempt, progress, settings] = await Promise.all([
       transaction.get(memberRef),
       transaction.get(profileRef),
       transaction.get(sessionRef),
       transaction.get(attemptRef),
       transaction.get(progressRef),
+      transaction.get(settingsRef),
     ])
     assertMember(member)
     assertChildProfile(profile, input.householdId)
     if (!session.exists) throw new HttpsError('failed-precondition', 'Session not found.')
     if (
       session.get('childProfileId') !== input.childProfileId ||
-      session.get('mode') !== input.mode ||
+      (session.get('mode') !== input.mode && session.get('mode') !== 'MIXED_PLAY') ||
       session.get('householdId') !== input.householdId
     )
       throw new HttpsError('permission-denied', 'Session ownership does not match.')
@@ -180,16 +185,56 @@ export const persistKidsAttempt = secureCallable(persistKidsAttemptSchema, async
           status: 'NEW' as const,
           updatedAt: now,
         }
-    const successes = existing.recognitionSuccesses + Number(input.isCorrect)
+    const learning = applySpacedLearning(
+      {
+        exposureCount: existing.exposureCount,
+        recognitionAttempts: existing.recognitionAttempts,
+        recognitionSuccesses: existing.recognitionSuccesses,
+        consecutiveSuccesses: existing.consecutiveSuccesses ?? 0,
+        recentMisses: existing.recentMisses ?? 0,
+        status: existing.status,
+      },
+      input.isCorrect,
+    )
+    const nextSuggestedAt = Timestamp.fromMillis(
+      now.toMillis() + learning.nextIntervalDays * 24 * 60 * 60 * 1000,
+    )
     transaction.set(progressRef, {
       ...existing,
-      exposureCount: existing.exposureCount + 1,
-      recognitionAttempts: existing.recognitionAttempts + 1,
-      recognitionSuccesses: successes,
-      status: successes >= 3 ? 'FAMILIAR' : 'LEARNING',
+      exposureCount: learning.exposureCount,
+      recognitionAttempts: learning.recognitionAttempts,
+      recognitionSuccesses: learning.recognitionSuccesses,
+      consecutiveSuccesses: learning.consecutiveSuccesses,
+      recentMisses: learning.recentMisses,
+      status: learning.status,
       lastSeenAt: now,
+      ...(input.isCorrect ? { lastCorrectAt: now } : {}),
+      nextSuggestedAt,
       updatedAt: now,
     } satisfies CardLearningProgress)
+    if (settings.exists) {
+      const value = settings.data() as KidsSettings
+      const nextModeState = updateModeDifficulty(
+        value.modeDifficultyState?.[input.mode],
+        value.modeDifficulties?.[input.mode] ?? value.currentDifficulty ?? 1,
+        { success: input.isCorrect, usedHint: input.attemptCount > 1 },
+      )
+      transaction.set(
+        settingsRef,
+        {
+          modeDifficultyState: {
+            ...(value.modeDifficultyState ?? {}),
+            [input.mode]: nextModeState,
+          },
+          modeDifficulties: {
+            ...(value.modeDifficulties ?? {}),
+            [input.mode]: nextModeState.level,
+          },
+          updatedAt: now,
+        },
+        { merge: true },
+      )
+    }
   })
   return { attemptId: input.attemptId, duplicate }
 })

@@ -56,6 +56,7 @@ export {
   persistKidsAttempt,
   completeKidsSession,
 } from './services/kids.js'
+export { saveKidsCustomContent, archiveKidsCustomContent } from './services/kids-content.js'
 export {
   openBankingWebhook,
   processOpenBankingWebhook,

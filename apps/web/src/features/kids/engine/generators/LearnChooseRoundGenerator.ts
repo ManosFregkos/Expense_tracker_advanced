@@ -11,9 +11,13 @@ export class LearnChooseRoundGenerator implements RoundGenerator<LearnChooseRoun
       input.difficulty >= 3 ? 4 : input.difficulty === 2 ? 3 : 2,
     )
     if (optionCount < 2) return null
-    const teaching = sample(cards, Math.min(3, cards.length), input.rng)
-    const target = teaching[input.roundIndex % teaching.length]
+    let teaching = sample(cards, Math.min(3, cards.length), input.rng)
+    const preferredId = input.preferredCardIds?.[input.roundIndex % input.preferredCardIds.length]
+    const target =
+      cards.find((card) => card.id === preferredId) ?? teaching[input.roundIndex % teaching.length]
     if (!target) return null
+    if (!teaching.some((card) => card.id === target.id))
+      teaching = [target, ...teaching.filter((card) => card.id !== target.id)].slice(0, 3)
     const options = sample(
       cards.filter((card) => card.id !== target.id),
       optionCount - 1,

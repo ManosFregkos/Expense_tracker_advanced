@@ -78,6 +78,12 @@ export const KIDS_CARD_GAME_MODES = [
     'MATCHING',
     'ODD_ONE_OUT',
     'COMPARE',
+    'EVERYDAY_CHOICE',
+    'CLASSIFY',
+    'SEQUENCE',
+    'EMOTION',
+    'MEMORY_PAIRS',
+    'MIXED_PLAY',
 ];
 export const KIDS_COMPARISON_DIMENSIONS = [
     'OBJECT',
@@ -107,10 +113,24 @@ export const KIDS_RELATIONSHIP_TYPES = [
     'USED_WITH',
     'LIVES_IN',
     'BELONGS_IN',
+    'STORED_IN',
+    'USED_IN',
     'PRODUCES',
     'WEARS',
+    'WORN_ON',
     'PART_OF',
 ];
+export const EVERYDAY_TOPICS = [
+    'HYGIENE',
+    'KINDNESS',
+    'SAFETY',
+    'HOME',
+    'ROUTINE',
+    'ANIMALS',
+    'SOCIAL',
+    'FOOD',
+];
+export const EMOTION_TYPES = ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'SURPRISED', 'TIRED'];
 export const TASK_ACTIVITY_ACTIONS = [
     'CREATED',
     'UPDATED',

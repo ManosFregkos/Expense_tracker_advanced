@@ -32,9 +32,26 @@ export function LearningCardView({
         aria-label={card.title}
         style={{ '--card-color': asset?.color ?? '#eef2f5' } as React.CSSProperties}
       >
-        <span className="learning-card-symbol" aria-hidden="true">
-          {asset?.symbol ?? '⭐'}
-        </span>
+        {asset?.url ? (
+          <>
+            <img
+              className="learning-card-image"
+              src={asset.url}
+              alt=""
+              onError={(event) => {
+                event.currentTarget.hidden = true
+                event.currentTarget.nextElementSibling?.removeAttribute('hidden')
+              }}
+            />
+            <span className="learning-card-image-fallback" aria-hidden="true" hidden>
+              🖼️
+            </span>
+          </>
+        ) : (
+          <span className="learning-card-symbol" aria-hidden="true">
+            {asset?.symbol ?? '⭐'}
+          </span>
+        )}
         <span className="learning-card-title">{card.title}</span>
       </div>
     )
@@ -44,6 +61,7 @@ export function LearningCardView({
       type="button"
       className="learning-card"
       data-state={state}
+      autoFocus={autofocus}
       data-tv-autofocus={autofocus ? 'true' : undefined}
       style={{ '--card-color': asset?.color ?? '#eef2f5' } as React.CSSProperties}
       disabled={disabled}
@@ -51,9 +69,26 @@ export function LearningCardView({
       aria-label={card.narration}
       {...focusable}
     >
-      <span className="learning-card-symbol" aria-hidden="true">
-        {asset?.symbol ?? '⭐'}
-      </span>
+      {asset?.url ? (
+        <>
+          <img
+            className="learning-card-image"
+            src={asset.url}
+            alt=""
+            onError={(event) => {
+              event.currentTarget.hidden = true
+              event.currentTarget.nextElementSibling?.removeAttribute('hidden')
+            }}
+          />
+          <span className="learning-card-image-fallback" aria-hidden="true" hidden>
+            🖼️
+          </span>
+        </>
+      ) : (
+        <span className="learning-card-symbol" aria-hidden="true">
+          {asset?.symbol ?? '⭐'}
+        </span>
+      )}
       <span className="learning-card-title">{card.title}</span>
     </button>
   )

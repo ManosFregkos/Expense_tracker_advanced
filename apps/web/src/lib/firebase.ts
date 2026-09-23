@@ -8,6 +8,7 @@ import {
   persistentMultipleTabManager,
 } from 'firebase/firestore'
 import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
+import { connectStorageEmulator, getStorage } from 'firebase/storage'
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'demo-api-key',
@@ -37,9 +38,11 @@ export const firestore = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 })
 export const functions = getFunctions(app, 'europe-west1')
+export const storage = getStorage(app)
 
 if (import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true') {
   connectAuthEmulator(auth, `http://127.0.0.1:${import.meta.env.VITE_AUTH_EMULATOR_PORT ?? '9099'}`, { disableWarnings: true })
   connectFirestoreEmulator(firestore, '127.0.0.1', Number(import.meta.env.VITE_FIRESTORE_EMULATOR_PORT ?? '8080'))
   connectFunctionsEmulator(functions, '127.0.0.1', Number(import.meta.env.VITE_FUNCTIONS_EMULATOR_PORT ?? '5001'))
+  connectStorageEmulator(storage, '127.0.0.1', Number(import.meta.env.VITE_STORAGE_EMULATOR_PORT ?? '9199'))
 }

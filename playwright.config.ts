@@ -9,7 +9,7 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:5173', trace: 'on-first-retry' },
   webServer: {
     command:
-      'VITE_USE_FIREBASE_EMULATORS=true VITE_AUTH_EMULATOR_PORT=9199 VITE_FIRESTORE_EMULATOR_PORT=8280 VITE_FUNCTIONS_EMULATOR_PORT=5101 npm run dev --workspace=@family-expense-tracker/web -- --host 127.0.0.1',
+      'VITE_USE_FIREBASE_EMULATORS=true VITE_AUTH_EMULATOR_PORT=9199 VITE_FIRESTORE_EMULATOR_PORT=8280 VITE_FUNCTIONS_EMULATOR_PORT=5101 VITE_STORAGE_EMULATOR_PORT=9299 npm run dev --workspace=@family-expense-tracker/web -- --host 127.0.0.1',
     url: 'http://127.0.0.1:5173',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

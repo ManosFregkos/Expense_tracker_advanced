@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { kidsKeys } from '../../lib/query-keys'
 import { getKidsSettings, listKidsChildProfiles, listKidsProgress } from '../../lib/repositories'
 import { useHousehold } from '../households/HouseholdProvider'
+import { installHouseholdContent } from './content/KidsContentRepository'
 
 export function useKidsProfiles() {
   const { household } = useHousehold()
@@ -27,5 +28,15 @@ export function useKidsProgress(profileId: string | undefined) {
     queryKey: kidsKeys.progress(household?.id ?? '', profileId ?? ''),
     queryFn: () => listKidsProgress(household!.id, profileId!),
     enabled: Boolean(household && profileId),
+  })
+}
+
+export function useKidsContent() {
+  const { household } = useHousehold()
+  return useQuery({
+    queryKey: ['kids', household?.id ?? '', 'content'],
+    queryFn: () => installHouseholdContent(household!.id),
+    enabled: Boolean(household),
+    staleTime: 60_000,
   })
 }

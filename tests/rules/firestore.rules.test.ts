@@ -97,6 +97,20 @@ describeWithEmulator('Firestore household isolation', () => {
           householdId: 'h2',
           childProfileId: 'child2',
         }),
+        setDoc(doc(database, 'households/h1/kidsCustomDecks/deck1'), {
+          id: 'deck1',
+          householdId: 'h1',
+          origin: 'CUSTOM',
+        }),
+        setDoc(doc(database, 'households/h2/kidsCustomDecks/deck2'), {
+          id: 'deck2',
+          householdId: 'h2',
+          origin: 'CUSTOM',
+        }),
+        setDoc(doc(database, 'households/h2/kidsEverydayScenarios/scenario2'), {
+          id: 'scenario2',
+          householdId: 'h2',
+        }),
       ])
     })
   })
@@ -173,6 +187,12 @@ describeWithEmulator('Firestore household isolation', () => {
     )
     await assertFails(
       setDoc(doc(alice, 'households/h2/kidsCardProgress/injected'), { cardId: 'apple' }),
+    )
+    await assertSucceeds(getDoc(doc(alice, 'households/h1/kidsCustomDecks/deck1')))
+    await assertFails(getDoc(doc(alice, 'households/h2/kidsCustomDecks/deck2')))
+    await assertFails(getDoc(doc(alice, 'households/h2/kidsEverydayScenarios/scenario2')))
+    await assertFails(
+      setDoc(doc(alice, 'households/h1/kidsCustomCards/injected'), { title: 'Injected' }),
     )
   })
 })

@@ -31,13 +31,13 @@ export interface TimestampLike {
     toDate(): Date;
 }
 export type StoredDate = TimestampLike | Date;
-export declare const KIDS_CARD_GAME_MODES: readonly ["LEARN_AND_CHOOSE", "SAME_OR_DIFFERENT", "MATCHING", "ODD_ONE_OUT", "COMPARE"];
+export declare const KIDS_CARD_GAME_MODES: readonly ["LEARN_AND_CHOOSE", "SAME_OR_DIFFERENT", "MATCHING", "ODD_ONE_OUT", "COMPARE", "EVERYDAY_CHOICE", "CLASSIFY", "SEQUENCE", "EMOTION", "MEMORY_PAIRS", "MIXED_PLAY"];
 export type KidsCardGameMode = (typeof KIDS_CARD_GAME_MODES)[number];
 export declare const KIDS_COMPARISON_DIMENSIONS: readonly ["OBJECT", "COLOR", "SIZE", "SHAPE", "COUNT", "ORIENTATION", "DETAIL"];
 export type KidsComparisonDimension = (typeof KIDS_COMPARISON_DIMENSIONS)[number];
 export declare const KIDS_COMPARE_RELATIONS: readonly ["BIGGER", "SMALLER", "MORE", "LESS", "TALLER", "SHORTER", "FULL", "EMPTY", "INSIDE", "OUTSIDE", "UP", "DOWN"];
 export type KidsCompareRelation = (typeof KIDS_COMPARE_RELATIONS)[number];
-export declare const KIDS_RELATIONSHIP_TYPES: readonly ["MATCHES", "USED_WITH", "LIVES_IN", "BELONGS_IN", "PRODUCES", "WEARS", "PART_OF"];
+export declare const KIDS_RELATIONSHIP_TYPES: readonly ["MATCHES", "USED_WITH", "LIVES_IN", "BELONGS_IN", "STORED_IN", "USED_IN", "PRODUCES", "WEARS", "WORN_ON", "PART_OF"];
 export type KidsRelationshipType = (typeof KIDS_RELATIONSHIP_TYPES)[number];
 export type LearningOrigin = 'SYSTEM' | 'CUSTOM';
 export type CardFamiliarity = 'NEW' | 'LEARNING' | 'FAMILIAR';
@@ -63,6 +63,14 @@ export interface LearningCard {
     difficulty: KidsDifficulty;
     enabled: boolean;
     origin: LearningOrigin;
+    contentVersion?: number;
+    householdId?: string;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+    alternativeNarration?: string;
+    assetUrl?: string;
 }
 export interface LearningDeck {
     id: string;
@@ -75,6 +83,13 @@ export interface LearningDeck {
     cardIds: string[];
     enabled: boolean;
     origin: LearningOrigin;
+    contentVersion?: number;
+    householdId?: string;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+    icon?: string;
 }
 export interface LearningRelationship {
     id: string;
@@ -82,6 +97,96 @@ export interface LearningRelationship {
     targetCardId: string;
     type: KidsRelationshipType;
     narration?: string;
+    householdId?: string;
+    enabled?: boolean;
+    origin?: LearningOrigin;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+}
+export declare const EVERYDAY_TOPICS: readonly ["HYGIENE", "KINDNESS", "SAFETY", "HOME", "ROUTINE", "ANIMALS", "SOCIAL", "FOOD"];
+export type EverydayTopic = (typeof EVERYDAY_TOPICS)[number];
+export declare const EMOTION_TYPES: readonly ["HAPPY", "SAD", "ANGRY", "SCARED", "SURPRISED", "TIRED"];
+export type EmotionType = (typeof EMOTION_TYPES)[number];
+export interface EverydayScenario {
+    id: string;
+    topic: EverydayTopic;
+    narration: string;
+    situationAssetId?: string;
+    choices: Array<{
+        id: string;
+        assetId: string;
+        narration: string;
+    }>;
+    preferredChoiceId: string;
+    explanationNarration: string;
+    difficulty: KidsDifficulty;
+    enabled: boolean;
+    origin: LearningOrigin;
+    householdId?: string;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+}
+export interface SequenceDefinition {
+    id: string;
+    title?: string;
+    steps: Array<{
+        id: string;
+        assetId: string;
+        narration: string;
+    }>;
+    narration: string;
+    explanationNarration?: string;
+    difficulty: KidsDifficulty;
+    category: string;
+    enabled: boolean;
+    origin: LearningOrigin;
+    householdId?: string;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+}
+export interface EmotionScenario {
+    id: string;
+    sceneAssetId: string;
+    narration: string;
+    options: EmotionType[];
+    expectedEmotion: EmotionType;
+    explanationNarration?: string;
+    difficulty: KidsDifficulty;
+    enabled: boolean;
+    origin: LearningOrigin;
+    householdId?: string;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+}
+export interface KidsAssetMetadata {
+    id: string;
+    householdId: string;
+    storagePath: string;
+    downloadUrl: string;
+    mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
+    size: number;
+    width?: number;
+    height?: number;
+    createdBy: string;
+    createdAt: StoredDate;
+}
+export interface KidsDeckCapabilities {
+    learnAndChoose: boolean;
+    sameDifferent: boolean;
+    matching: boolean;
+    oddOneOut: boolean;
+    compare: boolean;
+    classify: boolean;
+    memoryPairs: boolean;
+    reasons: Partial<Record<KidsCardGameMode, string>>;
 }
 export interface KidsChildProfile {
     id: string;
@@ -100,6 +205,17 @@ export interface KidsSettings {
     sessionLength: 5 | 10 | 15;
     difficultyMode: 'AUTO' | 'EASY' | 'MEDIUM' | 'HARD';
     currentDifficulty: KidsDifficulty;
+    modeDifficulties?: Partial<Record<KidsCardGameMode, KidsDifficulty>>;
+    modeDifficultyState?: Partial<Record<KidsCardGameMode, {
+        level: KidsDifficulty;
+        totalSamples: number;
+        lastChangeAtSample: number;
+        recent: Array<{
+            success: boolean;
+            usedHint: boolean;
+        }>;
+    }>>;
+    hintsEnabled?: boolean;
     updatedAt: StoredDate;
 }
 export interface KidsCardSession {
@@ -137,8 +253,12 @@ export interface CardLearningProgress {
     exposureCount: number;
     recognitionAttempts: number;
     recognitionSuccesses: number;
+    consecutiveSuccesses?: number;
+    recentMisses?: number;
     status: CardFamiliarity;
     lastSeenAt?: StoredDate;
+    lastCorrectAt?: StoredDate;
+    nextSuggestedAt?: StoredDate;
     updatedAt: StoredDate;
 }
 export interface User {

@@ -5,13 +5,24 @@ import { cardsForDeck, roundId } from './shared'
 
 export class OddOneOutRoundGenerator implements RoundGenerator<OddOneOutRound> {
   generate(input: RoundGenerationInput): OddOneOutRound | null {
-    const sameCategory = cardsForDeck(input.deckId)
-    const optionCount = input.difficulty >= 3 ? 4 : 3
-    if (sameCategory.length < optionCount - 1) return null
-    const shared = sample(sameCategory, optionCount - 1, input.rng)
-    const category = shared[0]?.category
-    if (!category || shared.some((card) => card.category !== category)) return null
-    const oddCandidates = SYSTEM_CARDS.filter((card) => card.category !== category)
+    const deckCards = cardsForDeck(input.deckId)
+    const groups = [...new Set(deckCards.map((card) => card.category))]
+      .map((category) => ({
+        category,
+        cards: deckCards.filter((card) => card.category === category),
+      }))
+      .sort((left, right) => right.cards.length - left.cards.length)
+    const preferredCount = input.difficulty >= 3 ? 4 : 3
+    const group = groups.find((item) => item.cards.length >= preferredCount - 1)
+    const optionCount = group ? preferredCount : 3
+    const fallbackGroup = group ?? groups.find((item) => item.cards.length >= 2)
+    if (!fallbackGroup) return null
+    const shared = sample(fallbackGroup.cards, optionCount - 1, input.rng)
+    const category = fallbackGroup.category
+    const oddCandidates = [
+      ...deckCards.filter((card) => card.category !== category),
+      ...SYSTEM_CARDS.filter((card) => card.deckId !== input.deckId && card.category !== category),
+    ]
     const odd = sample(oddCandidates, 1, input.rng)[0]
     if (!odd) return null
     return {

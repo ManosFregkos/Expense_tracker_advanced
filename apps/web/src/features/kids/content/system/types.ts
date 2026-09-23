@@ -38,6 +38,7 @@ export function createSystemDeck(seed: SystemDeckSeed): SystemDeckContent {
     difficulty: card.difficulty ?? 1,
     enabled: true,
     origin: 'SYSTEM',
+    contentVersion: 2,
   }))
   return {
     deck: {
@@ -47,10 +48,11 @@ export function createSystemDeck(seed: SystemDeckSeed): SystemDeckContent {
       narrationTitle: seed.title,
       category: seed.category,
       ageBand: '3-5',
-      supportedModes: seed.modes,
+      supportedModes: [...new Set([...seed.modes, 'MEMORY_PAIRS' as const])],
       cardIds: cards.map((card) => card.id),
       enabled: true,
       origin: 'SYSTEM',
+      contentVersion: 2,
     },
     cards,
   }

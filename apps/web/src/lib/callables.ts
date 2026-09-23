@@ -22,6 +22,8 @@ import type {
   PersistKidsAttemptInput,
   StartKidsSessionInput,
   UpdateKidsSettingsInput,
+  SaveKidsCustomContentInput,
+  ArchiveKidsCustomContentInput,
 } from '@family-expense-tracker/shared'
 import { functions } from './firebase'
 
@@ -77,4 +79,6 @@ export const api = {
   startKidsSession: (input: StartKidsSessionInput) => call<typeof input, { sessionId: string }>('startKidsSession', input),
   persistKidsAttempt: (input: PersistKidsAttemptInput) => call<typeof input, { attemptId: string; duplicate: boolean }>('persistKidsAttempt', input),
   completeKidsSession: (input: CompleteKidsSessionInput) => call<typeof input, { sessionId: string; duplicate: boolean }>('completeKidsSession', input),
+  saveKidsCustomContent: (input: SaveKidsCustomContentInput) => call<typeof input, { contentId: string }>('saveKidsCustomContent', input),
+  archiveKidsCustomContent: (input: ArchiveKidsCustomContentInput) => call<typeof input, { contentId: string }>('archiveKidsCustomContent', input),
 }
