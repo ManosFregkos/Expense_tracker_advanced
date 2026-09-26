@@ -23,6 +23,7 @@ import {
   SYSTEM_CLASSIFICATION_RELATIONSHIPS,
   type IllustratedAsset,
 } from './advanced'
+import { COUNT_OBJECTS, EUROPEAN_COUNTRIES, FINGER_ASSETS, validateEuropeanCountries } from '../../early-learning/content'
 
 const seeds = [
   animals,
@@ -41,6 +42,15 @@ const seeds = [
 const content = seeds.map(createSystemDeck)
 
 const advancedDecks: LearningDeck[] = [
+  {
+    id: 'early-numbers', title: 'Αριθμοί', description: 'Μετράω και προσθέτω', category: 'EARLY_MATH',
+    supportedModes: ['COUNT_FINGERS', 'MATCH_FINGERS_TO_NUMBER', 'COUNT_OBJECTS', 'MATCH_QUANTITY_TO_NUMBER', 'COMPARE_QUANTITY', 'SIMPLE_SUM'],
+    cardIds: [], enabled: true, origin: 'SYSTEM', contentVersion: 3, icon: '🔢',
+  },
+  {
+    id: 'european-flags', title: 'Σημαίες', description: 'Μαθαίνω ευρωπαϊκές σημαίες', category: 'FLAGS',
+    supportedModes: ['LEARN_FLAG', 'FIND_FLAG'], cardIds: [], enabled: true, origin: 'SYSTEM', contentVersion: 3, icon: '🌍',
+  },
   {
     id: 'everyday',
     title: 'Καθημερινά',
@@ -99,6 +109,13 @@ export const KIDS_ASSETS = new Map<string, IllustratedAsset>(
 for (const [id, value] of [...ADVANCED_ASSETS, ...EMOTION_ASSETS, ...CLASSIFICATION_DESTINATIONS]) {
   KIDS_ASSETS.set(id, value)
 }
+for (const finger of FINGER_ASSETS)
+  KIDS_ASSETS.set(finger.assetId, { symbol: '', color: '#fff8eb', label: finger.narration, url: `/kids-assets/${finger.assetId}.svg` })
+for (const object of COUNT_OBJECTS)
+  KIDS_ASSETS.set(object.id, { symbol: '', color: '#f3fbf8', label: object.singularEl, url: `/kids-assets/${object.id}.svg` })
+for (const country of EUROPEAN_COUNTRIES)
+  KIDS_ASSETS.set(country.flagAssetId, { symbol: '', color: '#f7f8fa', label: `Σημαία: ${country.nameEl}`, url: `/kids-assets/${country.flagAssetId}.svg` })
+validateEuropeanCountries(new Set(KIDS_ASSETS.keys()))
 KIDS_ASSETS.set('hands-before-food', { symbol: '🧼', color: '#e5f7ff' })
 KIDS_ASSETS.set('seed-flower', { symbol: '🌱', color: '#e3f6df' })
 KIDS_ASSETS.set('gift-happy', { symbol: '🙂', color: '#fff2d9' })
@@ -162,6 +179,7 @@ export const ALL_SYSTEM_RELATIONSHIPS = [
 
 export function getSupportedModes(deck: LearningDeck) {
   return deck.supportedModes.filter((mode) => {
+    if (['COUNT_FINGERS', 'MATCH_FINGERS_TO_NUMBER', 'COUNT_OBJECTS', 'MATCH_QUANTITY_TO_NUMBER', 'COMPARE_QUANTITY', 'SIMPLE_SUM', 'LEARN_FLAG', 'FIND_FLAG'].includes(mode)) return true
     if (mode === 'MATCHING')
       return SYSTEM_RELATIONSHIPS.some(
         (relationship) =>

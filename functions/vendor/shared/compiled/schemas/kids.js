@@ -230,6 +230,22 @@ export const updateKidsSettingsSchema = z.object({
     animationsEnabled: z.boolean(),
     sessionLength: z.union([z.literal(5), z.literal(10), z.literal(15)]),
     difficultyMode: z.enum(['AUTO', 'EASY', 'MEDIUM', 'HARD']),
+    earlyMath: z
+        .object({
+        numberRange: z.enum(['ONE_TO_THREE', 'ONE_TO_FIVE']),
+        addition: z.enum(['OFF', 'WITHIN_THREE', 'WITHIN_FIVE']),
+        showNumerals: z.enum(['ON', 'OFF', 'AUTO']),
+        fingersEnabled: z.boolean(),
+        countObjectsEnabled: z.boolean(),
+    })
+        .optional(),
+    flags: z
+        .object({
+        enabled: z.boolean(),
+        tier: z.enum(['AUTO', 'STARTER', 'EXPANDED']),
+        newPerSession: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+    })
+        .optional(),
 });
 export const startKidsSessionSchema = z.object({
     householdId: documentIdSchema,
@@ -253,6 +269,8 @@ export const persistKidsAttemptSchema = z.object({
     isCorrect: z.boolean(),
     attemptCount: z.number().int().min(1).max(20),
     difficulty: kidsDifficultySchema,
+    conceptType: z.enum(['NUMBER', 'FLAG', 'COUNTING', 'ADDITION', 'QUANTITY']).optional(),
+    conceptId: z.string().trim().min(1).max(80).optional(),
 });
 export const completeKidsSessionSchema = z.object({
     householdId: documentIdSchema,

@@ -38,6 +38,8 @@ export function KidsParentProgressPage() {
     familiar: items.filter((item) => item.status === 'FAMILIAR').length,
     repetition: items.filter((item) => (item.recentMisses ?? 0) > 0).length,
   }
+  const numberProgress = items.filter((item) => item.cardId.startsWith('number:'))
+  const flagProgress = items.filter((item) => item.cardId.startsWith('flag:'))
   return (
     <div className="page">
       <Group justify="space-between" className="page-header">
@@ -74,6 +76,25 @@ export function KidsParentProgressPage() {
         ))}
       </SimpleGrid>
       <SimpleGrid cols={{ base: 1, md: 2 }}>
+        <Card withBorder padding="lg">
+          <Title order={3} mb="md">Αριθμοί</Title>
+          <Text c="dimmed" size="sm">Περιγραφική εικόνα από παιχνίδια με δάχτυλα, αντικείμενα και προσθέσεις.</Text>
+          <Stack gap="xs" mt="md">
+            <Text>Αναγνωρίζει συχνά: {numberProgress.filter((item) => item.status === 'FAMILIAR').map((item) => item.cardId.replace('number:', '')).join(', ') || '—'}</Text>
+            <Text>Εξασκείται τώρα: {numberProgress.filter((item) => item.status !== 'FAMILIAR').map((item) => item.cardId.replace('number:', '')).join(', ') || '—'}</Text>
+            <Text>Εύρος μέτρησης: {settings.data?.earlyMath?.numberRange === 'ONE_TO_THREE' ? '1-3' : '1-5'}</Text>
+            <Text>Πρόσθεση: {settings.data?.earlyMath?.addition === 'OFF' ? 'Κλειστή' : settings.data?.earlyMath?.addition === 'WITHIN_FIVE' ? 'μέχρι το 5' : 'μέχρι το 3'}</Text>
+          </Stack>
+        </Card>
+        <Card withBorder padding="lg">
+          <Title order={3} mb="md">Σημαίες</Title>
+          <Stack gap="xs">
+            <Text>Νέες: {flagProgress.filter((item) => item.status === 'NEW').length}</Text>
+            <Text>Μαθαίνονται τώρα: {flagProgress.filter((item) => item.status === 'LEARNING').length}</Text>
+            <Text>Αναγνωρίζονται συχνά: {flagProgress.filter((item) => item.status === 'FAMILIAR').length}</Text>
+            <Text>Χρειάζονται περισσότερη επανάληψη: {flagProgress.filter((item) => (item.recentMisses ?? 0) > 0).length}</Text>
+          </Stack>
+        </Card>
         <Card withBorder padding="lg">
           <Title order={3} mb="md">
             Τρέχουσα αυτόματη δυσκολία ανά παιχνίδι

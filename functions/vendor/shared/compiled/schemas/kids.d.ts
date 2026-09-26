@@ -21,8 +21,8 @@ export declare const learningCardSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     contentVersion: z.ZodOptional<z.ZodNumber>;
     householdId: z.ZodOptional<z.ZodString>;
@@ -51,13 +51,21 @@ export declare const learningDeckSchema: z.ZodObject<{
         SEQUENCE: "SEQUENCE";
         EMOTION: "EMOTION";
         MEMORY_PAIRS: "MEMORY_PAIRS";
+        COUNT_FINGERS: "COUNT_FINGERS";
+        MATCH_FINGERS_TO_NUMBER: "MATCH_FINGERS_TO_NUMBER";
+        COMPARE_QUANTITY: "COMPARE_QUANTITY";
+        COUNT_OBJECTS: "COUNT_OBJECTS";
+        MATCH_QUANTITY_TO_NUMBER: "MATCH_QUANTITY_TO_NUMBER";
+        SIMPLE_SUM: "SIMPLE_SUM";
+        LEARN_FLAG: "LEARN_FLAG";
+        FIND_FLAG: "FIND_FLAG";
         MIXED_PLAY: "MIXED_PLAY";
     }>>;
     cardIds: z.ZodArray<z.ZodString>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     contentVersion: z.ZodOptional<z.ZodNumber>;
     householdId: z.ZodOptional<z.ZodString>;
@@ -90,8 +98,8 @@ export declare const learningRelationshipSchema: z.ZodObject<{
     updatedAt: z.ZodOptional<z.ZodUnknown>;
     enabled: z.ZodOptional<z.ZodBoolean>;
     origin: z.ZodOptional<z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>>;
     archivedAt: z.ZodOptional<z.ZodUnknown>;
 }, z.core.$strip>;
@@ -119,8 +127,8 @@ export declare const everydayScenarioSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -142,8 +150,8 @@ export declare const sequenceDefinitionSchema: z.ZodObject<{
     category: z.ZodString;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -175,8 +183,8 @@ export declare const emotionScenarioSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -245,11 +253,38 @@ export declare const updateKidsSettingsSchema: z.ZodObject<{
     animationsEnabled: z.ZodBoolean;
     sessionLength: z.ZodUnion<readonly [z.ZodLiteral<5>, z.ZodLiteral<10>, z.ZodLiteral<15>]>;
     difficultyMode: z.ZodEnum<{
+        MEDIUM: "MEDIUM";
         AUTO: "AUTO";
         EASY: "EASY";
-        MEDIUM: "MEDIUM";
         HARD: "HARD";
     }>;
+    earlyMath: z.ZodOptional<z.ZodObject<{
+        numberRange: z.ZodEnum<{
+            ONE_TO_THREE: "ONE_TO_THREE";
+            ONE_TO_FIVE: "ONE_TO_FIVE";
+        }>;
+        addition: z.ZodEnum<{
+            OFF: "OFF";
+            WITHIN_THREE: "WITHIN_THREE";
+            WITHIN_FIVE: "WITHIN_FIVE";
+        }>;
+        showNumerals: z.ZodEnum<{
+            AUTO: "AUTO";
+            OFF: "OFF";
+            ON: "ON";
+        }>;
+        fingersEnabled: z.ZodBoolean;
+        countObjectsEnabled: z.ZodBoolean;
+    }, z.core.$strip>>;
+    flags: z.ZodOptional<z.ZodObject<{
+        enabled: z.ZodBoolean;
+        tier: z.ZodEnum<{
+            AUTO: "AUTO";
+            STARTER: "STARTER";
+            EXPANDED: "EXPANDED";
+        }>;
+        newPerSession: z.ZodUnion<readonly [z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const startKidsSessionSchema: z.ZodObject<{
     householdId: z.ZodString;
@@ -266,6 +301,14 @@ export declare const startKidsSessionSchema: z.ZodObject<{
         SEQUENCE: "SEQUENCE";
         EMOTION: "EMOTION";
         MEMORY_PAIRS: "MEMORY_PAIRS";
+        COUNT_FINGERS: "COUNT_FINGERS";
+        MATCH_FINGERS_TO_NUMBER: "MATCH_FINGERS_TO_NUMBER";
+        COMPARE_QUANTITY: "COMPARE_QUANTITY";
+        COUNT_OBJECTS: "COUNT_OBJECTS";
+        MATCH_QUANTITY_TO_NUMBER: "MATCH_QUANTITY_TO_NUMBER";
+        SIMPLE_SUM: "SIMPLE_SUM";
+        LEARN_FLAG: "LEARN_FLAG";
+        FIND_FLAG: "FIND_FLAG";
         MIXED_PLAY: "MIXED_PLAY";
     }>;
     deckIds: z.ZodArray<z.ZodString>;
@@ -288,6 +331,14 @@ export declare const persistKidsAttemptSchema: z.ZodObject<{
         SEQUENCE: "SEQUENCE";
         EMOTION: "EMOTION";
         MEMORY_PAIRS: "MEMORY_PAIRS";
+        COUNT_FINGERS: "COUNT_FINGERS";
+        MATCH_FINGERS_TO_NUMBER: "MATCH_FINGERS_TO_NUMBER";
+        COMPARE_QUANTITY: "COMPARE_QUANTITY";
+        COUNT_OBJECTS: "COUNT_OBJECTS";
+        MATCH_QUANTITY_TO_NUMBER: "MATCH_QUANTITY_TO_NUMBER";
+        SIMPLE_SUM: "SIMPLE_SUM";
+        LEARN_FLAG: "LEARN_FLAG";
+        FIND_FLAG: "FIND_FLAG";
         MIXED_PLAY: "MIXED_PLAY";
     }>;
     roundId: z.ZodString;
@@ -297,6 +348,14 @@ export declare const persistKidsAttemptSchema: z.ZodObject<{
     isCorrect: z.ZodBoolean;
     attemptCount: z.ZodNumber;
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    conceptType: z.ZodOptional<z.ZodEnum<{
+        NUMBER: "NUMBER";
+        FLAG: "FLAG";
+        COUNTING: "COUNTING";
+        ADDITION: "ADDITION";
+        QUANTITY: "QUANTITY";
+    }>>;
+    conceptId: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const completeKidsSessionSchema: z.ZodObject<{
     householdId: z.ZodString;

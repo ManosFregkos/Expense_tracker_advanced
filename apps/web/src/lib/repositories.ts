@@ -45,6 +45,14 @@ export async function getKidsSettings(householdId: string, profileId: string): P
         sessionLength: 5,
         difficultyMode: 'AUTO',
         currentDifficulty: 1,
+        earlyMath: {
+          numberRange: 'ONE_TO_FIVE',
+          addition: 'WITHIN_THREE',
+          showNumerals: 'AUTO',
+          fingersEnabled: true,
+          countObjectsEnabled: true,
+        },
+        flags: { enabled: true, tier: 'AUTO', newPerSession: 3 },
         updatedAt: new Date(0),
       }
 }

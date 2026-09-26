@@ -75,6 +75,8 @@ export const updateKidsSettings = secureCallable(updateKidsSettingsSchema, async
         sessionLength: input.sessionLength,
         difficultyMode: input.difficultyMode,
         currentDifficulty: difficulty,
+        ...(input.earlyMath ? { earlyMath: input.earlyMath } : {}),
+        ...(input.flags ? { flags: input.flags } : {}),
         updatedAt: Timestamp.now(),
       },
       { merge: true },
@@ -146,7 +148,9 @@ export const persistKidsAttempt = secureCallable(persistKidsAttemptSchema, async
     if (!session.exists) throw new HttpsError('failed-precondition', 'Session not found.')
     if (
       session.get('childProfileId') !== input.childProfileId ||
-      (session.get('mode') !== input.mode && session.get('mode') !== 'MIXED_PLAY') ||
+      (session.get('mode') !== input.mode &&
+        session.get('mode') !== 'MIXED_PLAY' &&
+        !(session.get('mode') === 'LEARN_FLAG' && input.mode === 'FIND_FLAG')) ||
       session.get('householdId') !== input.householdId
     )
       throw new HttpsError('permission-denied', 'Session ownership does not match.')
@@ -171,6 +175,8 @@ export const persistKidsAttempt = secureCallable(persistKidsAttemptSchema, async
       isCorrect: input.isCorrect,
       attemptCount: input.attemptCount,
       difficulty: input.difficulty,
+      ...(input.conceptType ? { conceptType: input.conceptType } : {}),
+      ...(input.conceptId ? { conceptId: input.conceptId } : {}),
       createdAt: now,
     })
     const existing = progress.exists

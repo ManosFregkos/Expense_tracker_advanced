@@ -97,13 +97,14 @@ export function getDeckCapabilities(
       ? deck.supportedModes.includes('ODD_ONE_OUT') && deckCards.length >= 3
       : deckCards.length >= 3 && categories.size >= 2
   const reasons: Partial<Record<KidsCardGameMode, string>> = {}
+  const isEarlyLearning = deck.category === 'EARLY_MATH' || deck.category === 'FLAGS'
   if (deckCards.length < 4) reasons.MEMORY_PAIRS = 'Χρειάζονται τουλάχιστον 4 κάρτες.'
   if (!hasRelationship) reasons.MATCHING = 'Προσθέστε τουλάχιστον μία ρητή σχέση.'
   if (!hasComparison) reasons.COMPARE = 'Προσθέστε μεταδεδομένα σύγκρισης σε δύο κάρτες.'
   if (!hasClassification) reasons.CLASSIFY = 'Προσθέστε μια σχέση προορισμού.'
   if (!oddOneOut) reasons.ODD_ONE_OUT = 'Χρειάζονται αρκετές κάρτες σε διαφορετικές κατηγορίες.'
   return {
-    learnAndChoose: deckCards.length >= 2,
+    learnAndChoose: !isEarlyLearning && deckCards.length >= 2,
     sameDifferent: deckCards.length >= 2,
     matching: hasRelationship,
     oddOneOut,
@@ -185,6 +186,7 @@ export class KidsContentRepository {
     ])
     const deck = decks.find((item) => item.id === deckId)
     if (!deck) return []
+    if (deck.category === 'EARLY_MATH' || deck.category === 'FLAGS') return deck.supportedModes
     const capabilities = getDeckCapabilities(deck, cards, relationships)
     return [
       capabilities.learnAndChoose && 'LEARN_AND_CHOOSE',

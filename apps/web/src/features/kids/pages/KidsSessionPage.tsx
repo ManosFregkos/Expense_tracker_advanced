@@ -25,6 +25,15 @@ import { kidsStrings } from '../i18n'
 import { useKidsContent, useKidsProfiles, useKidsProgress, useKidsSettings } from '../hooks'
 import { kidsNarration } from '../services/KidsNarrationService'
 import { kidsPersistence } from '../services/kidsPersistence'
+import { countryById, GREEK_NUMBER_WORDS } from '../early-learning/content'
+import {
+  FingerQuantityView,
+  FlagCard,
+  NumeralCard,
+  QuantityChoiceCard,
+  QuantityDisplay,
+  SimpleSumView,
+} from '../components/EarlyLearningViews'
 
 type EngineState =
   | 'LOADING'
@@ -52,6 +61,16 @@ function cardOptions(round: KidsCardRound): string[] {
 }
 
 function correctAnswer(round: KidsCardRound): string {
+  if (
+    round.mode === 'COUNT_FINGERS' ||
+    round.mode === 'MATCH_FINGERS_TO_NUMBER' ||
+    round.mode === 'COUNT_OBJECTS' ||
+    round.mode === 'MATCH_QUANTITY_TO_NUMBER' ||
+    round.mode === 'SIMPLE_SUM'
+  ) return String(round.correctQuantity)
+  if (round.mode === 'COMPARE_QUANTITY') return round.correctSide
+  if (round.mode === 'LEARN_FLAG') return round.countryId
+  if (round.mode === 'FIND_FLAG') return round.correctCountryId
   if (round.mode === 'SAME_OR_DIFFERENT') return round.correctAnswer
   if (round.mode === 'EVERYDAY_CHOICE') return round.correctChoiceId
   if (round.mode === 'CLASSIFY') return round.correctDestinationId
@@ -62,6 +81,15 @@ function correctAnswer(round: KidsCardRound): string {
 }
 
 function feedbackFor(round: KidsCardRound): string {
+  if (round.mode === 'SIMPLE_SUM')
+    return `Μπράβο! ${GREEK_NUMBER_WORDS[round.sum.left]} και ${GREEK_NUMBER_WORDS[round.sum.right]} κάνουν ${GREEK_NUMBER_WORDS[round.sum.result]}.`
+  if (round.mode === 'COUNT_FINGERS' || round.mode === 'COUNT_OBJECTS' || round.mode === 'MATCH_FINGERS_TO_NUMBER' || round.mode === 'MATCH_QUANTITY_TO_NUMBER')
+    return `Μπράβο! Είναι ${GREEK_NUMBER_WORDS[round.correctQuantity]}.`
+  if (round.mode === 'COMPARE_QUANTITY') return 'Μπράβο! Το βρήκες.'
+  if (round.mode === 'LEARN_FLAG' || round.mode === 'FIND_FLAG') {
+    const country = countryById.get(round.countryId)
+    return country ? `Μπράβο! Αυτή είναι η σημαία της ${country.genitiveEl}.` : 'Μπράβο!'
+  }
   if (round.mode === 'SAME_OR_DIFFERENT')
     return `Ναι! Είναι ${round.correctAnswer === 'SAME' ? 'ίδια' : 'διαφορετικά'}.`
   if (round.mode === 'MATCHING')
@@ -158,7 +186,11 @@ export function KidsSessionPage() {
     isMode(mode) &&
     deck !== undefined &&
     (deck.enabled || preview) &&
-    (mode === 'MIXED_PLAY' || getSupportedModes(deck).includes(mode))
+    (mode === 'MIXED_PLAY' || getSupportedModes(deck).includes(mode)) &&
+    (!(mode === 'SIMPLE_SUM') || settings.data?.earlyMath?.addition !== 'OFF') &&
+    (!(['COUNT_FINGERS', 'MATCH_FINGERS_TO_NUMBER'].includes(mode)) || settings.data?.earlyMath?.fingersEnabled !== false) &&
+    (!(['COUNT_OBJECTS', 'MATCH_QUANTITY_TO_NUMBER'].includes(mode)) || settings.data?.earlyMath?.countObjectsEnabled !== false) &&
+    (!(['LEARN_FLAG', 'FIND_FLAG'].includes(mode)) || settings.data?.flags?.enabled !== false)
   const rounds = useMemo(() => {
     if (!valid || !settings.data || !isMode(mode)) return []
     const fixedDifficulty = { EASY: 1, MEDIUM: 2, HARD: 4 } as const
@@ -178,6 +210,10 @@ export function KidsSessionPage() {
       seed: seedFrom(sessionId.current),
       cardProgress: progress.data ?? [],
       recentContentIds,
+      maximumQuantity: settings.data.earlyMath?.numberRange === 'ONE_TO_THREE' ? 3 : 5,
+      maximumSum: settings.data.earlyMath?.addition === 'WITHIN_THREE' ? 3 : 5,
+      flagTier: settings.data.flags?.tier === 'STARTER' ? 1 : settings.data.flags?.tier === 'EXPANDED' ? 3 : undefined,
+      newFlagsPerSession: settings.data.flags?.newPerSession ?? 3,
     })
   }, [
     deckId,
@@ -288,12 +324,24 @@ export function KidsSessionPage() {
         childProfileId: profileId,
         mode: round.mode,
         roundId: round.id,
-        contentId: correctAnswer(round),
+        contentId: 'conceptId' in round ? round.conceptId : correctAnswer(round),
         deckId: round.deckId,
         selectedOptionIds: [answerId],
         isCorrect,
         attemptCount: nextAttempt,
         difficulty: round.difficulty,
+        ...('conceptId' in round
+          ? {
+              conceptId: round.conceptId,
+              conceptType: round.conceptId.startsWith('flag:')
+                ? ('FLAG' as const)
+                : round.conceptId.startsWith('addition:')
+                  ? ('ADDITION' as const)
+                  : round.conceptId.startsWith('quantity:')
+                    ? ('QUANTITY' as const)
+                    : ('NUMBER' as const),
+            }
+          : {}),
       })
     const shouldAdvance = isCorrect || nextAttempt >= 3
     if (shouldAdvance) {
@@ -303,7 +351,13 @@ export function KidsSessionPage() {
         JSON.stringify([...new Set(recent)].slice(0, 20)),
       )
     }
-    const message = shouldAdvance ? feedbackFor(round) : kidsStrings.tryAgain
+    const message = shouldAdvance
+      ? feedbackFor(round)
+      : round.mode === 'SIMPLE_SUM' || round.mode === 'COUNT_FINGERS' || round.mode === 'COUNT_OBJECTS'
+        ? 'Για μέτρησέ τα άλλη μία φορά.'
+        : round.mode === 'FIND_FLAG'
+          ? 'Για κοίταξε τις σημαίες άλλη μία φορά.'
+          : kidsStrings.tryAgain
     setFeedback(message)
     setState('FEEDBACK')
     timer.current = setTimeout(
@@ -524,6 +578,34 @@ export function KidsSessionPage() {
                 </button>
               </div>
             </>
+          ) : round.mode === 'COUNT_FINGERS' ? (
+            <>
+              <div className="early-learning-prompt"><FingerQuantityView quantity={round.correctQuantity} /></div>
+              <TVCardGrid>{round.options.map((quantity, index) => <NumeralCard key={quantity} quantity={quantity} autofocus={index === 0} disabled={isDisabled} selected={selected === String(quantity)} correct={state === 'FEEDBACK' && selected === String(quantity) && quantity === round.correctQuantity} hint={showHint && quantity === round.correctQuantity} onActivate={() => answer(String(quantity))} />)}</TVCardGrid>
+            </>
+          ) : round.mode === 'MATCH_FINGERS_TO_NUMBER' ? (
+            <>
+              <div className="early-learning-prompt">{round.direction === 'NUMERAL_TO_FINGERS' ? <span className="prompt-numeral">{round.correctQuantity}</span> : <FingerQuantityView quantity={round.correctQuantity} />}</div>
+              <TVCardGrid>{round.options.map((quantity, index) => round.direction === 'NUMERAL_TO_FINGERS' ? <QuantityChoiceCard key={quantity} representation={{ quantity, type: 'FINGERS', assetId: `fingers-${quantity}` }} autofocus={index === 0} disabled={isDisabled} selected={selected === String(quantity)} correct={state === 'FEEDBACK' && selected === String(quantity) && quantity === round.correctQuantity} hint={showHint && quantity === round.correctQuantity} onActivate={() => answer(String(quantity))} /> : <NumeralCard key={quantity} quantity={quantity} autofocus={index === 0} disabled={isDisabled} selected={selected === String(quantity)} correct={state === 'FEEDBACK' && selected === String(quantity) && quantity === round.correctQuantity} hint={showHint && quantity === round.correctQuantity} onActivate={() => answer(String(quantity))} />)}</TVCardGrid>
+            </>
+          ) : round.mode === 'COUNT_OBJECTS' ? (
+            <>
+              <div className="early-learning-prompt"><QuantityDisplay quantity={round.renderedQuantity} objectAssetId={round.objectAssetId} /></div>
+              <TVCardGrid>{round.options.map((quantity, index) => <NumeralCard key={quantity} quantity={quantity} autofocus={index === 0} disabled={isDisabled} selected={selected === String(quantity)} correct={state === 'FEEDBACK' && selected === String(quantity) && quantity === round.correctQuantity} hint={showHint && quantity === round.correctQuantity} onActivate={() => answer(String(quantity))} />)}</TVCardGrid>
+            </>
+          ) : round.mode === 'MATCH_QUANTITY_TO_NUMBER' ? (
+            <>
+              <div className="early-learning-prompt">{round.direction === 'NUMERAL_TO_QUANTITY' ? <span className="prompt-numeral">{round.correctQuantity}</span> : <QuantityDisplay quantity={round.correctQuantity} objectAssetId={round.objectAssetId} />}</div>
+              <TVCardGrid>{round.options.map((quantity, index) => round.direction === 'NUMERAL_TO_QUANTITY' ? <QuantityChoiceCard key={quantity} representation={{ quantity, type: 'OBJECTS', objectAssetId: round.objectAssetId }} autofocus={index === 0} disabled={isDisabled} selected={selected === String(quantity)} correct={state === 'FEEDBACK' && selected === String(quantity) && quantity === round.correctQuantity} hint={showHint && quantity === round.correctQuantity} onActivate={() => answer(String(quantity))} /> : <NumeralCard key={quantity} quantity={quantity} autofocus={index === 0} disabled={isDisabled} selected={selected === String(quantity)} correct={state === 'FEEDBACK' && selected === String(quantity) && quantity === round.correctQuantity} hint={showHint && quantity === round.correctQuantity} onActivate={() => answer(String(quantity))} />)}</TVCardGrid>
+            </>
+          ) : round.mode === 'COMPARE_QUANTITY' ? (
+            <TVCardGrid>{(['LEFT', 'RIGHT'] as const).map((side, index) => { const representation = side === 'LEFT' ? round.left : round.right; return <QuantityChoiceCard key={side} representation={representation} autofocus={index === 0} disabled={isDisabled} selected={selected === side} correct={state === 'FEEDBACK' && selected === side && side === round.correctSide} hint={showHint && side === round.correctSide} onActivate={() => answer(side)} /> })}</TVCardGrid>
+          ) : round.mode === 'SIMPLE_SUM' ? (
+            <><SimpleSumView sum={round.sum} showNumerals={round.stage !== 'CONCRETE'} /><TVCardGrid>{round.options.map((quantity, index) => <NumeralCard key={quantity} quantity={quantity} autofocus={index === 0} disabled={isDisabled} selected={selected === String(quantity)} correct={state === 'FEEDBACK' && selected === String(quantity) && quantity === round.correctQuantity} hint={showHint && quantity === round.correctQuantity} onActivate={() => answer(String(quantity))} />)}</TVCardGrid></>
+          ) : round.mode === 'LEARN_FLAG' ? (
+            <><div className="single-flag"><FlagCard assetId={round.flagAssetId} countryName={countryById.get(round.countryId)?.nameEl ?? ''} /></div><button type="button" className="kids-primary-action kids-continue" data-tv-focusable="true" data-tv-autofocus="true" disabled={isDisabled} onClick={() => answer(round.countryId)}>{kidsStrings.continue}</button></>
+          ) : round.mode === 'FIND_FLAG' ? (
+            <TVCardGrid>{round.optionCountryIds.map((id, index) => { const country = countryById.get(id); return country ? <FlagCard key={id} assetId={country.flagAssetId} countryName={country.nameEl} autofocus={index === 0} disabled={isDisabled} selected={selected === id} correct={state === 'FEEDBACK' && selected === id && id === round.correctCountryId} hint={showHint && id === round.correctCountryId} onActivate={() => answer(id)} /> : null })}</TVCardGrid>
           ) : round.mode === 'EVERYDAY_CHOICE' ? (
             <TVCardGrid>
               {round.options.map((option, index) => (

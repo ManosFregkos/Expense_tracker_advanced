@@ -558,6 +558,94 @@ button.learning-card {
   font-size: clamp(1.3rem, 2.1vw, 2.5rem);
   font-weight: 850;
 }
+.early-learning-prompt,
+.single-flag {
+  display: grid;
+  width: min(760px, 86vw);
+  min-height: clamp(180px, 29vh, 320px);
+  margin: 0 auto clamp(18px, 3vh, 34px);
+  place-items: center;
+}
+.finger-quantity-image {
+  width: min(330px, 42vw);
+  max-height: clamp(190px, 31vh, 340px);
+  object-fit: contain;
+}
+.quantity-display {
+  display: grid;
+  width: min(660px, 80vw);
+  grid-template-columns: repeat(3, minmax(70px, 1fr));
+  align-items: center;
+  justify-items: center;
+  gap: clamp(12px, 2vw, 26px);
+}
+.quantity-display[data-quantity='1'],
+.quantity-display[data-quantity='2'] {
+  grid-template-columns: repeat(2, minmax(90px, 170px));
+  justify-content: center;
+}
+.quantity-object {
+  width: clamp(76px, 9vw, 145px);
+  height: clamp(76px, 9vw, 145px);
+  object-fit: contain;
+}
+.numeral-card > span,
+.prompt-numeral,
+.numeral-inline {
+  color: #174f49;
+  font-size: clamp(7rem, 15vw, 17rem);
+  font-weight: 950;
+  line-height: 0.9;
+}
+.quantity-choice-card .finger-quantity-image {
+  width: min(240px, 100%);
+  max-height: 250px;
+}
+.quantity-choice-card .quantity-display {
+  width: 100%;
+  gap: 10px;
+}
+.quantity-choice-card .quantity-object {
+  width: clamp(50px, 6vw, 90px);
+  height: clamp(50px, 6vw, 90px);
+}
+.simple-sum-view {
+  display: flex;
+  width: min(900px, 92vw);
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 4vw, 64px);
+  margin: 0 auto clamp(20px, 3vh, 36px);
+}
+.simple-sum-view > div {
+  display: grid;
+  place-items: center;
+}
+.simple-sum-view .finger-quantity-image {
+  width: clamp(130px, 18vw, 280px);
+  max-height: 250px;
+}
+.simple-sum-view > span {
+  font-size: clamp(4rem, 8vw, 8rem);
+  font-weight: 900;
+}
+.simple-sum-view strong {
+  font-size: clamp(2.5rem, 5vw, 5rem);
+}
+.flag-card {
+  min-height: clamp(210px, 34vh, 370px);
+  background: #fff;
+}
+.flag-image {
+  width: min(100%, 480px);
+  max-height: 280px;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.15));
+}
+.flag-card:focus-visible,
+.flag-card[data-tv-focused='true'] {
+  outline-offset: 8px;
+}
 .learning-card[data-state='selected'] {
   outline: 8px solid #f1c75b;
 }

@@ -4,6 +4,8 @@ import { useKidsProfiles } from '../hooks'
 import { kidsStrings } from '../i18n'
 
 const categories = [
+  { id: 'numbers', icon: '🔢', title: 'ΑΡΙΘΜΟΙ', subtitle: 'Μετράω και προσθέτω' },
+  { id: 'flags', icon: '🌍', title: 'ΣΗΜΑΙΕΣ', subtitle: 'Μαθαίνω χώρες' },
   { id: 'learn', icon: '🎴', title: kidsStrings.learn, subtitle: 'Γνωρίζω νέες κάρτες' },
   { id: 'observe', icon: '👀', title: kidsStrings.observe, subtitle: 'Κοιτάζω προσεκτικά' },
   { id: 'think', icon: '🧠', title: kidsStrings.think, subtitle: 'Βρίσκω τι ταιριάζει' },

@@ -27,5 +27,13 @@ export const modeLabels: Record<KidsCardGameMode, string> = {
   SEQUENCE: 'Τι έρχεται μετά;',
   EMOTION: 'Πώς νιώθει;',
   MEMORY_PAIRS: 'Βρες τα ζευγάρια',
+  COUNT_FINGERS: 'Μετράω δάχτυλα',
+  MATCH_FINGERS_TO_NUMBER: 'Αριθμός και δάχτυλα',
+  COMPARE_QUANTITY: 'Περισσότερα ή λιγότερα',
+  COUNT_OBJECTS: 'Μετράω αντικείμενα',
+  MATCH_QUANTITY_TO_NUMBER: 'Αριθμός και ποσότητα',
+  SIMPLE_SUM: 'Προσθέτω',
+  LEARN_FLAG: 'Μαθαίνω σημαίες',
+  FIND_FLAG: 'Βρες τη σημαία',
   MIXED_PLAY: 'Παίζουμε μαζί',
 }

@@ -31,7 +31,7 @@ export interface TimestampLike {
     toDate(): Date;
 }
 export type StoredDate = TimestampLike | Date;
-export declare const KIDS_CARD_GAME_MODES: readonly ["LEARN_AND_CHOOSE", "SAME_OR_DIFFERENT", "MATCHING", "ODD_ONE_OUT", "COMPARE", "EVERYDAY_CHOICE", "CLASSIFY", "SEQUENCE", "EMOTION", "MEMORY_PAIRS", "MIXED_PLAY"];
+export declare const KIDS_CARD_GAME_MODES: readonly ["LEARN_AND_CHOOSE", "SAME_OR_DIFFERENT", "MATCHING", "ODD_ONE_OUT", "COMPARE", "EVERYDAY_CHOICE", "CLASSIFY", "SEQUENCE", "EMOTION", "MEMORY_PAIRS", "COUNT_FINGERS", "MATCH_FINGERS_TO_NUMBER", "COMPARE_QUANTITY", "COUNT_OBJECTS", "MATCH_QUANTITY_TO_NUMBER", "SIMPLE_SUM", "LEARN_FLAG", "FIND_FLAG", "MIXED_PLAY"];
 export type KidsCardGameMode = (typeof KIDS_CARD_GAME_MODES)[number];
 export declare const KIDS_COMPARISON_DIMENSIONS: readonly ["OBJECT", "COLOR", "SIZE", "SHAPE", "COUNT", "ORIENTATION", "DETAIL"];
 export type KidsComparisonDimension = (typeof KIDS_COMPARISON_DIMENSIONS)[number];
@@ -216,6 +216,18 @@ export interface KidsSettings {
         }>;
     }>>;
     hintsEnabled?: boolean;
+    earlyMath?: {
+        numberRange: 'ONE_TO_THREE' | 'ONE_TO_FIVE';
+        addition: 'OFF' | 'WITHIN_THREE' | 'WITHIN_FIVE';
+        showNumerals: 'ON' | 'OFF' | 'AUTO';
+        fingersEnabled: boolean;
+        countObjectsEnabled: boolean;
+    };
+    flags?: {
+        enabled: boolean;
+        tier: 'AUTO' | 'STARTER' | 'EXPANDED';
+        newPerSession: 2 | 3 | 4;
+    };
     updatedAt: StoredDate;
 }
 export interface KidsCardSession {
@@ -244,6 +256,8 @@ export interface KidsCardAttempt {
     isCorrect: boolean;
     attemptCount: number;
     difficulty: KidsDifficulty;
+    conceptType?: 'NUMBER' | 'FLAG' | 'COUNTING' | 'ADDITION' | 'QUANTITY';
+    conceptId?: string;
     createdAt: StoredDate;
 }
 export interface CardLearningProgress {

@@ -5,6 +5,7 @@ import type {
   KidsComparisonDimension,
   KidsDifficulty,
 } from '@family-expense-tracker/shared'
+import type { EarlyQuantity, QuantityRepresentation, SimpleSum } from '../early-learning/types'
 
 export interface KidsRoundCommon {
   id: string
@@ -97,6 +98,66 @@ export interface MemoryPairsRound extends KidsRoundCommon {
   pairCount: 2 | 3 | 4
 }
 
+interface NumberRoundCommon extends KidsRoundCommon {
+  conceptId: `number:${EarlyQuantity}`
+  options: EarlyQuantity[]
+  correctQuantity: EarlyQuantity
+}
+
+export interface CountFingersRound extends NumberRoundCommon {
+  mode: 'COUNT_FINGERS'
+  fingerAssetId: string
+}
+
+export interface MatchFingersToNumberRound extends NumberRoundCommon {
+  mode: 'MATCH_FINGERS_TO_NUMBER'
+  direction: 'FINGERS_TO_NUMERAL' | 'NUMERAL_TO_FINGERS'
+  target: QuantityRepresentation
+}
+
+export interface CountObjectsRound extends NumberRoundCommon {
+  mode: 'COUNT_OBJECTS'
+  objectAssetId: string
+  renderedQuantity: EarlyQuantity
+}
+
+export interface MatchQuantityToNumberRound extends NumberRoundCommon {
+  mode: 'MATCH_QUANTITY_TO_NUMBER'
+  direction: 'QUANTITY_TO_NUMERAL' | 'NUMERAL_TO_QUANTITY'
+  objectAssetId: string
+}
+
+export interface CompareQuantityRound extends KidsRoundCommon {
+  mode: 'COMPARE_QUANTITY'
+  relation: 'MORE' | 'LESS' | 'SAME_AMOUNT'
+  left: QuantityRepresentation
+  right: QuantityRepresentation
+  correctSide: 'LEFT' | 'RIGHT' | 'SAME'
+  conceptId: 'quantity:more' | 'quantity:less' | 'quantity:same'
+}
+
+export interface SimpleSumRound extends Omit<NumberRoundCommon, 'conceptId'> {
+  mode: 'SIMPLE_SUM'
+  sum: SimpleSum
+  stage: 'CONCRETE' | 'VISUAL_NUMERAL' | 'NUMERAL'
+  conceptId: 'addition:within-3' | 'addition:within-5'
+}
+
+export interface LearnFlagRound extends KidsRoundCommon {
+  mode: 'LEARN_FLAG'
+  countryId: string
+  flagAssetId: string
+  conceptId: `flag:${string}`
+}
+
+export interface FindFlagRound extends KidsRoundCommon {
+  mode: 'FIND_FLAG'
+  countryId: string
+  optionCountryIds: string[]
+  correctCountryId: string
+  conceptId: `flag:${string}`
+}
+
 export type KidsCardRound =
   | LearnChooseRound
   | SameDifferentRound
@@ -108,6 +169,14 @@ export type KidsCardRound =
   | SequenceRound
   | EmotionRound
   | MemoryPairsRound
+  | CountFingersRound
+  | MatchFingersToNumberRound
+  | CountObjectsRound
+  | MatchQuantityToNumberRound
+  | CompareQuantityRound
+  | SimpleSumRound
+  | LearnFlagRound
+  | FindFlagRound
 
 export interface RoundGenerationInput {
   deckId: string
@@ -116,6 +185,10 @@ export interface RoundGenerationInput {
   rng: () => number
   preferredCardIds?: string[]
   recentContentIds?: ReadonlySet<string>
+  maximumQuantity?: 3 | 5
+  maximumSum?: 3 | 5
+  flagTier?: 1 | 2 | 3
+  newFlagsPerSession?: 2 | 3 | 4
 }
 
 export interface RoundGenerator<T extends KidsCardRound = KidsCardRound> {
