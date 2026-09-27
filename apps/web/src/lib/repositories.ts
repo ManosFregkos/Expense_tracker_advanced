@@ -53,6 +53,7 @@ export async function getKidsSettings(householdId: string, profileId: string): P
           countObjectsEnabled: true,
         },
         flags: { enabled: true, tier: 'AUTO', newPerSession: 3 },
+        contentAreas: { patterns: true, spatial: true, weather: true, professions: true },
         updatedAt: new Date(0),
       }
 }

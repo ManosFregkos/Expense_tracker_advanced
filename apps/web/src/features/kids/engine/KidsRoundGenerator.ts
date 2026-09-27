@@ -29,6 +29,8 @@ import type { KidsCardRound, RoundGenerator } from './types'
 import { KidsSessionPlanner } from './KidsSessionPlanner'
 import { cardsForDeck } from './generators/shared'
 import { EUROPEAN_COUNTRIES } from '../early-learning/content'
+import { PatternCompleteRoundGenerator } from './generators/PatternCompleteRoundGenerator'
+import { SpatialConceptRoundGenerator } from './generators/SpatialConceptRoundGenerator'
 
 type ConcreteMode = Exclude<KidsCardGameMode, 'MIXED_PLAY'>
 
@@ -51,6 +53,8 @@ const generators: Record<ConcreteMode, RoundGenerator> = {
   SIMPLE_SUM: new SimpleSumRoundGenerator(),
   LEARN_FLAG: new LearnFlagRoundGenerator(),
   FIND_FLAG: new FindFlagRoundGenerator(),
+  PATTERN_COMPLETE: new PatternCompleteRoundGenerator(),
+  SPATIAL_CONCEPT: new SpatialConceptRoundGenerator(),
 }
 
 export class KidsRoundGenerator {
@@ -66,6 +70,12 @@ export class KidsRoundGenerator {
     maximumSum?: 3 | 5
     flagTier?: 1 | 2 | 3
     newFlagsPerSession?: 2 | 3 | 4
+    enabledContentAreas?: {
+      patterns: boolean
+      spatial: boolean
+      weather: boolean
+      professions: boolean
+    }
   }): KidsCardRound[] {
     const rng = seededRandom(input.seed ?? Date.now())
     const preferredCardIds = input.mode === 'LEARN_AND_CHOOSE'
@@ -95,6 +105,7 @@ export class KidsRoundGenerator {
         difficulty: input.difficulty,
         sessionLength: input.roundCount,
         rng,
+        enabledContentAreas: input.enabledContentAreas,
       })
       return plan.flatMap((item, index) => {
         const round = generators[item.mode].generate({

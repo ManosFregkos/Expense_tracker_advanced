@@ -12,6 +12,10 @@ const GLOBAL_MODES: PlannedRound[] = [
   { mode: 'EVERYDAY_CHOICE', deckId: 'everyday', difficulty: 1 },
   { mode: 'SEQUENCE', deckId: 'sequences', difficulty: 1 },
   { mode: 'EMOTION', deckId: 'emotions', difficulty: 1 },
+  { mode: 'PATTERN_COMPLETE', deckId: 'patterns', difficulty: 1 },
+  { mode: 'SPATIAL_CONCEPT', deckId: 'spatial', difficulty: 1 },
+  { mode: 'EVERYDAY_CHOICE', deckId: 'weather', difficulty: 1 },
+  { mode: 'MATCHING', deckId: 'professions', difficulty: 1 },
 ]
 
 export class MixedPlayPlanner {
@@ -21,6 +25,12 @@ export class MixedPlayPlanner {
     sessionLength: number
     rng: () => number
     recentModes?: KidsCardGameMode[]
+    enabledContentAreas?: {
+      patterns: boolean
+      spatial: boolean
+      weather: boolean
+      professions: boolean
+    }
   }): PlannedRound[] {
     const deck = DECKS_BY_ID.get(input.deckId)
     const local = deck
@@ -28,9 +38,16 @@ export class MixedPlayPlanner {
           .filter((mode): mode is Exclude<KidsCardGameMode, 'MIXED_PLAY'> => mode !== 'MIXED_PLAY')
           .map((mode) => ({ mode, deckId: deck.id, difficulty: input.difficulty }))
       : []
+    const enabledGlobal = GLOBAL_MODES.filter((item) => {
+      if (item.deckId === 'patterns') return input.enabledContentAreas?.patterns ?? true
+      if (item.deckId === 'spatial') return input.enabledContentAreas?.spatial ?? true
+      if (item.deckId === 'weather') return input.enabledContentAreas?.weather ?? true
+      if (item.deckId === 'professions') return input.enabledContentAreas?.professions ?? true
+      return true
+    })
     const available = [
       ...local,
-      ...GLOBAL_MODES.map((item) => ({ ...item, difficulty: input.difficulty })),
+      ...enabledGlobal.map((item) => ({ ...item, difficulty: input.difficulty })),
     ]
     if (!available.length) return []
     const result: PlannedRound[] = []

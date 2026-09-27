@@ -9,6 +9,8 @@ import {
   learningRelationshipSchema,
   saveKidsCustomContentSchema,
   sequenceDefinitionSchema,
+  patternDefinitionSchema,
+  spatialScenarioSchema,
 } from '@family-expense-tracker/shared'
 import { secureCallable } from '../callable.js'
 import { db } from '../firebase.js'
@@ -20,6 +22,8 @@ const collectionByKind = {
   EVERYDAY_SCENARIO: 'kidsEverydayScenarios',
   SEQUENCE: 'kidsSequences',
   EMOTION_SCENARIO: 'kidsEmotionScenarios',
+  PATTERN: 'kidsPatterns',
+  SPATIAL_SCENARIO: 'kidsSpatialScenarios',
 } as const
 
 function assertAdmin(member: DocumentSnapshot) {
@@ -36,6 +40,8 @@ function parseContent(kind: keyof typeof collectionByKind, value: Record<string,
     EVERYDAY_SCENARIO: everydayScenarioSchema,
     SEQUENCE: sequenceDefinitionSchema,
     EMOTION_SCENARIO: emotionScenarioSchema,
+    PATTERN: patternDefinitionSchema,
+    SPATIAL_SCENARIO: spatialScenarioSchema,
   }[kind]
   const result = schema.safeParse(normalized)
   if (!result.success)

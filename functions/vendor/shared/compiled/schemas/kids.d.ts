@@ -21,8 +21,8 @@ export declare const learningCardSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>;
     contentVersion: z.ZodOptional<z.ZodNumber>;
     householdId: z.ZodOptional<z.ZodString>;
@@ -59,13 +59,15 @@ export declare const learningDeckSchema: z.ZodObject<{
         SIMPLE_SUM: "SIMPLE_SUM";
         LEARN_FLAG: "LEARN_FLAG";
         FIND_FLAG: "FIND_FLAG";
+        PATTERN_COMPLETE: "PATTERN_COMPLETE";
+        SPATIAL_CONCEPT: "SPATIAL_CONCEPT";
         MIXED_PLAY: "MIXED_PLAY";
     }>>;
     cardIds: z.ZodArray<z.ZodString>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>;
     contentVersion: z.ZodOptional<z.ZodNumber>;
     householdId: z.ZodOptional<z.ZodString>;
@@ -90,6 +92,7 @@ export declare const learningRelationshipSchema: z.ZodObject<{
         WEARS: "WEARS";
         WORN_ON: "WORN_ON";
         PART_OF: "PART_OF";
+        USES: "USES";
     }>;
     narration: z.ZodOptional<z.ZodString>;
     householdId: z.ZodOptional<z.ZodString>;
@@ -98,8 +101,8 @@ export declare const learningRelationshipSchema: z.ZodObject<{
     updatedAt: z.ZodOptional<z.ZodUnknown>;
     enabled: z.ZodOptional<z.ZodBoolean>;
     origin: z.ZodOptional<z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>>;
     archivedAt: z.ZodOptional<z.ZodUnknown>;
 }, z.core.$strip>;
@@ -114,7 +117,15 @@ export declare const everydayScenarioSchema: z.ZodObject<{
         ANIMALS: "ANIMALS";
         SOCIAL: "SOCIAL";
         FOOD: "FOOD";
+        WEATHER: "WEATHER";
     }>;
+    subtopic: z.ZodOptional<z.ZodEnum<{
+        RAIN: "RAIN";
+        SUN: "SUN";
+        COLD: "COLD";
+        SNOW: "SNOW";
+        WIND: "WIND";
+    }>>;
     narration: z.ZodString;
     situationAssetId: z.ZodOptional<z.ZodString>;
     choices: z.ZodArray<z.ZodObject<{
@@ -127,14 +138,209 @@ export declare const everydayScenarioSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
     createdAt: z.ZodOptional<z.ZodUnknown>;
     updatedAt: z.ZodOptional<z.ZodUnknown>;
     archivedAt: z.ZodOptional<z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const patternElementSchema: z.ZodObject<{
+    id: z.ZodString;
+    assetId: z.ZodString;
+    narration: z.ZodOptional<z.ZodString>;
+    semanticType: z.ZodEnum<{
+        COLOR: "COLOR";
+        SHAPE: "SHAPE";
+        OBJECT: "OBJECT";
+    }>;
+    value: z.ZodString;
+}, z.core.$strip>;
+export declare const patternDefinitionSchema: z.ZodObject<{
+    id: z.ZodString;
+    type: z.ZodEnum<{
+        ABAB: "ABAB";
+        AABB: "AABB";
+        AAB: "AAB";
+        ABB: "ABB";
+        AAA_B: "AAA_B";
+        REPEATED_BLOCK: "REPEATED_BLOCK";
+    }>;
+    elements: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodOptional<z.ZodString>;
+        semanticType: z.ZodEnum<{
+            COLOR: "COLOR";
+            SHAPE: "SHAPE";
+            OBJECT: "OBJECT";
+        }>;
+        value: z.ZodString;
+    }, z.core.$strip>>;
+    missingIndex: z.ZodNumber;
+    correctElement: z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodOptional<z.ZodString>;
+        semanticType: z.ZodEnum<{
+            COLOR: "COLOR";
+            SHAPE: "SHAPE";
+            OBJECT: "OBJECT";
+        }>;
+        value: z.ZodString;
+    }, z.core.$strip>;
+    distractorElements: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodOptional<z.ZodString>;
+        semanticType: z.ZodEnum<{
+            COLOR: "COLOR";
+            SHAPE: "SHAPE";
+            OBJECT: "OBJECT";
+        }>;
+        value: z.ZodString;
+    }, z.core.$strip>>;
+    narration: z.ZodString;
+    explanationNarration: z.ZodString;
+    difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    category: z.ZodEnum<{
+        COLOR: "COLOR";
+        SHAPE: "SHAPE";
+        OBJECT: "OBJECT";
+    }>;
+    enabled: z.ZodBoolean;
+    origin: z.ZodEnum<{
+        SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
+    }>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const spatialChoiceSchema: z.ZodObject<{
+    id: z.ZodString;
+    assetId: z.ZodString;
+    narration: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export declare const spatialScenarioSchema: z.ZodObject<{
+    id: z.ZodString;
+    concept: z.ZodEnum<{
+        INSIDE: "INSIDE";
+        OUTSIDE: "OUTSIDE";
+        ABOVE: "ABOVE";
+        BELOW: "BELOW";
+        IN_FRONT_OF: "IN_FRONT_OF";
+        BEHIND: "BEHIND";
+        NEXT_TO: "NEXT_TO";
+        BETWEEN: "BETWEEN";
+    }>;
+    narration: z.ZodString;
+    promptStyle: z.ZodEnum<{
+        FIND_CORRECT_SCENE: "FIND_CORRECT_SCENE";
+        FIND_CORRECT_OBJECT: "FIND_CORRECT_OBJECT";
+    }>;
+    choices: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    correctChoiceId: z.ZodString;
+    explanationNarration: z.ZodString;
+    difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    enabled: z.ZodBoolean;
+    origin: z.ZodEnum<{
+        SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
+    }>;
+    householdId: z.ZodOptional<z.ZodString>;
+    createdBy: z.ZodOptional<z.ZodString>;
+    createdAt: z.ZodOptional<z.ZodUnknown>;
+    updatedAt: z.ZodOptional<z.ZodUnknown>;
+    archivedAt: z.ZodOptional<z.ZodUnknown>;
+}, z.core.$strip>;
+export declare const patternCompleteRoundSchema: z.ZodObject<{
+    id: z.ZodString;
+    difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    deckId: z.ZodString;
+    instructionText: z.ZodString;
+    narrationText: z.ZodString;
+    skill: z.ZodString;
+    contentIds: z.ZodArray<z.ZodString>;
+    mode: z.ZodLiteral<"PATTERN_COMPLETE">;
+    patternId: z.ZodString;
+    patternType: z.ZodEnum<{
+        ABAB: "ABAB";
+        AABB: "AABB";
+        AAB: "AAB";
+        ABB: "ABB";
+        AAA_B: "AAA_B";
+        REPEATED_BLOCK: "REPEATED_BLOCK";
+    }>;
+    slots: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodOptional<z.ZodString>;
+        semanticType: z.ZodEnum<{
+            COLOR: "COLOR";
+            SHAPE: "SHAPE";
+            OBJECT: "OBJECT";
+        }>;
+        value: z.ZodString;
+        missing: z.ZodBoolean;
+    }, z.core.$strip>>;
+    options: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodOptional<z.ZodString>;
+        semanticType: z.ZodEnum<{
+            COLOR: "COLOR";
+            SHAPE: "SHAPE";
+            OBJECT: "OBJECT";
+        }>;
+        value: z.ZodString;
+    }, z.core.$strip>>;
+    correctElementId: z.ZodString;
+    explanationNarration: z.ZodString;
+    conceptId: z.ZodString;
+    conceptType: z.ZodLiteral<"PATTERN">;
+}, z.core.$strip>;
+export declare const spatialConceptRoundSchema: z.ZodObject<{
+    id: z.ZodString;
+    difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
+    deckId: z.ZodString;
+    instructionText: z.ZodString;
+    narrationText: z.ZodString;
+    skill: z.ZodString;
+    contentIds: z.ZodArray<z.ZodString>;
+    mode: z.ZodLiteral<"SPATIAL_CONCEPT">;
+    scenarioId: z.ZodString;
+    concept: z.ZodEnum<{
+        INSIDE: "INSIDE";
+        OUTSIDE: "OUTSIDE";
+        ABOVE: "ABOVE";
+        BELOW: "BELOW";
+        IN_FRONT_OF: "IN_FRONT_OF";
+        BEHIND: "BEHIND";
+        NEXT_TO: "NEXT_TO";
+        BETWEEN: "BETWEEN";
+    }>;
+    promptStyle: z.ZodEnum<{
+        FIND_CORRECT_SCENE: "FIND_CORRECT_SCENE";
+        FIND_CORRECT_OBJECT: "FIND_CORRECT_OBJECT";
+    }>;
+    options: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        assetId: z.ZodString;
+        narration: z.ZodOptional<z.ZodString>;
+    }, z.core.$strip>>;
+    correctChoiceId: z.ZodString;
+    explanationNarration: z.ZodString;
+    conceptId: z.ZodString;
+    conceptType: z.ZodLiteral<"SPATIAL">;
 }, z.core.$strip>;
 export declare const sequenceDefinitionSchema: z.ZodObject<{
     id: z.ZodString;
@@ -150,8 +356,8 @@ export declare const sequenceDefinitionSchema: z.ZodObject<{
     category: z.ZodString;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -183,8 +389,8 @@ export declare const emotionScenarioSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        CUSTOM: "CUSTOM";
         SYSTEM: "SYSTEM";
+        CUSTOM: "CUSTOM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -210,21 +416,25 @@ export declare const kidsAssetMetadataSchema: z.ZodObject<{
 }, z.core.$strip>;
 export declare const kidsCustomContentKindSchema: z.ZodEnum<{
     SEQUENCE: "SEQUENCE";
+    PATTERN: "PATTERN";
     DECK: "DECK";
     CARD: "CARD";
     RELATIONSHIP: "RELATIONSHIP";
     EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
     EMOTION_SCENARIO: "EMOTION_SCENARIO";
+    SPATIAL_SCENARIO: "SPATIAL_SCENARIO";
 }>;
 export declare const saveKidsCustomContentSchema: z.ZodObject<{
     householdId: z.ZodString;
     kind: z.ZodEnum<{
         SEQUENCE: "SEQUENCE";
+        PATTERN: "PATTERN";
         DECK: "DECK";
         CARD: "CARD";
         RELATIONSHIP: "RELATIONSHIP";
         EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
         EMOTION_SCENARIO: "EMOTION_SCENARIO";
+        SPATIAL_SCENARIO: "SPATIAL_SCENARIO";
     }>;
     content: z.ZodRecord<z.ZodString, z.ZodUnknown>;
 }, z.core.$strip>;
@@ -232,11 +442,13 @@ export declare const archiveKidsCustomContentSchema: z.ZodObject<{
     householdId: z.ZodString;
     kind: z.ZodEnum<{
         SEQUENCE: "SEQUENCE";
+        PATTERN: "PATTERN";
         DECK: "DECK";
         CARD: "CARD";
         RELATIONSHIP: "RELATIONSHIP";
         EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
         EMOTION_SCENARIO: "EMOTION_SCENARIO";
+        SPATIAL_SCENARIO: "SPATIAL_SCENARIO";
     }>;
     contentId: z.ZodString;
 }, z.core.$strip>;
@@ -253,9 +465,9 @@ export declare const updateKidsSettingsSchema: z.ZodObject<{
     animationsEnabled: z.ZodBoolean;
     sessionLength: z.ZodUnion<readonly [z.ZodLiteral<5>, z.ZodLiteral<10>, z.ZodLiteral<15>]>;
     difficultyMode: z.ZodEnum<{
-        MEDIUM: "MEDIUM";
         AUTO: "AUTO";
         EASY: "EASY";
+        MEDIUM: "MEDIUM";
         HARD: "HARD";
     }>;
     earlyMath: z.ZodOptional<z.ZodObject<{
@@ -285,6 +497,12 @@ export declare const updateKidsSettingsSchema: z.ZodObject<{
         }>;
         newPerSession: z.ZodUnion<readonly [z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     }, z.core.$strip>>;
+    contentAreas: z.ZodOptional<z.ZodObject<{
+        patterns: z.ZodBoolean;
+        spatial: z.ZodBoolean;
+        weather: z.ZodBoolean;
+        professions: z.ZodBoolean;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const startKidsSessionSchema: z.ZodObject<{
     householdId: z.ZodString;
@@ -309,6 +527,8 @@ export declare const startKidsSessionSchema: z.ZodObject<{
         SIMPLE_SUM: "SIMPLE_SUM";
         LEARN_FLAG: "LEARN_FLAG";
         FIND_FLAG: "FIND_FLAG";
+        PATTERN_COMPLETE: "PATTERN_COMPLETE";
+        SPATIAL_CONCEPT: "SPATIAL_CONCEPT";
         MIXED_PLAY: "MIXED_PLAY";
     }>;
     deckIds: z.ZodArray<z.ZodString>;
@@ -339,6 +559,8 @@ export declare const persistKidsAttemptSchema: z.ZodObject<{
         SIMPLE_SUM: "SIMPLE_SUM";
         LEARN_FLAG: "LEARN_FLAG";
         FIND_FLAG: "FIND_FLAG";
+        PATTERN_COMPLETE: "PATTERN_COMPLETE";
+        SPATIAL_CONCEPT: "SPATIAL_CONCEPT";
         MIXED_PLAY: "MIXED_PLAY";
     }>;
     roundId: z.ZodString;
@@ -349,11 +571,15 @@ export declare const persistKidsAttemptSchema: z.ZodObject<{
     attemptCount: z.ZodNumber;
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     conceptType: z.ZodOptional<z.ZodEnum<{
+        WEATHER: "WEATHER";
+        PATTERN: "PATTERN";
+        SPATIAL: "SPATIAL";
         NUMBER: "NUMBER";
         FLAG: "FLAG";
         COUNTING: "COUNTING";
         ADDITION: "ADDITION";
         QUANTITY: "QUANTITY";
+        PROFESSION: "PROFESSION";
     }>>;
     conceptId: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
@@ -364,15 +590,17 @@ export declare const completeKidsSessionSchema: z.ZodObject<{
     completedRounds: z.ZodNumber;
 }, z.core.$strip>;
 export declare const kidsComparisonDimensionSchema: z.ZodEnum<{
-    OBJECT: "OBJECT";
     COLOR: "COLOR";
-    SIZE: "SIZE";
     SHAPE: "SHAPE";
+    OBJECT: "OBJECT";
+    SIZE: "SIZE";
     COUNT: "COUNT";
     ORIENTATION: "ORIENTATION";
     DETAIL: "DETAIL";
 }>;
 export declare const kidsCompareRelationSchema: z.ZodEnum<{
+    INSIDE: "INSIDE";
+    OUTSIDE: "OUTSIDE";
     BIGGER: "BIGGER";
     SMALLER: "SMALLER";
     MORE: "MORE";
@@ -381,8 +609,6 @@ export declare const kidsCompareRelationSchema: z.ZodEnum<{
     SHORTER: "SHORTER";
     FULL: "FULL";
     EMPTY: "EMPTY";
-    INSIDE: "INSIDE";
-    OUTSIDE: "OUTSIDE";
     UP: "UP";
     DOWN: "DOWN";
 }>;

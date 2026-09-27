@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useKidsProfiles } from '../hooks'
+import { useKidsProfiles, useKidsSettings } from '../hooks'
 import { kidsStrings } from '../i18n'
 
 const categories = [
@@ -15,12 +15,17 @@ const categories = [
     title: kidsStrings.everyday,
     subtitle: 'Μαθαίνω για κάθε μέρα',
   },
+  { id: 'patterns', icon: '🧩', title: 'ΜΟΤΙΒΑ', subtitle: 'Βρίσκω τι έρχεται μετά', setting: 'patterns' },
+  { id: 'spatial', icon: '📍', title: 'ΠΟΥ ΕΙΝΑΙ;', subtitle: 'Μαθαίνω θέσεις', setting: 'spatial' },
+  { id: 'weather', icon: '🌦️', title: 'ΚΑΙΡΟΣ', subtitle: 'Τι χρειάζομαι;', setting: 'weather' },
+  { id: 'professions', icon: '👥', title: 'ΕΠΑΓΓΕΛΜΑΤΑ', subtitle: 'Ποιος χρησιμοποιεί τι;', setting: 'professions' },
 ] as const
 
 export function KidsHubPage() {
   const navigate = useNavigate()
   const profiles = useKidsProfiles()
   const [selected, setSelected] = useState(() => localStorage.getItem('activeKidsProfileId') ?? '')
+  const settings = useKidsSettings(selected || undefined)
   useEffect(() => {
     if (profiles.data?.[0] && !profiles.data.some((profile) => profile.id === selected)) {
       setSelected(profiles.data[0].id)
@@ -68,7 +73,9 @@ export function KidsHubPage() {
       </div>
       <h1>{kidsStrings.hubTitle}</h1>
       <div className="kids-category-grid">
-        {categories.map((category) => (
+        {categories.filter((category) =>
+          !('setting' in category) || (settings.data?.contentAreas?.[category.setting] ?? true),
+        ).map((category) => (
           <button
             type="button"
             key={category.id}

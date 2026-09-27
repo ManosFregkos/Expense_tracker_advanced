@@ -36,6 +36,20 @@ export class LearnChooseRoundGenerator implements RoundGenerator<LearnChooseRoun
       contentIds: [
         ...new Set([...teaching.map((card) => card.id), ...options.map((card) => card.id)]),
       ],
+      ...(input.deckId === 'professions'
+        ? {
+            conceptId:
+              target.category === 'PROFESSION_TOOL'
+                ? `tool:${target.id.replace('tool-', '')}`
+                : `profession:${target.id.replace('profession-', '')}`,
+            conceptType: 'PROFESSION' as const,
+          }
+        : input.deckId === 'weather'
+          ? {
+              conceptId: `weather:${target.id.replace('weather-condition-', '')}`,
+              conceptType: 'WEATHER' as const,
+            }
+          : {}),
       teachingCardIds: teaching.map((card) => card.id),
       optionCardIds: shuffled(
         options.map((card) => card.id),

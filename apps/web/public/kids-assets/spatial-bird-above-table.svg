@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Πουλί πάνω από το τραπέζι">
+  <rect width="480" height="300" rx="28" fill="#eef9ff"/>
+  <ellipse cx="240" cy="75" rx="58" ry="42" fill="#ffd75f" stroke="#785d18" stroke-width="8"/>
+  <circle cx="265" cy="65" r="5"/><path d="M296 76l35 15-35 13z" fill="#ef8b45"/>
+  <path d="M96 180h288v28H96zM130 208h25v70h-25zM325 208h25v70h-25z" fill="#9b6640"/>
+</svg>

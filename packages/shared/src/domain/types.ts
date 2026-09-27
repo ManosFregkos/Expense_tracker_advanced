@@ -125,6 +125,8 @@ export const KIDS_CARD_GAME_MODES = [
   'SIMPLE_SUM',
   'LEARN_FLAG',
   'FIND_FLAG',
+  'PATTERN_COMPLETE',
+  'SPATIAL_CONCEPT',
   'MIXED_PLAY',
 ] as const
 export type KidsCardGameMode = (typeof KIDS_CARD_GAME_MODES)[number]
@@ -167,12 +169,23 @@ export const KIDS_RELATIONSHIP_TYPES = [
   'WEARS',
   'WORN_ON',
   'PART_OF',
+  'USES',
 ] as const
 export type KidsRelationshipType = (typeof KIDS_RELATIONSHIP_TYPES)[number]
 
 export type LearningOrigin = 'SYSTEM' | 'CUSTOM'
 export type CardFamiliarity = 'NEW' | 'LEARNING' | 'FAMILIAR'
 export type KidsDifficulty = 1 | 2 | 3 | 4
+export type KidsLearningConceptType =
+  | 'NUMBER'
+  | 'FLAG'
+  | 'COUNTING'
+  | 'ADDITION'
+  | 'QUANTITY'
+  | 'PATTERN'
+  | 'SPATIAL'
+  | 'WEATHER'
+  | 'PROFESSION'
 
 export interface LearningCard {
   id: string
@@ -249,8 +262,12 @@ export const EVERYDAY_TOPICS = [
   'ANIMALS',
   'SOCIAL',
   'FOOD',
+  'WEATHER',
 ] as const
 export type EverydayTopic = (typeof EVERYDAY_TOPICS)[number]
+
+export const WEATHER_TOPICS = ['RAIN', 'SUN', 'COLD', 'SNOW', 'WIND'] as const
+export type WeatherTopic = (typeof WEATHER_TOPICS)[number]
 
 export const EMOTION_TYPES = ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'SURPRISED', 'TIRED'] as const
 export type EmotionType = (typeof EMOTION_TYPES)[number]
@@ -258,10 +275,80 @@ export type EmotionType = (typeof EMOTION_TYPES)[number]
 export interface EverydayScenario {
   id: string
   topic: EverydayTopic
+  subtopic?: WeatherTopic
   narration: string
   situationAssetId?: string
   choices: Array<{ id: string; assetId: string; narration: string }>
   preferredChoiceId: string
+  explanationNarration: string
+  difficulty: KidsDifficulty
+  enabled: boolean
+  origin: LearningOrigin
+  householdId?: string
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+}
+
+export const PATTERN_TYPES = ['ABAB', 'AABB', 'AAB', 'ABB', 'AAA_B', 'REPEATED_BLOCK'] as const
+export type PatternType = (typeof PATTERN_TYPES)[number]
+export const PATTERN_SEMANTIC_TYPES = ['COLOR', 'SHAPE', 'OBJECT'] as const
+export type PatternSemanticType = (typeof PATTERN_SEMANTIC_TYPES)[number]
+
+export interface PatternElement {
+  id: string
+  assetId: string
+  narration?: string
+  semanticType: PatternSemanticType
+  value: string
+}
+
+export interface PatternDefinition {
+  id: string
+  type: PatternType
+  elements: PatternElement[]
+  missingIndex: number
+  correctElement: PatternElement
+  distractorElements: PatternElement[]
+  narration: string
+  explanationNarration: string
+  difficulty: KidsDifficulty
+  category: PatternSemanticType
+  enabled: boolean
+  origin: LearningOrigin
+  householdId?: string
+  createdBy?: string
+  createdAt?: StoredDate
+  updatedAt?: StoredDate
+  archivedAt?: StoredDate
+}
+
+export const SPATIAL_CONCEPTS = [
+  'INSIDE',
+  'OUTSIDE',
+  'ABOVE',
+  'BELOW',
+  'IN_FRONT_OF',
+  'BEHIND',
+  'NEXT_TO',
+  'BETWEEN',
+] as const
+export type SpatialConcept = (typeof SPATIAL_CONCEPTS)[number]
+
+export interface SpatialChoice {
+  id: string
+  assetId: string
+  narration?: string
+}
+
+export interface SpatialScenario {
+  id: string
+  concept: SpatialConcept
+  narration: string
+  promptStyle: 'FIND_CORRECT_SCENE' | 'FIND_CORRECT_OBJECT'
+  choices: SpatialChoice[]
+  correctChoiceId: string
   explanationNarration: string
   difficulty: KidsDifficulty
   enabled: boolean
@@ -374,6 +461,12 @@ export interface KidsSettings {
     tier: 'AUTO' | 'STARTER' | 'EXPANDED'
     newPerSession: 2 | 3 | 4
   }
+  contentAreas?: {
+    patterns: boolean
+    spatial: boolean
+    weather: boolean
+    professions: boolean
+  }
   updatedAt: StoredDate
 }
 
@@ -404,7 +497,7 @@ export interface KidsCardAttempt {
   isCorrect: boolean
   attemptCount: number
   difficulty: KidsDifficulty
-  conceptType?: 'NUMBER' | 'FLAG' | 'COUNTING' | 'ADDITION' | 'QUANTITY'
+  conceptType?: KidsLearningConceptType
   conceptId?: string
   createdAt: StoredDate
 }

@@ -31,6 +31,20 @@ const categoryModes: Record<string, { mode: KidsCardGameMode; icon: string; deck
     { mode: 'EVERYDAY_CHOICE', icon: '🤝' },
     { mode: 'EMOTION', icon: '🙂' },
   ],
+  patterns: [
+    { mode: 'PATTERN_COMPLETE', icon: '🧩', deckId: 'patterns', label: 'ΤΙ ΕΡΧΕΤΑΙ ΜΕΤΑ;' },
+  ],
+  spatial: [
+    { mode: 'SPATIAL_CONCEPT', icon: '📍', deckId: 'spatial', label: 'ΜΑΘΑΙΝΩ ΘΕΣΕΙΣ' },
+  ],
+  weather: [
+    { mode: 'LEARN_AND_CHOOSE', icon: '☀️', deckId: 'weather', label: 'ΜΑΘΑΙΝΩ ΤΟΝ ΚΑΙΡΟ' },
+    { mode: 'EVERYDAY_CHOICE', icon: '🌦️', deckId: 'weather', label: 'ΤΙ ΧΡΕΙΑΖΟΜΑΙ;' },
+  ],
+  professions: [
+    { mode: 'LEARN_AND_CHOOSE', icon: '🎴', deckId: 'professions', label: 'ΜΑΘΑΙΝΩ' },
+    { mode: 'MATCHING', icon: '🧩', deckId: 'professions', label: 'ΠΟΙΟΣ ΤΟ ΧΡΗΣΙΜΟΠΟΙΕΙ;' },
+  ],
 }
 
 export function KidsModePage() {

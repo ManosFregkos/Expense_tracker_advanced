@@ -18,8 +18,8 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <MantineProvider theme={theme} defaultColorScheme="light">
+    <MantineProvider theme={theme} defaultColorScheme="light">
+      <ErrorBoundary>
         <Notifications position="top-right" />
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
@@ -28,7 +28,7 @@ createRoot(document.getElementById('root')!).render(
             </AuthProvider>
           </BrowserRouter>
         </QueryClientProvider>
-      </MantineProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
+    </MantineProvider>
   </StrictMode>,
 )

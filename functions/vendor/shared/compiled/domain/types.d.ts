@@ -31,17 +31,18 @@ export interface TimestampLike {
     toDate(): Date;
 }
 export type StoredDate = TimestampLike | Date;
-export declare const KIDS_CARD_GAME_MODES: readonly ["LEARN_AND_CHOOSE", "SAME_OR_DIFFERENT", "MATCHING", "ODD_ONE_OUT", "COMPARE", "EVERYDAY_CHOICE", "CLASSIFY", "SEQUENCE", "EMOTION", "MEMORY_PAIRS", "COUNT_FINGERS", "MATCH_FINGERS_TO_NUMBER", "COMPARE_QUANTITY", "COUNT_OBJECTS", "MATCH_QUANTITY_TO_NUMBER", "SIMPLE_SUM", "LEARN_FLAG", "FIND_FLAG", "MIXED_PLAY"];
+export declare const KIDS_CARD_GAME_MODES: readonly ["LEARN_AND_CHOOSE", "SAME_OR_DIFFERENT", "MATCHING", "ODD_ONE_OUT", "COMPARE", "EVERYDAY_CHOICE", "CLASSIFY", "SEQUENCE", "EMOTION", "MEMORY_PAIRS", "COUNT_FINGERS", "MATCH_FINGERS_TO_NUMBER", "COMPARE_QUANTITY", "COUNT_OBJECTS", "MATCH_QUANTITY_TO_NUMBER", "SIMPLE_SUM", "LEARN_FLAG", "FIND_FLAG", "PATTERN_COMPLETE", "SPATIAL_CONCEPT", "MIXED_PLAY"];
 export type KidsCardGameMode = (typeof KIDS_CARD_GAME_MODES)[number];
 export declare const KIDS_COMPARISON_DIMENSIONS: readonly ["OBJECT", "COLOR", "SIZE", "SHAPE", "COUNT", "ORIENTATION", "DETAIL"];
 export type KidsComparisonDimension = (typeof KIDS_COMPARISON_DIMENSIONS)[number];
 export declare const KIDS_COMPARE_RELATIONS: readonly ["BIGGER", "SMALLER", "MORE", "LESS", "TALLER", "SHORTER", "FULL", "EMPTY", "INSIDE", "OUTSIDE", "UP", "DOWN"];
 export type KidsCompareRelation = (typeof KIDS_COMPARE_RELATIONS)[number];
-export declare const KIDS_RELATIONSHIP_TYPES: readonly ["MATCHES", "USED_WITH", "LIVES_IN", "BELONGS_IN", "STORED_IN", "USED_IN", "PRODUCES", "WEARS", "WORN_ON", "PART_OF"];
+export declare const KIDS_RELATIONSHIP_TYPES: readonly ["MATCHES", "USED_WITH", "LIVES_IN", "BELONGS_IN", "STORED_IN", "USED_IN", "PRODUCES", "WEARS", "WORN_ON", "PART_OF", "USES"];
 export type KidsRelationshipType = (typeof KIDS_RELATIONSHIP_TYPES)[number];
 export type LearningOrigin = 'SYSTEM' | 'CUSTOM';
 export type CardFamiliarity = 'NEW' | 'LEARNING' | 'FAMILIAR';
 export type KidsDifficulty = 1 | 2 | 3 | 4;
+export type KidsLearningConceptType = 'NUMBER' | 'FLAG' | 'COUNTING' | 'ADDITION' | 'QUANTITY' | 'PATTERN' | 'SPATIAL' | 'WEATHER' | 'PROFESSION';
 export interface LearningCard {
     id: string;
     deckId: string;
@@ -105,13 +106,16 @@ export interface LearningRelationship {
     updatedAt?: StoredDate;
     archivedAt?: StoredDate;
 }
-export declare const EVERYDAY_TOPICS: readonly ["HYGIENE", "KINDNESS", "SAFETY", "HOME", "ROUTINE", "ANIMALS", "SOCIAL", "FOOD"];
+export declare const EVERYDAY_TOPICS: readonly ["HYGIENE", "KINDNESS", "SAFETY", "HOME", "ROUTINE", "ANIMALS", "SOCIAL", "FOOD", "WEATHER"];
 export type EverydayTopic = (typeof EVERYDAY_TOPICS)[number];
+export declare const WEATHER_TOPICS: readonly ["RAIN", "SUN", "COLD", "SNOW", "WIND"];
+export type WeatherTopic = (typeof WEATHER_TOPICS)[number];
 export declare const EMOTION_TYPES: readonly ["HAPPY", "SAD", "ANGRY", "SCARED", "SURPRISED", "TIRED"];
 export type EmotionType = (typeof EMOTION_TYPES)[number];
 export interface EverydayScenario {
     id: string;
     topic: EverydayTopic;
+    subtopic?: WeatherTopic;
     narration: string;
     situationAssetId?: string;
     choices: Array<{
@@ -120,6 +124,60 @@ export interface EverydayScenario {
         narration: string;
     }>;
     preferredChoiceId: string;
+    explanationNarration: string;
+    difficulty: KidsDifficulty;
+    enabled: boolean;
+    origin: LearningOrigin;
+    householdId?: string;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+}
+export declare const PATTERN_TYPES: readonly ["ABAB", "AABB", "AAB", "ABB", "AAA_B", "REPEATED_BLOCK"];
+export type PatternType = (typeof PATTERN_TYPES)[number];
+export declare const PATTERN_SEMANTIC_TYPES: readonly ["COLOR", "SHAPE", "OBJECT"];
+export type PatternSemanticType = (typeof PATTERN_SEMANTIC_TYPES)[number];
+export interface PatternElement {
+    id: string;
+    assetId: string;
+    narration?: string;
+    semanticType: PatternSemanticType;
+    value: string;
+}
+export interface PatternDefinition {
+    id: string;
+    type: PatternType;
+    elements: PatternElement[];
+    missingIndex: number;
+    correctElement: PatternElement;
+    distractorElements: PatternElement[];
+    narration: string;
+    explanationNarration: string;
+    difficulty: KidsDifficulty;
+    category: PatternSemanticType;
+    enabled: boolean;
+    origin: LearningOrigin;
+    householdId?: string;
+    createdBy?: string;
+    createdAt?: StoredDate;
+    updatedAt?: StoredDate;
+    archivedAt?: StoredDate;
+}
+export declare const SPATIAL_CONCEPTS: readonly ["INSIDE", "OUTSIDE", "ABOVE", "BELOW", "IN_FRONT_OF", "BEHIND", "NEXT_TO", "BETWEEN"];
+export type SpatialConcept = (typeof SPATIAL_CONCEPTS)[number];
+export interface SpatialChoice {
+    id: string;
+    assetId: string;
+    narration?: string;
+}
+export interface SpatialScenario {
+    id: string;
+    concept: SpatialConcept;
+    narration: string;
+    promptStyle: 'FIND_CORRECT_SCENE' | 'FIND_CORRECT_OBJECT';
+    choices: SpatialChoice[];
+    correctChoiceId: string;
     explanationNarration: string;
     difficulty: KidsDifficulty;
     enabled: boolean;
@@ -228,6 +286,12 @@ export interface KidsSettings {
         tier: 'AUTO' | 'STARTER' | 'EXPANDED';
         newPerSession: 2 | 3 | 4;
     };
+    contentAreas?: {
+        patterns: boolean;
+        spatial: boolean;
+        weather: boolean;
+        professions: boolean;
+    };
     updatedAt: StoredDate;
 }
 export interface KidsCardSession {
@@ -256,7 +320,7 @@ export interface KidsCardAttempt {
     isCorrect: boolean;
     attemptCount: number;
     difficulty: KidsDifficulty;
-    conceptType?: 'NUMBER' | 'FLAG' | 'COUNTING' | 'ADDITION' | 'QUANTITY';
+    conceptType?: KidsLearningConceptType;
     conceptId?: string;
     createdAt: StoredDate;
 }

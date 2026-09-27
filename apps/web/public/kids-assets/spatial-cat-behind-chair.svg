@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Γάτα πίσω από την καρέκλα">
+  <rect width="480" height="300" rx="28" fill="#fff9ee"/>
+  <path d="M130 100l28-38 27 38" fill="#f29b55" stroke="#74451f" stroke-width="8"/>
+  <circle cx="158" cy="124" r="54" fill="#f29b55" stroke="#74451f" stroke-width="8"/>
+  <circle cx="140" cy="118" r="5"/><circle cx="177" cy="118" r="5"/>
+  <path d="M100 142h230v92H100zM120 234h24v42h-24zM286 234h24v42h-24zM120 48h190v94H120z" fill="#8c6244" stroke="#593b28" stroke-width="8"/>
+</svg>

@@ -91,6 +91,8 @@ export const KIDS_CARD_GAME_MODES = [
     'SIMPLE_SUM',
     'LEARN_FLAG',
     'FIND_FLAG',
+    'PATTERN_COMPLETE',
+    'SPATIAL_CONCEPT',
     'MIXED_PLAY',
 ];
 export const KIDS_COMPARISON_DIMENSIONS = [
@@ -127,6 +129,7 @@ export const KIDS_RELATIONSHIP_TYPES = [
     'WEARS',
     'WORN_ON',
     'PART_OF',
+    'USES',
 ];
 export const EVERYDAY_TOPICS = [
     'HYGIENE',
@@ -137,8 +140,22 @@ export const EVERYDAY_TOPICS = [
     'ANIMALS',
     'SOCIAL',
     'FOOD',
+    'WEATHER',
 ];
+export const WEATHER_TOPICS = ['RAIN', 'SUN', 'COLD', 'SNOW', 'WIND'];
 export const EMOTION_TYPES = ['HAPPY', 'SAD', 'ANGRY', 'SCARED', 'SURPRISED', 'TIRED'];
+export const PATTERN_TYPES = ['ABAB', 'AABB', 'AAB', 'ABB', 'AAA_B', 'REPEATED_BLOCK'];
+export const PATTERN_SEMANTIC_TYPES = ['COLOR', 'SHAPE', 'OBJECT'];
+export const SPATIAL_CONCEPTS = [
+    'INSIDE',
+    'OUTSIDE',
+    'ABOVE',
+    'BELOW',
+    'IN_FRONT_OF',
+    'BEHIND',
+    'NEXT_TO',
+    'BETWEEN',
+];
 export const TASK_ACTIVITY_ACTIONS = [
     'CREATED',
     'UPDATED',

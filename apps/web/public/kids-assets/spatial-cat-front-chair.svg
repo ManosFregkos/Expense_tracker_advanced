@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Γάτα μπροστά από την καρέκλα">
+  <rect width="480" height="300" rx="28" fill="#fff9ee"/>
+  <path d="M210 45h150v125H210zM225 170h22v105h-22zM325 170h22v105h-22z" fill="#8c6244"/>
+  <path d="M130 122l28-38 27 38" fill="#f29b55" stroke="#74451f" stroke-width="8"/>
+  <circle cx="158" cy="146" r="54" fill="#f29b55" stroke="#74451f" stroke-width="8"/>
+  <ellipse cx="158" cy="228" rx="68" ry="54" fill="#f29b55" stroke="#74451f" stroke-width="8"/>
+  <circle cx="140" cy="140" r="5"/><circle cx="177" cy="140" r="5"/>
+</svg>

@@ -36,9 +36,26 @@ export function AssetChoiceCard({
       aria-label={label}
       {...focusable}
     >
-      <span className="learning-card-symbol" aria-hidden="true">
-        {asset?.symbol ?? '⭐'}
-      </span>
+      {asset?.url ? (
+        <>
+          <img
+            className="learning-card-image"
+            src={asset.url}
+            alt=""
+            onError={(event) => {
+              event.currentTarget.hidden = true
+              event.currentTarget.nextElementSibling?.removeAttribute('hidden')
+            }}
+          />
+          <span className="learning-card-image-fallback" aria-hidden="true" hidden>
+            {asset.symbol || '🖼️'}
+          </span>
+        </>
+      ) : (
+        <span className="learning-card-symbol" aria-hidden="true">
+          {asset?.symbol ?? '⭐'}
+        </span>
+      )}
       <span className="learning-card-title">{label}</span>
     </button>
   )

@@ -40,6 +40,12 @@ export function KidsParentProgressPage() {
   }
   const numberProgress = items.filter((item) => item.cardId.startsWith('number:'))
   const flagProgress = items.filter((item) => item.cardId.startsWith('flag:'))
+  const patternProgress = items.filter((item) => item.cardId.startsWith('pattern:'))
+  const spatialProgress = items.filter((item) => item.cardId.startsWith('spatial:'))
+  const weatherProgress = items.filter((item) => item.cardId.startsWith('weather:'))
+  const professionProgress = items.filter(
+    (item) => item.cardId.startsWith('profession:') || item.cardId.startsWith('tool:'),
+  )
   return (
     <div className="page">
       <Group justify="space-between" className="page-header">
@@ -93,6 +99,34 @@ export function KidsParentProgressPage() {
             <Text>Μαθαίνονται τώρα: {flagProgress.filter((item) => item.status === 'LEARNING').length}</Text>
             <Text>Αναγνωρίζονται συχνά: {flagProgress.filter((item) => item.status === 'FAMILIAR').length}</Text>
             <Text>Χρειάζονται περισσότερη επανάληψη: {flagProgress.filter((item) => (item.recentMisses ?? 0) > 0).length}</Text>
+          </Stack>
+        </Card>
+        <Card withBorder padding="lg">
+          <Title order={3} mb="md">Μοτίβα και θέσεις</Title>
+          <Stack gap="xs">
+            <Text>Μοτίβα που χρησιμοποιήθηκαν: {patternProgress.length}</Text>
+            <Text>Χωρικές έννοιες που είδε: {spatialProgress.length}</Text>
+            <Text>
+              Θέσεις για περισσότερη επανάληψη:{' '}
+              {spatialProgress
+                .filter((item) => (item.recentMisses ?? 0) > 0)
+                .map((item) => item.cardId.replace('spatial:', ''))
+                .join(', ') || '—'}
+            </Text>
+          </Stack>
+        </Card>
+        <Card withBorder padding="lg">
+          <Title order={3} mb="md">Καιρός και επαγγέλματα</Title>
+          <Stack gap="xs">
+            <Text>Καταστάσεις καιρού που εξασκήθηκαν: {weatherProgress.length}</Text>
+            <Text>Αντιστοιχίσεις επαγγελμάτων: {professionProgress.length}</Text>
+            <Text>
+              Εργαλεία ή επαγγέλματα για περισσότερη επανάληψη:{' '}
+              {professionProgress
+                .filter((item) => (item.recentMisses ?? 0) > 0)
+                .map((item) => item.cardId.replace('profession:', '').replace('tool:', ''))
+                .join(', ') || '—'}
+            </Text>
           </Stack>
         </Card>
         <Card withBorder padding="lg">

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Μπάλα μέσα στο κουτί">
+  <rect width="480" height="300" rx="28" fill="#f8fcfb"/>
+  <path d="M115 86h250l-22 160H137z" fill="#d8a56b" stroke="#6d4a2b" stroke-width="10"/>
+  <circle cx="240" cy="166" r="54" fill="#ef6262" stroke="#8a3030" stroke-width="9"/>
+  <path d="M115 86l48 42h154l48-42" fill="none" stroke="#6d4a2b" stroke-width="10"/>
+</svg>

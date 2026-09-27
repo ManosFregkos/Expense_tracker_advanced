@@ -35,5 +35,7 @@ export const modeLabels: Record<KidsCardGameMode, string> = {
   SIMPLE_SUM: 'Προσθέτω',
   LEARN_FLAG: 'Μαθαίνω σημαίες',
   FIND_FLAG: 'Βρες τη σημαία',
+  PATTERN_COMPLETE: 'Συμπλήρωσε το μοτίβο',
+  SPATIAL_CONCEPT: 'Πού είναι;',
   MIXED_PLAY: 'Παίζουμε μαζί',
 }

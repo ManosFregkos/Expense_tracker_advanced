@@ -24,6 +24,16 @@ import {
   type IllustratedAsset,
 } from './advanced'
 import { COUNT_OBJECTS, EUROPEAN_COUNTRIES, FINGER_ASSETS, validateEuropeanCountries } from '../../early-learning/content'
+import { PATTERN_ASSETS } from './patterns'
+import { SPATIAL_ASSETS } from './spatial'
+import { WEATHER_ASSETS } from './weather/scenarios'
+import { WEATHER_CONDITION_ASSETS, WEATHER_CONDITION_CARDS } from './weather/conditions'
+import {
+  PROFESSION_ASSETS,
+  PROFESSION_CARDS,
+  PROFESSIONS_DECK,
+  PROFESSION_RELATIONSHIPS,
+} from './professions'
 
 const seeds = [
   animals,
@@ -84,6 +94,45 @@ const advancedDecks: LearningDeck[] = [
     origin: 'SYSTEM',
     contentVersion: 2,
   },
+  {
+    id: 'patterns',
+    title: 'Μοτίβα',
+    description: 'Βρίσκω τι έρχεται μετά',
+    narrationTitle: 'Μοτίβα',
+    category: 'PATTERNS',
+    supportedModes: ['PATTERN_COMPLETE'],
+    cardIds: [],
+    enabled: true,
+    origin: 'SYSTEM',
+    contentVersion: 4,
+    icon: '🧩',
+  },
+  {
+    id: 'spatial',
+    title: 'Πού είναι;',
+    description: 'Μαθαίνω θέσεις',
+    narrationTitle: 'Πού είναι;',
+    category: 'SPATIAL',
+    supportedModes: ['SPATIAL_CONCEPT'],
+    cardIds: [],
+    enabled: true,
+    origin: 'SYSTEM',
+    contentVersion: 4,
+    icon: '📍',
+  },
+  {
+    id: 'weather',
+    title: 'Καιρός',
+    description: 'Τι χρειάζομαι;',
+    narrationTitle: 'Καιρός',
+    category: 'WEATHER',
+    supportedModes: ['LEARN_AND_CHOOSE', 'EVERYDAY_CHOICE'],
+    cardIds: WEATHER_CONDITION_CARDS.map((card) => card.id),
+    enabled: true,
+    origin: 'SYSTEM',
+    contentVersion: 4,
+    icon: '🌦️',
+  },
 ]
 
 export const SYSTEM_DECKS: LearningDeck[] = [
@@ -96,8 +145,13 @@ export const SYSTEM_DECKS: LearningDeck[] = [
       : item.deck.supportedModes,
   })),
   ...advancedDecks,
+  PROFESSIONS_DECK,
 ]
-export const SYSTEM_CARDS: LearningCard[] = content.flatMap((item) => item.cards)
+export const SYSTEM_CARDS: LearningCard[] = [
+  ...content.flatMap((item) => item.cards),
+  ...PROFESSION_CARDS,
+  ...WEATHER_CONDITION_CARDS,
+]
 export const CARDS_BY_ID = new Map(SYSTEM_CARDS.map((card) => [card.id, card]))
 export const DECKS_BY_ID = new Map(SYSTEM_DECKS.map((deck) => [deck.id, deck]))
 
@@ -109,6 +163,13 @@ export const KIDS_ASSETS = new Map<string, IllustratedAsset>(
 for (const [id, value] of [...ADVANCED_ASSETS, ...EMOTION_ASSETS, ...CLASSIFICATION_DESTINATIONS]) {
   KIDS_ASSETS.set(id, value)
 }
+for (const [id, value] of [
+  ...PATTERN_ASSETS,
+  ...SPATIAL_ASSETS,
+  ...WEATHER_ASSETS,
+  ...WEATHER_CONDITION_ASSETS,
+  ...PROFESSION_ASSETS,
+]) KIDS_ASSETS.set(id, value)
 for (const finger of FINGER_ASSETS)
   KIDS_ASSETS.set(finger.assetId, { symbol: '', color: '#fff8eb', label: finger.narration, url: `/kids-assets/${finger.assetId}.svg` })
 for (const object of COUNT_OBJECTS)
@@ -170,6 +231,7 @@ export const SYSTEM_RELATIONSHIPS: LearningRelationship[] = [
     type: 'USED_WITH',
     narration: 'Το κουτάλι ταιριάζει με το μπολ.',
   },
+  ...PROFESSION_RELATIONSHIPS,
 ]
 
 export const ALL_SYSTEM_RELATIONSHIPS = [
@@ -179,6 +241,7 @@ export const ALL_SYSTEM_RELATIONSHIPS = [
 
 export function getSupportedModes(deck: LearningDeck) {
   return deck.supportedModes.filter((mode) => {
+    if (mode === 'PATTERN_COMPLETE' || mode === 'SPATIAL_CONCEPT') return true
     if (['COUNT_FINGERS', 'MATCH_FINGERS_TO_NUMBER', 'COUNT_OBJECTS', 'MATCH_QUANTITY_TO_NUMBER', 'COMPARE_QUANTITY', 'SIMPLE_SUM', 'LEARN_FLAG', 'FIND_FLAG'].includes(mode)) return true
     if (mode === 'MATCHING')
       return SYSTEM_RELATIONSHIPS.some(

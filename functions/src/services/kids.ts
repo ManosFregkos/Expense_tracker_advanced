@@ -77,6 +77,7 @@ export const updateKidsSettings = secureCallable(updateKidsSettingsSchema, async
         currentDifficulty: difficulty,
         ...(input.earlyMath ? { earlyMath: input.earlyMath } : {}),
         ...(input.flags ? { flags: input.flags } : {}),
+        ...(input.contentAreas ? { contentAreas: input.contentAreas } : {}),
         updatedAt: Timestamp.now(),
       },
       { merge: true },

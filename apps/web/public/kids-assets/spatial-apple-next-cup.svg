@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Μήλο δίπλα στο ποτήρι">
+  <rect width="480" height="300" rx="28" fill="#f8fcfb"/>
+  <path d="M270 75h100l-12 160h-76z" fill="#8ed8ef" stroke="#286d86" stroke-width="9"/>
+  <circle cx="180" cy="176" r="66" fill="#ef6262" stroke="#8a3030" stroke-width="9"/>
+  <path d="M180 110c0-28 13-42 32-52" fill="none" stroke="#5c732b" stroke-width="12"/>
+  <path d="M205 76c24-13 45-5 53 9-24 12-43 7-53-9z" fill="#6aaa4f"/>
+</svg>

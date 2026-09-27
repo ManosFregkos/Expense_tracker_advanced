@@ -6,6 +6,10 @@ import {
   KIDS_RELATIONSHIP_TYPES,
   EMOTION_TYPES,
   EVERYDAY_TOPICS,
+  PATTERN_SEMANTIC_TYPES,
+  PATTERN_TYPES,
+  SPATIAL_CONCEPTS,
+  WEATHER_TOPICS,
 } from '../domain/types.js'
 import { idSchema } from './common.js'
 
@@ -92,6 +96,7 @@ export const everydayScenarioSchema = z
   .object({
     id: documentIdSchema,
     topic: z.enum(EVERYDAY_TOPICS),
+    subtopic: z.enum(WEATHER_TOPICS).optional(),
     narration: z.string().trim().min(1).max(240),
     situationAssetId: documentIdSchema.optional(),
     choices: z
@@ -116,6 +121,12 @@ export const everydayScenarioSchema = z
     archivedAt: z.unknown().optional(),
   })
   .superRefine((value, context) => {
+    if (value.topic === 'WEATHER' && !value.subtopic)
+      context.addIssue({
+        code: 'custom',
+        path: ['subtopic'],
+        message: 'Weather scenarios require a subtopic.',
+      })
     const ids = value.choices.map((choice) => choice.id)
     if (new Set(ids).size !== ids.length)
       context.addIssue({ code: 'custom', path: ['choices'], message: 'Choice IDs must be unique.' })
@@ -125,6 +136,132 @@ export const everydayScenarioSchema = z
         path: ['preferredChoiceId'],
         message: 'Preferred choice must appear exactly once.',
       })
+  })
+
+export const patternElementSchema = z.object({
+  id: documentIdSchema,
+  assetId: documentIdSchema,
+  narration: z.string().trim().min(1).max(120).optional(),
+  semanticType: z.enum(PATTERN_SEMANTIC_TYPES),
+  value: z.string().trim().min(1).max(60),
+})
+
+export const patternDefinitionSchema = z
+  .object({
+    id: documentIdSchema,
+    type: z.enum(PATTERN_TYPES),
+    elements: z.array(patternElementSchema).min(4).max(6),
+    missingIndex: z.number().int().min(0).max(5),
+    correctElement: patternElementSchema,
+    distractorElements: z.array(patternElementSchema).min(1).max(3),
+    narration: z.string().trim().min(1).max(240),
+    explanationNarration: z.string().trim().min(1).max(240),
+    difficulty: kidsDifficultySchema,
+    category: z.enum(PATTERN_SEMANTIC_TYPES),
+    enabled: z.boolean(),
+    origin: z.enum(['SYSTEM', 'CUSTOM']),
+    householdId: documentIdSchema.optional(),
+    createdBy: documentIdSchema.optional(),
+    createdAt: z.unknown().optional(),
+    updatedAt: z.unknown().optional(),
+    archivedAt: z.unknown().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.missingIndex >= value.elements.length)
+      context.addIssue({ code: 'custom', path: ['missingIndex'], message: 'Missing index is outside the pattern.' })
+    if (value.elements[value.missingIndex]?.id !== value.correctElement.id)
+      context.addIssue({ code: 'custom', path: ['correctElement'], message: 'Correct element must occupy the missing slot.' })
+    const answerIds = [value.correctElement.id, ...value.distractorElements.map((item) => item.id)]
+    if (new Set(answerIds).size !== answerIds.length)
+      context.addIssue({ code: 'custom', path: ['distractorElements'], message: 'Pattern answers must be unique.' })
+    if (value.elements.some((item) => item.semanticType !== value.category))
+      context.addIssue({ code: 'custom', path: ['elements'], message: 'Pattern elements must match the category.' })
+  })
+
+export const spatialChoiceSchema = z.object({
+  id: documentIdSchema,
+  assetId: documentIdSchema,
+  narration: z.string().trim().min(1).max(160).optional(),
+})
+
+export const spatialScenarioSchema = z
+  .object({
+    id: documentIdSchema,
+    concept: z.enum(SPATIAL_CONCEPTS),
+    narration: z.string().trim().min(1).max(240),
+    promptStyle: z.enum(['FIND_CORRECT_SCENE', 'FIND_CORRECT_OBJECT']),
+    choices: z.array(spatialChoiceSchema).min(2).max(3),
+    correctChoiceId: documentIdSchema,
+    explanationNarration: z.string().trim().min(1).max(240),
+    difficulty: kidsDifficultySchema,
+    enabled: z.boolean(),
+    origin: z.enum(['SYSTEM', 'CUSTOM']),
+    householdId: documentIdSchema.optional(),
+    createdBy: documentIdSchema.optional(),
+    createdAt: z.unknown().optional(),
+    updatedAt: z.unknown().optional(),
+    archivedAt: z.unknown().optional(),
+  })
+  .superRefine((value, context) => {
+    const ids = value.choices.map((choice) => choice.id)
+    const assetIds = value.choices.map((choice) => choice.assetId)
+    if (new Set(ids).size !== ids.length || new Set(assetIds).size !== assetIds.length)
+      context.addIssue({ code: 'custom', path: ['choices'], message: 'Spatial choices must be unique.' })
+    if (ids.filter((id) => id === value.correctChoiceId).length !== 1)
+      context.addIssue({ code: 'custom', path: ['correctChoiceId'], message: 'Correct choice must appear exactly once.' })
+  })
+
+const kidsRoundCommonSchema = z.object({
+  id: documentIdSchema,
+  difficulty: kidsDifficultySchema,
+  deckId: documentIdSchema,
+  instructionText: z.string().trim().min(1).max(240),
+  narrationText: z.string().trim().min(1).max(240),
+  skill: z.string().trim().min(1).max(80),
+  contentIds: z.array(documentIdSchema).min(1),
+})
+
+export const patternCompleteRoundSchema = kidsRoundCommonSchema
+  .extend({
+    mode: z.literal('PATTERN_COMPLETE'),
+    patternId: documentIdSchema,
+    patternType: z.enum(PATTERN_TYPES),
+    slots: z.array(patternElementSchema.extend({ missing: z.boolean() })).min(4).max(6),
+    options: z.array(patternElementSchema).min(2).max(3),
+    correctElementId: documentIdSchema,
+    explanationNarration: z.string().trim().min(1).max(240),
+    conceptId: z.string().regex(/^pattern:[a-z0-9-]+$/),
+    conceptType: z.literal('PATTERN'),
+  })
+  .superRefine((value, context) => {
+    if (value.slots.filter((slot) => slot.missing).length !== 1)
+      context.addIssue({ code: 'custom', path: ['slots'], message: 'Exactly one pattern slot must be missing.' })
+    const ids = value.options.map((option) => option.id)
+    if (new Set(ids).size !== ids.length || ids.filter((id) => id === value.correctElementId).length !== 1)
+      context.addIssue({ code: 'custom', path: ['options'], message: 'Pattern round must have one unique correct answer.' })
+  })
+
+export const spatialConceptRoundSchema = kidsRoundCommonSchema
+  .extend({
+    mode: z.literal('SPATIAL_CONCEPT'),
+    scenarioId: documentIdSchema,
+    concept: z.enum(SPATIAL_CONCEPTS),
+    promptStyle: z.enum(['FIND_CORRECT_SCENE', 'FIND_CORRECT_OBJECT']),
+    options: z.array(spatialChoiceSchema).min(2).max(3),
+    correctChoiceId: documentIdSchema,
+    explanationNarration: z.string().trim().min(1).max(240),
+    conceptId: z.string().regex(/^spatial:[a-z0-9-]+$/),
+    conceptType: z.literal('SPATIAL'),
+  })
+  .superRefine((value, context) => {
+    const ids = value.options.map((option) => option.id)
+    const assets = value.options.map((option) => option.assetId)
+    if (
+      new Set(ids).size !== ids.length ||
+      new Set(assets).size !== assets.length ||
+      ids.filter((id) => id === value.correctChoiceId).length !== 1
+    )
+      context.addIssue({ code: 'custom', path: ['options'], message: 'Spatial round must have one unique correct scene.' })
   })
 
 export const sequenceDefinitionSchema = z
@@ -226,6 +363,8 @@ export const kidsCustomContentKindSchema = z.enum([
   'EVERYDAY_SCENARIO',
   'SEQUENCE',
   'EMOTION_SCENARIO',
+  'PATTERN',
+  'SPATIAL_SCENARIO',
 ])
 
 export const saveKidsCustomContentSchema = z.object({
@@ -270,6 +409,14 @@ export const updateKidsSettingsSchema = z.object({
       newPerSession: z.union([z.literal(2), z.literal(3), z.literal(4)]),
     })
     .optional(),
+  contentAreas: z
+    .object({
+      patterns: z.boolean(),
+      spatial: z.boolean(),
+      weather: z.boolean(),
+      professions: z.boolean(),
+    })
+    .optional(),
 })
 
 export const startKidsSessionSchema = z.object({
@@ -295,7 +442,7 @@ export const persistKidsAttemptSchema = z.object({
   isCorrect: z.boolean(),
   attemptCount: z.number().int().min(1).max(20),
   difficulty: kidsDifficultySchema,
-  conceptType: z.enum(['NUMBER', 'FLAG', 'COUNTING', 'ADDITION', 'QUANTITY']).optional(),
+  conceptType: z.enum(['NUMBER', 'FLAG', 'COUNTING', 'ADDITION', 'QUANTITY', 'PATTERN', 'SPATIAL', 'WEATHER', 'PROFESSION']).optional(),
   conceptId: z.string().trim().min(1).max(80).optional(),
 })
 

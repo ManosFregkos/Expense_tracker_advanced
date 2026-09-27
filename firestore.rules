@@ -70,6 +70,8 @@ service cloud.firestore {
       match /kidsEverydayScenarios/{contentId} { allow read: if isMember(householdId); allow write: if false; }
       match /kidsSequences/{contentId} { allow read: if isMember(householdId); allow write: if false; }
       match /kidsEmotionScenarios/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsPatterns/{contentId} { allow read: if isMember(householdId); allow write: if false; }
+      match /kidsSpatialScenarios/{contentId} { allow read: if isMember(householdId); allow write: if false; }
       match /kidsAssets/{contentId} { allow read: if isMember(householdId); allow write: if false; }
     }
 

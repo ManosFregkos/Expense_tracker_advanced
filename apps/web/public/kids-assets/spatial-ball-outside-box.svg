@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Μπάλα έξω από το κουτί">
+  <rect width="480" height="300" rx="28" fill="#f8fcfb"/>
+  <path d="M220 90h190l-18 150H238z" fill="#d8a56b" stroke="#6d4a2b" stroke-width="10"/>
+  <circle cx="112" cy="200" r="54" fill="#ef6262" stroke="#8a3030" stroke-width="9"/>
+</svg>

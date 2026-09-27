@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Παιχνίδι μακριά από τα τουβλάκια">
+  <rect width="480" height="300" rx="28" fill="#f8fcfb"/>
+  <rect x="35" y="125" width="90" height="90" rx="12" fill="#5eace8" stroke="#245d87" stroke-width="8"/>
+  <rect x="135" y="125" width="90" height="90" rx="12" fill="#68c584" stroke="#347048" stroke-width="8"/>
+  <circle cx="390" cy="170" r="48" fill="#f4c94e" stroke="#8d7021" stroke-width="9"/>
+</svg>

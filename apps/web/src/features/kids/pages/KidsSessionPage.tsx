@@ -2,6 +2,7 @@ import {
   KIDS_CARD_GAME_MODES,
   type KidsCardGameMode,
   type KidsDifficulty,
+  type KidsLearningConceptType,
 } from '@family-expense-tracker/shared'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -9,6 +10,8 @@ import { useHousehold } from '../../households/HouseholdProvider'
 import { LearningCardView } from '../components/LearningCardView'
 import { AssetChoiceCard } from '../components/AssetChoiceCard'
 import { MemoryPairsBoard } from '../components/MemoryPairsBoard'
+import { PatternRoundView } from '../components/PatternRoundView'
+import { SpatialRoundView } from '../components/SpatialRoundView'
 import { RepeatNarrationButton } from '../components/RepeatNarrationButton'
 import { TVCardGrid } from '../components/TVCardGrid'
 import {
@@ -77,6 +80,8 @@ function correctAnswer(round: KidsCardRound): string {
   if (round.mode === 'SEQUENCE') return round.correctStepId
   if (round.mode === 'EMOTION') return round.expectedEmotion
   if (round.mode === 'MEMORY_PAIRS') return round.contentIds[0] ?? round.id
+  if (round.mode === 'PATTERN_COMPLETE') return round.correctElementId
+  if (round.mode === 'SPATIAL_CONCEPT') return round.correctChoiceId
   return round.correctCardId
 }
 
@@ -101,11 +106,23 @@ function feedbackFor(round: KidsCardRound): string {
   if (round.mode === 'EMOTION')
     return round.explanationNarration ?? 'Ναι! Αυτό ταιριάζει στην ιστορία.'
   if (round.mode === 'MEMORY_PAIRS') return 'Μπράβο! Βρήκες όλα τα ζευγάρια.'
+  if (round.mode === 'PATTERN_COMPLETE' || round.mode === 'SPATIAL_CONCEPT')
+    return round.explanationNarration
   const card = CARDS_BY_ID.get(round.correctCardId)
   if (round.mode === 'ODD_ONE_OUT')
     return `Μπράβο! ${card?.title ?? 'Αυτό'} δεν ταιριάζει με τα άλλα.`
   if (round.mode === 'COMPARE') return `Ναι! ${card?.title ?? 'Αυτό'} είναι η σωστή επιλογή.`
   return `Μπράβο! Αυτό είναι ${card?.title ?? 'η σωστή κάρτα'}.`
+}
+
+function conceptTypeFor(round: KidsCardRound): KidsLearningConceptType | undefined {
+  if (!round.conceptId) return undefined
+  if (round.conceptType) return round.conceptType
+  if (round.conceptId.startsWith('flag:')) return 'FLAG'
+  if (round.conceptId.startsWith('addition:')) return 'ADDITION'
+  if (round.conceptId.startsWith('quantity:')) return 'QUANTITY'
+  if (round.conceptId.startsWith('number:')) return 'NUMBER'
+  return undefined
 }
 
 function seedFrom(value: string) {
@@ -190,7 +207,13 @@ export function KidsSessionPage() {
     (!(mode === 'SIMPLE_SUM') || settings.data?.earlyMath?.addition !== 'OFF') &&
     (!(['COUNT_FINGERS', 'MATCH_FINGERS_TO_NUMBER'].includes(mode)) || settings.data?.earlyMath?.fingersEnabled !== false) &&
     (!(['COUNT_OBJECTS', 'MATCH_QUANTITY_TO_NUMBER'].includes(mode)) || settings.data?.earlyMath?.countObjectsEnabled !== false) &&
-    (!(['LEARN_FLAG', 'FIND_FLAG'].includes(mode)) || settings.data?.flags?.enabled !== false)
+    (!(['LEARN_FLAG', 'FIND_FLAG'].includes(mode)) || settings.data?.flags?.enabled !== false) &&
+    (preview ||
+      deckId !== 'patterns' ||
+      (settings.data?.contentAreas?.patterns ?? true)) &&
+    (preview || deckId !== 'spatial' || (settings.data?.contentAreas?.spatial ?? true)) &&
+    (preview || deckId !== 'weather' || (settings.data?.contentAreas?.weather ?? true)) &&
+    (preview || deckId !== 'professions' || (settings.data?.contentAreas?.professions ?? true))
   const rounds = useMemo(() => {
     if (!valid || !settings.data || !isMode(mode)) return []
     const fixedDifficulty = { EASY: 1, MEDIUM: 2, HARD: 4 } as const
@@ -214,6 +237,7 @@ export function KidsSessionPage() {
       maximumSum: settings.data.earlyMath?.addition === 'WITHIN_THREE' ? 3 : 5,
       flagTier: settings.data.flags?.tier === 'STARTER' ? 1 : settings.data.flags?.tier === 'EXPANDED' ? 3 : undefined,
       newFlagsPerSession: settings.data.flags?.newPerSession ?? 3,
+      enabledContentAreas: settings.data.contentAreas,
     })
   }, [
     deckId,
@@ -324,22 +348,16 @@ export function KidsSessionPage() {
         childProfileId: profileId,
         mode: round.mode,
         roundId: round.id,
-        contentId: 'conceptId' in round ? round.conceptId : correctAnswer(round),
+        contentId: round.conceptId ?? correctAnswer(round),
         deckId: round.deckId,
         selectedOptionIds: [answerId],
         isCorrect,
         attemptCount: nextAttempt,
         difficulty: round.difficulty,
-        ...('conceptId' in round
+        ...(round.conceptId && conceptTypeFor(round)
           ? {
               conceptId: round.conceptId,
-              conceptType: round.conceptId.startsWith('flag:')
-                ? ('FLAG' as const)
-                : round.conceptId.startsWith('addition:')
-                  ? ('ADDITION' as const)
-                  : round.conceptId.startsWith('quantity:')
-                    ? ('QUANTITY' as const)
-                    : ('NUMBER' as const),
+              conceptType: conceptTypeFor(round)!,
             }
           : {}),
       })
@@ -357,6 +375,8 @@ export function KidsSessionPage() {
         ? 'Για μέτρησέ τα άλλη μία φορά.'
         : round.mode === 'FIND_FLAG'
           ? 'Για κοίταξε τις σημαίες άλλη μία φορά.'
+          : round.mode === 'SPATIAL_CONCEPT'
+            ? 'Για κοίταξε πού βρίσκεται.'
           : kidsStrings.tryAgain
     setFeedback(message)
     setState('FEEDBACK')
@@ -606,6 +626,24 @@ export function KidsSessionPage() {
             <><div className="single-flag"><FlagCard assetId={round.flagAssetId} countryName={countryById.get(round.countryId)?.nameEl ?? ''} /></div><button type="button" className="kids-primary-action kids-continue" data-tv-focusable="true" data-tv-autofocus="true" disabled={isDisabled} onClick={() => answer(round.countryId)}>{kidsStrings.continue}</button></>
           ) : round.mode === 'FIND_FLAG' ? (
             <TVCardGrid>{round.optionCountryIds.map((id, index) => { const country = countryById.get(id); return country ? <FlagCard key={id} assetId={country.flagAssetId} countryName={country.nameEl} autofocus={index === 0} disabled={isDisabled} selected={selected === id} correct={state === 'FEEDBACK' && selected === id && id === round.correctCountryId} hint={showHint && id === round.correctCountryId} onActivate={() => answer(id)} /> : null })}</TVCardGrid>
+          ) : round.mode === 'PATTERN_COMPLETE' ? (
+            <PatternRoundView
+              round={round}
+              disabled={isDisabled}
+              selected={selected}
+              feedback={state === 'FEEDBACK'}
+              showHint={showHint}
+              onAnswer={answer}
+            />
+          ) : round.mode === 'SPATIAL_CONCEPT' ? (
+            <SpatialRoundView
+              round={round}
+              disabled={isDisabled}
+              selected={selected}
+              feedback={state === 'FEEDBACK'}
+              showHint={showHint}
+              onAnswer={answer}
+            />
           ) : round.mode === 'EVERYDAY_CHOICE' ? (
             <TVCardGrid>
               {round.options.map((option, index) => (

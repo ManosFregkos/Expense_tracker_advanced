@@ -4,6 +4,10 @@ import type {
   KidsCompareRelation,
   KidsComparisonDimension,
   KidsDifficulty,
+  KidsLearningConceptType,
+  PatternElement,
+  PatternType,
+  SpatialConcept,
 } from '@family-expense-tracker/shared'
 import type { EarlyQuantity, QuantityRepresentation, SimpleSum } from '../early-learning/types'
 
@@ -16,6 +20,8 @@ export interface KidsRoundCommon {
   narrationText: string
   skill: string
   contentIds: string[]
+  conceptId?: string
+  conceptType?: KidsLearningConceptType
 }
 
 export interface LearnChooseRound extends KidsRoundCommon {
@@ -98,6 +104,30 @@ export interface MemoryPairsRound extends KidsRoundCommon {
   pairCount: 2 | 3 | 4
 }
 
+export interface PatternCompleteRound extends KidsRoundCommon {
+  mode: 'PATTERN_COMPLETE'
+  patternId: string
+  patternType: PatternType
+  slots: Array<PatternElement & { missing: boolean }>
+  options: PatternElement[]
+  correctElementId: string
+  explanationNarration: string
+  conceptId: `pattern:${string}`
+  conceptType: 'PATTERN'
+}
+
+export interface SpatialConceptRound extends KidsRoundCommon {
+  mode: 'SPATIAL_CONCEPT'
+  scenarioId: string
+  concept: SpatialConcept
+  promptStyle: 'FIND_CORRECT_SCENE' | 'FIND_CORRECT_OBJECT'
+  options: Array<{ id: string; assetId: string; narration?: string }>
+  correctChoiceId: string
+  explanationNarration: string
+  conceptId: `spatial:${string}`
+  conceptType: 'SPATIAL'
+}
+
 interface NumberRoundCommon extends KidsRoundCommon {
   conceptId: `number:${EarlyQuantity}`
   options: EarlyQuantity[]
@@ -177,6 +207,8 @@ export type KidsCardRound =
   | SimpleSumRound
   | LearnFlagRound
   | FindFlagRound
+  | PatternCompleteRound
+  | SpatialConceptRound
 
 export interface RoundGenerationInput {
   deckId: string

@@ -5,6 +5,8 @@ import {
   learningDeckSchema,
   learningRelationshipSchema,
   sequenceDefinitionSchema,
+  patternDefinitionSchema,
+  spatialScenarioSchema,
   type EmotionScenario,
   type EverydayScenario,
   type KidsCardGameMode,
@@ -13,6 +15,8 @@ import {
   type LearningDeck,
   type LearningRelationship,
   type SequenceDefinition,
+  type PatternDefinition,
+  type SpatialScenario,
 } from '@family-expense-tracker/shared'
 import { collection, getDocs } from 'firebase/firestore'
 import { firestore } from '../../../lib/firebase'
@@ -30,6 +34,10 @@ import {
   SYSTEM_EVERYDAY_SCENARIOS,
   SYSTEM_SEQUENCES,
 } from './system/advanced'
+import { SYSTEM_PATTERNS } from './system/patterns'
+import { SYSTEM_SPATIAL_SCENARIOS } from './system/spatial'
+import { SYSTEM_WEATHER_SCENARIOS } from './system/weather/scenarios'
+import { PROFESSIONS_DECK, PROFESSION_RELATIONSHIPS } from './system/professions'
 
 type ContentSchema<T> = {
   safeParse(value: unknown): { success: true; data: T } | { success: false; error: unknown }
@@ -42,6 +50,8 @@ const collections = {
   everyday: 'kidsEverydayScenarios',
   sequences: 'kidsSequences',
   emotions: 'kidsEmotionScenarios',
+  patterns: 'kidsPatterns',
+  spatial: 'kidsSpatialScenarios',
 } as const
 
 async function validatedCollection<T>(
@@ -153,7 +163,11 @@ export class KidsContentRepository {
       collections.everyday,
       everydayScenarioSchema as ContentSchema<EverydayScenario>,
     )
-    return [...SYSTEM_EVERYDAY_SCENARIOS, ...custom.filter((item) => !item.archivedAt)]
+    return [
+      ...SYSTEM_EVERYDAY_SCENARIOS,
+      ...SYSTEM_WEATHER_SCENARIOS,
+      ...custom.filter((item) => !item.archivedAt),
+    ]
   }
 
   async getSequences(): Promise<SequenceDefinition[]> {
@@ -174,6 +188,36 @@ export class KidsContentRepository {
     return [...SYSTEM_EMOTION_SCENARIOS, ...custom.filter((item) => !item.archivedAt)]
   }
 
+  async getPatterns(): Promise<PatternDefinition[]> {
+    const custom = await validatedCollection(
+      this.householdId,
+      collections.patterns,
+      patternDefinitionSchema as ContentSchema<PatternDefinition>,
+    )
+    return [...SYSTEM_PATTERNS, ...custom.filter((item) => !item.archivedAt)]
+  }
+
+  async getSpatialScenarios(): Promise<SpatialScenario[]> {
+    const custom = await validatedCollection(
+      this.householdId,
+      collections.spatial,
+      spatialScenarioSchema as ContentSchema<SpatialScenario>,
+    )
+    return [...SYSTEM_SPATIAL_SCENARIOS, ...custom.filter((item) => !item.archivedAt)]
+  }
+
+  async getWeatherScenarios(): Promise<EverydayScenario[]> {
+    return (await this.getEverydayScenarios()).filter((scenario) => scenario.topic === 'WEATHER')
+  }
+
+  getProfessionDeck() {
+    return PROFESSIONS_DECK
+  }
+
+  getProfessionRelationships(): LearningRelationship[] {
+    return [...PROFESSION_RELATIONSHIPS]
+  }
+
   async getDeck(id: string) {
     return (await this.getDecks()).find((deck) => deck.id === id) ?? null
   }
@@ -186,7 +230,12 @@ export class KidsContentRepository {
     ])
     const deck = decks.find((item) => item.id === deckId)
     if (!deck) return []
-    if (deck.category === 'EARLY_MATH' || deck.category === 'FLAGS') return deck.supportedModes
+    if (
+      ['EARLY_MATH', 'FLAGS', 'PATTERNS', 'SPATIAL', 'WEATHER', 'EVERYDAY', 'SEQUENCE', 'EMOTION'].includes(
+        deck.category,
+      )
+    )
+      return deck.supportedModes
     const capabilities = getDeckCapabilities(deck, cards, relationships)
     return [
       capabilities.learnAndChoose && 'LEARN_AND_CHOOSE',
@@ -202,13 +251,15 @@ export class KidsContentRepository {
 
 export async function installHouseholdContent(householdId: string) {
   const repository = new KidsContentRepository(householdId)
-  const [decks, cards, relationships, everyday, sequences, emotions] = await Promise.all([
+  const [decks, cards, relationships, everyday, sequences, emotions, patterns, spatial] = await Promise.all([
     repository.getDecks(),
     repository.getCards(),
     repository.getRelationships(),
     repository.getEverydayScenarios(),
     repository.getSequences(),
     repository.getEmotionScenarios(),
+    repository.getPatterns(),
+    repository.getSpatialScenarios(),
   ])
   for (const deck of decks.filter((item) => item.origin === 'CUSTOM')) {
     DECKS_BY_ID.set(deck.id, deck)
@@ -238,5 +289,12 @@ export async function installHouseholdContent(householdId: string) {
     if (!SYSTEM_EMOTION_SCENARIOS.some((value) => value.id === item.id))
       SYSTEM_EMOTION_SCENARIOS.push(item)
   }
-  return { decks, cards, relationships, everyday, sequences, emotions }
+  for (const item of patterns.filter((value) => value.origin === 'CUSTOM')) {
+    if (!SYSTEM_PATTERNS.some((value) => value.id === item.id)) SYSTEM_PATTERNS.push(item)
+  }
+  for (const item of spatial.filter((value) => value.origin === 'CUSTOM')) {
+    if (!SYSTEM_SPATIAL_SCENARIOS.some((value) => value.id === item.id))
+      SYSTEM_SPATIAL_SCENARIOS.push(item)
+  }
+  return { decks, cards, relationships, everyday, sequences, emotions, patterns, spatial }
 }

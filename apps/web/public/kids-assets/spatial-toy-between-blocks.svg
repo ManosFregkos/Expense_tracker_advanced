@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="Παιχνίδι ανάμεσα σε δύο τουβλάκια">
+  <rect width="480" height="300" rx="28" fill="#f8fcfb"/>
+  <rect x="55" y="105" width="120" height="120" rx="14" fill="#5eace8" stroke="#245d87" stroke-width="9"/>
+  <rect x="305" y="105" width="120" height="120" rx="14" fill="#68c584" stroke="#347048" stroke-width="9"/>
+  <circle cx="240" cy="168" r="55" fill="#f4c94e" stroke="#8d7021" stroke-width="9"/>
+  <path d="M240 128l12 25 28 4-20 20 5 28-25-13-25 13 5-28-20-20 28-4z" fill="#fff4c7"/>
+</svg>
