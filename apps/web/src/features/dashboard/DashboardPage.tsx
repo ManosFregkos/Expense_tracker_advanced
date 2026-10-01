@@ -4,6 +4,7 @@ import {
   Grid,
   Group,
   Paper,
+  Select,
   SimpleGrid,
   Skeleton,
   Stack,
@@ -11,6 +12,7 @@ import {
   Text,
   Title,
 } from '@mantine/core'
+import { useSearchParams } from 'react-router-dom'
 import {
   Area,
   AreaChart,
@@ -25,7 +27,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { formatMoney, monthKey, netCashflow } from '@family-expense-tracker/shared'
+import { formatMoney, netCashflow } from '@family-expense-tracker/shared'
 import { Amount } from '../../components/Amount'
 import { EmptyState } from '../../components/EmptyState'
 import {
@@ -36,7 +38,7 @@ import {
   useMonthlyAnalytics,
   useReviewBankTransactions,
 } from '../../hooks/useHouseholdData'
-import { formatDate } from '../../lib/date'
+import { formatDate, historyMonths } from '../../lib/date'
 import { useHousehold } from '../households/HouseholdProvider'
 import { useAddTransaction } from '../transactions/AddTransactionProvider'
 import { DashboardTasksWidget } from '../tasks/components/DashboardTasksWidget'
@@ -45,16 +47,18 @@ const COLORS = ['#145f52', '#2f8b7b', '#63b6a8', '#e4b85c', '#c47b54', '#758d88'
 
 export function DashboardPage() {
   const { household } = useHousehold()
+  const [params, setParams] = useSearchParams()
+  const months = historyMonths(household?.timeZone)
+  const selectedMonth = months.find((month) => month.value === params.get('month')) ?? months[0]!
   const analytics = useMonthlyAnalytics()
-  const transactions = useLatestTransactions()
+  const transactions = useLatestTransactions(8, selectedMonth.value)
   const accounts = useAccounts()
   const categories = useCategories()
   const members = useMembers()
   const add = useAddTransaction()
   const review = useReviewBankTransactions()
   if (!household) return null
-  const currentKey = monthKey(new Date(), household.timeZone)
-  const current = analytics.data?.find((item) => item.monthKey === currentKey)
+  const current = analytics.data?.find((item) => item.monthKey === selectedMonth.value)
   const currency = household.defaultCurrency
   const metrics = [
     { label: 'Income', value: current?.incomeMinor ?? 0, className: 'amount-income' },
@@ -76,6 +80,7 @@ export function DashboardPage() {
     value,
   }))
   const trend = [...(analytics.data ?? [])]
+    .filter((item) => item.monthKey <= selectedMonth.value)
     .sort((a, b) => a.monthKey.localeCompare(b.monthKey))
     .slice(-6)
     .map((item) => ({
@@ -83,19 +88,32 @@ export function DashboardPage() {
       income: item.incomeMinor / 100,
       expenses: item.expenseMinor / 100,
     }))
-  const monthLabel = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(
-    new Date(),
-  )
   return (
     <div className="page">
       <div className="page-header">
         <div>
           <Text c="dimmed" size="sm">
-            {monthLabel}
+            {selectedMonth.label}
           </Text>
           <Title order={1}>Welcome back</Title>
-          <Text c="dimmed">Here is how {household.name} is doing this month.</Text>
+          <Text c="dimmed">
+            Here is how {household.name} is doing in {selectedMonth.label}.
+          </Text>
         </div>
+        <Select
+          label="Month"
+          data={months}
+          value={selectedMonth.value}
+          onChange={(value) => {
+            if (!value) return
+            setParams((current) => {
+              const next = new URLSearchParams(current)
+              next.set('month', value)
+              return next
+            })
+          }}
+          allowDeselect={false}
+        />
       </div>
       <SimpleGrid cols={{ base: 1, sm: 3 }} mb="lg">
         {metrics.map((metric) => (
@@ -213,11 +231,18 @@ export function DashboardPage() {
           <Paper withBorder p="lg">
             <Group justify="space-between" mb="md">
               <Title order={3}>Latest transactions</Title>
-              <Text component="a" href="/transactions" size="sm" c="teal.9">
+              <Text
+                component="a"
+                href={`/transactions?period=${selectedMonth.value}`}
+                size="sm"
+                c="teal.9"
+              >
                 View all
               </Text>
             </Group>
-            {transactions.data?.transactions.length ? (
+            {transactions.isLoading ? (
+              <Skeleton h={160} />
+            ) : transactions.data?.transactions.length ? (
               <>
                 <Table.ScrollContainer className="desktop-only" minWidth={560}>
                   <Table verticalSpacing="sm">
@@ -274,7 +299,7 @@ export function DashboardPage() {
             ) : (
               <EmptyState
                 title="No transactions"
-                message="Your most recent transactions will appear here."
+                message="This month has no transactions. Choose another month to view earlier activity."
                 actionLabel="Add transaction"
                 onAction={add.open}
               />

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { dateRangeForMonth } from '@family-expense-tracker/shared'
 import {
   accountKeys,
   analyticsKeys,
@@ -51,11 +52,16 @@ export function useMonthlyAnalytics() {
     enabled: Boolean(household),
   })
 }
-export function useLatestTransactions(count = 8) {
+export function useLatestTransactions(count = 8, month?: string) {
   const { household } = useHousehold()
+  const timeZone = household?.timeZone ?? 'UTC'
   return useQuery({
-    queryKey: transactionKeys.list(household?.id ?? '', { latest: count }),
-    queryFn: () => listTransactions(household!.id, { pageSize: count }),
+    queryKey: transactionKeys.list(household?.id ?? '', { latest: count, month, timeZone }),
+    queryFn: () =>
+      listTransactions(household!.id, {
+        pageSize: count,
+        ...(month ? dateRangeForMonth(month, timeZone) : {}),
+      }),
     enabled: Boolean(household),
   })
 }

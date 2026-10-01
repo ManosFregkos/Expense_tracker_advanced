@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   dateRangeForPreset,
+  dateRangeForMonth,
   formatMoney,
   type TransactionType,
 } from '@family-expense-tracker/shared'
@@ -15,14 +16,21 @@ import {
   useMembers,
   usePendingBankTransactions,
 } from '../../hooks/useHouseholdData'
-import { formatDate } from '../../lib/date'
+import { formatDate, historyMonths } from '../../lib/date'
 import { transactionKeys } from '../../lib/query-keys'
 import { listTransactions, type TransactionFilters as QueryFilters } from '../../lib/repositories'
 import { useHousehold } from '../households/HouseholdProvider'
 import { useAddTransaction } from './AddTransactionProvider'
 import { TransactionFilters, type FilterValues } from './TransactionFilters'
 
-const PRESETS = ['THIS_MONTH', 'LAST_MONTH', 'LAST_3_MONTHS', 'LAST_6_MONTHS', 'THIS_YEAR'] as const
+const PRESETS = [
+  'THIS_MONTH',
+  'LAST_MONTH',
+  'LAST_3_MONTHS',
+  'LAST_6_MONTHS',
+  'LAST_12_MONTHS',
+  'THIS_YEAR',
+] as const
 export function TransactionsPage() {
   const { household } = useHousehold()
   const add = useAddTransaction()
@@ -46,7 +54,10 @@ export function TransactionsPage() {
     const preset = PRESETS.includes(filters.period as (typeof PRESETS)[number])
       ? (filters.period as (typeof PRESETS)[number])
       : 'THIS_MONTH'
-    const range = dateRangeForPreset(preset)
+    const timeZone = household?.timeZone ?? 'UTC'
+    const range = historyMonths(timeZone).some((month) => month.value === filters.period)
+      ? dateRangeForMonth(filters.period, timeZone)
+      : dateRangeForPreset(preset, new Date(), timeZone)
     return {
       start: range.start,
       end: range.end,
@@ -67,9 +78,15 @@ export function TransactionsPage() {
     filters.search,
     cursors,
     page,
+    household?.timeZone,
   ])
   const result = useQuery({
-    queryKey: transactionKeys.list(household?.id ?? '', { ...filters, page }),
+    queryKey: transactionKeys.list(household?.id ?? '', {
+      ...filters,
+      page,
+      start: queryFilters.start,
+      end: queryFilters.end,
+    }),
     queryFn: () => listTransactions(household!.id, queryFilters),
     enabled: Boolean(household),
   })

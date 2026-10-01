@@ -2,6 +2,8 @@ import { Button, Select, SimpleGrid, TextInput } from '@mantine/core'
 import { IconSearch } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useAccounts, useCategories, useMembers } from '../../hooks/useHouseholdData'
+import { historyMonths } from '../../lib/date'
+import { useHousehold } from '../households/HouseholdProvider'
 
 export interface FilterValues {
   period: string
@@ -19,6 +21,7 @@ export function TransactionFilters({
   onChange(next: FilterValues): void
 }) {
   const accounts = useAccounts()
+  const { household } = useHousehold()
   const members = useMembers()
   const categories = useCategories()
   const [expanded, setExpanded] = useState(false)
@@ -48,8 +51,11 @@ export function TransactionFilters({
           { value: 'LAST_MONTH', label: 'Last month' },
           { value: 'LAST_3_MONTHS', label: 'Last 3 months' },
           { value: 'LAST_6_MONTHS', label: 'Last 6 months' },
+          { value: 'LAST_12_MONTHS', label: 'Last 12 months' },
           { value: 'THIS_YEAR', label: 'This year' },
+          ...historyMonths(household?.timeZone),
         ]}
+        allowDeselect={false}
       />
       <Button
         className="mobile-only filter-toggle"

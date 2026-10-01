@@ -1,4 +1,19 @@
-import type { StoredDate } from '@family-expense-tracker/shared'
+import { monthKey, type StoredDate } from '@family-expense-tracker/shared'
+
+export function historyMonths(timeZone = 'UTC', now = new Date()) {
+  const [year, month] = monthKey(now, timeZone).split('-').map(Number)
+  return Array.from({ length: 13 }, (_, offset) => {
+    const date = new Date(Date.UTC(year!, month! - 1 - offset, 1))
+    return {
+      value: monthKey(date),
+      label: new Intl.DateTimeFormat(undefined, {
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      }).format(date),
+    }
+  })
+}
 
 export function toDate(value: StoredDate): Date {
   return value instanceof Date ? value : value.toDate()
