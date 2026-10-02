@@ -16,6 +16,7 @@ import { listTransactions, type TransactionFilters as QueryFilters } from '../..
 import { useHousehold } from '../households/HouseholdProvider'
 import { useAddTransaction } from './AddTransactionProvider'
 import { TransactionFilters, type FilterValues } from './TransactionFilters'
+import { TransactionSummary } from './TransactionSummary'
 
 const PRESETS = [
   'THIS_MONTH',
@@ -59,8 +60,6 @@ export function TransactionsPage() {
       ...(filters.memberId ? { memberId: filters.memberId } : {}),
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
-      ...(cursors[page] ? { cursor: cursors[page] } : {}),
-      pageSize: 25,
     }
   }, [
     filters.period,
@@ -69,8 +68,6 @@ export function TransactionsPage() {
     filters.memberId,
     filters.categoryId,
     filters.search,
-    cursors,
-    page,
     household?.timeZone,
   ])
   const result = useQuery({
@@ -80,7 +77,12 @@ export function TransactionsPage() {
       start: queryFilters.start,
       end: queryFilters.end,
     }),
-    queryFn: () => listTransactions(household!.id, queryFilters),
+    queryFn: () =>
+      listTransactions(household!.id, {
+        ...queryFilters,
+        ...(cursors[page] ? { cursor: cursors[page] } : {}),
+        pageSize: 25,
+      }),
     enabled: Boolean(household),
   })
   const changeFilters = (next: FilterValues) => {
@@ -124,6 +126,19 @@ export function TransactionsPage() {
       <Paper withBorder p="md" mb="lg">
         <TransactionFilters value={filters} onChange={changeFilters} />
       </Paper>
+      <TransactionSummary
+        defaultCurrency={household?.defaultCurrency ?? 'EUR'}
+        input={{
+          householdId: household?.id ?? '',
+          ...(queryFilters.start ? { start: queryFilters.start.toISOString() } : {}),
+          ...(queryFilters.end ? { end: queryFilters.end.toISOString() } : {}),
+          ...(queryFilters.type ? { type: queryFilters.type } : {}),
+          ...(queryFilters.accountId ? { accountId: queryFilters.accountId } : {}),
+          ...(queryFilters.memberId ? { memberId: queryFilters.memberId } : {}),
+          ...(queryFilters.categoryId ? { categoryId: queryFilters.categoryId } : {}),
+          ...(queryFilters.search ? { search: queryFilters.search } : {}),
+        }}
+      />
       {result.isLoading ? (
         <Loader />
       ) : !result.data?.transactions.length ? (

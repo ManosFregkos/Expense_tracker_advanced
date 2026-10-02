@@ -91,6 +91,9 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await expect(page.getByText('spouse@example.test')).toBeVisible()
 
   await page.goto('/transactions?period=THIS_YEAR')
+  await expect(page.getByLabel('Income total')).toContainText('€3,000.00')
+  await expect(page.getByLabel('Expenses total')).toContainText('€72.43')
+  await expect(page.getByLabel('Net total')).toContainText('€2,927.57')
   await expect(page.getByText('Lidl').first()).toBeVisible()
   await page.getByRole('table').getByText('Lidl').click()
   await page.getByLabel('Description / merchant').fill('Lidl weekly')
@@ -101,6 +104,30 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await page.getByRole('button', { name: 'Delete transaction' }).click()
   await expect(page.getByRole('heading', { name: 'Transactions' })).toBeVisible()
   await expect(page.getByText('Lidl weekly')).toHaveCount(0)
+  await expect(page.getByLabel('Expenses total')).toContainText('€0.00')
+  await execFileAsync(
+    process.execPath,
+    [resolve('tests/e2e/helpers/create-pagination-transactions.mjs'), email],
+    {
+      env: {
+        ...process.env,
+        FIRESTORE_EMULATOR_HOST: '127.0.0.1:8280',
+        FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9199',
+      },
+    },
+  )
+  await page.reload()
+  await expect(page.getByText(/27 matching transactions/)).toBeVisible()
+  await expect(page.getByLabel('Expenses total')).toContainText('€26.00')
+  await expect(page.getByLabel('Net total')).toContainText('€2,974.00')
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await expect(page.getByText('Page 2')).toBeVisible()
+  await expect(page.getByLabel('Expenses total')).toContainText('€26.00')
+  await expect(page.getByLabel('Income total')).toContainText('€3,000.00')
+  await page.getByLabel('Search', { exact: true }).fill('pagination')
+  await expect(page.getByText(/26 matching transactions/)).toBeVisible()
+  await expect(page.getByLabel('Income total')).toContainText('€0.00')
+  await expect(page.getByLabel('Net total')).toContainText('-€26.00')
 
   await page.goto('/tasks')
   await expect(page.getByRole('heading', { name: 'Tasks', exact: true })).toBeVisible()
@@ -143,6 +170,43 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await page.goto('/tasks?view=all')
   await expect(page.getByText('Weekly house cleaning')).toHaveCount(1)
 
+  await page.getByRole('button', { name: 'Select tasks' }).click()
+  await page.getByLabel('Select all on this page').check()
+  await expect(page.getByText('2 selected', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Assign selected' }).click()
+  await page.getByRole('textbox', { name: 'Assign to' }).click()
+  await page.getByRole('option', { name: 'Emmanouil Test' }).click()
+  await page.getByRole('button', { name: 'Apply changes' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByText('0 selected', { exact: true })).toBeVisible()
+  await expect(page.locator('.task-row').filter({ hasText: 'Buy groceries' })).toContainText(
+    'Emmanouil Test',
+  )
+  await expect(
+    page.locator('.task-row').filter({ hasText: 'Weekly house cleaning' }),
+  ).toContainText('Emmanouil Test')
+  await page.getByLabel('Select all on this page').check()
+  await page.getByRole('button', { name: 'Reschedule selected' }).click()
+  await page.getByLabel('New due date').fill('2027-01-15')
+  await page.getByLabel('Set the same time for all selected tasks').check()
+  await page.getByLabel('New due time').fill('18:30')
+  await page.getByRole('button', { name: 'Apply changes' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByText('0 selected', { exact: true })).toBeVisible()
+  await expect(page.locator('.task-row').filter({ hasText: 'Buy groceries' })).toContainText(
+    '2027-01-15 at 18:30',
+  )
+  await expect(
+    page.locator('.task-row').filter({ hasText: 'Weekly house cleaning' }),
+  ).toContainText('2027-01-15 at 18:30')
+  await page.getByLabel('Select all on this page').check()
+  await page.screenshot({ path: testInfo.outputPath('desktop-task-bulk-actions.png') })
+  await page.getByRole('button', { name: 'Complete selected' }).click()
+  await expect(page.getByText('Buy groceries', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Weekly house cleaning', { exact: true })).toHaveCount(1)
+  await expect(page.locator('.task-row')).toContainText('2027-01-22 at 18:30')
+  await page.getByRole('button', { name: 'Cancel selection' }).click()
+
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     for (const route of [
@@ -181,6 +245,14 @@ test('register, onboard, and complete the core household finance workflow', asyn
     await page.getByRole('button', { name: 'Add task' }).first().click()
     await expect(page.getByRole('dialog')).toBeVisible()
     await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Select tasks' }).click()
+    await page.getByLabel('Select all on this page').check()
+    await expect(page.getByRole('button', { name: 'Reschedule selected' })).toBeEnabled()
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+      .toBeLessThanOrEqual(1)
+    await page.screenshot({ path: testInfo.outputPath(`mobile-${width}-task-bulk-actions.png`) })
+    await page.getByRole('button', { name: 'Cancel selection' }).click()
     await page.goto('/transactions?period=THIS_YEAR')
     await page.getByRole('button', { name: /More filters/ }).click()
     await expect(page.getByRole('textbox', { name: 'Type' })).toBeVisible()

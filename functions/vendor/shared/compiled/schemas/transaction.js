@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { TRANSACTION_SOURCES } from '../domain/types.js';
+import { TRANSACTION_SOURCES, TRANSACTION_TYPES } from '../domain/types.js';
 import { amountMinorSchema, currencySchema, idSchema, isoDateSchema, optionalTextSchema, shortTextSchema, } from './common.js';
 const base = z.object({
     amountMinor: amountMinorSchema,
@@ -46,3 +46,14 @@ export const updateTransactionSchema = z.object({
     transaction: transactionCoreSchema,
 });
 export const transactionIdSchema = z.object({ householdId: idSchema, transactionId: idSchema });
+const filterIdSchema = idSchema.refine((value) => !value.includes('/'), 'Invalid document ID.');
+export const transactionTotalsSchema = z.object({
+    householdId: filterIdSchema,
+    start: isoDateSchema.optional(),
+    end: isoDateSchema.optional(),
+    accountId: filterIdSchema.optional(),
+    memberId: filterIdSchema.optional(),
+    categoryId: filterIdSchema.optional(),
+    type: z.enum(TRANSACTION_TYPES).optional(),
+    search: z.string().trim().max(160).optional(),
+});

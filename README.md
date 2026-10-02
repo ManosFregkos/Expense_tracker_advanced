@@ -38,10 +38,14 @@ npm run build
 - Individually owned bank, cash, credit-card, and debit-card accounts
 - Expenses and income with soft deletion and audit trails
 - Hierarchical categories and fast mobile-first manual entry
-- Paginated/filterable transaction history and CSV export
+- Paginated/filterable transaction history, totals across all matching results, and CSV export
 - Monthly aggregate analytics; deleted records are excluded
 - Installable PWA with offline shell and Firestore persistence
 - Household tasks with assignment, lists, subtasks, recurring occurrences, reminders, and PWA push
+- Bulk task completion, assignment, and rescheduling with per-task failure reporting
+
+See [Transaction totals and bulk task actions](docs/TRANSACTION_TOTALS_AND_BULK_TASKS.md) for usage,
+behavior, and deployment details.
 
 Explicit non-goals include budgets, net worth, investments, loans, receipt OCR, recurring billing, and Splitwise-style settlement.
 

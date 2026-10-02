@@ -7,6 +7,7 @@ export const accountKeys = { all: (householdId: string) => ['accounts', househol
 export const categoryKeys = { all: (householdId: string) => ['categories', householdId] as const }
 export const transactionKeys = {
   all: (householdId: string) => ['transactions', householdId] as const,
+  totals: (householdId: string, filters: object) => ['transactions', householdId, 'totals', filters] as const,
   list: (householdId: string, filters: object) => ['transactions', householdId, 'list', filters] as const,
   detail: (householdId: string, id: string) => ['transactions', householdId, id] as const,
 }

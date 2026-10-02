@@ -22,6 +22,14 @@ vi.mock('../../hooks/useHouseholdData', () => ({
 vi.mock('../../lib/repositories', () => ({
   listTransactions: vi.fn(async () => ({ transactions: [], hasMore: false })),
 }))
+vi.mock('../../lib/callables', () => ({
+  api: {
+    getTransactionTotals: vi.fn(async () => ({
+      transactionCount: 32,
+      byCurrency: [{ currency: 'EUR', incomeMinor: 10000, expenseMinor: 3100, netMinor: 6900 }],
+    })),
+  },
+}))
 
 vi.mock('@mantine/core', async (importOriginal) => {
   const original = await importOriginal<typeof mantine>()

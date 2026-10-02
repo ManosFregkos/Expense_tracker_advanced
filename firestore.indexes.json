@@ -175,6 +175,279 @@
         { "fieldPath": "overdueReminderState", "order": "ASCENDING" },
         { "fieldPath": "dueAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isDeleted", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "accountId", "order": "ASCENDING"},
+        {"fieldPath": "ownerUserId", "order": "ASCENDING"},
+        {"fieldPath": "categoryId", "order": "ASCENDING"},
+        {"fieldPath": "searchPrefixes", "arrayConfig": "CONTAINS"},
+        {"fieldPath": "transactionDate", "order": "DESCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

@@ -137,4 +137,27 @@ export declare const transactionIdSchema: z.ZodObject<{
 }, z.core.$strip>;
 export type TransactionInput = z.infer<typeof transactionInputSchema>;
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
+export declare const transactionTotalsSchema: z.ZodObject<{
+    householdId: z.ZodString;
+    start: z.ZodOptional<z.ZodISODateTime>;
+    end: z.ZodOptional<z.ZodISODateTime>;
+    accountId: z.ZodOptional<z.ZodString>;
+    memberId: z.ZodOptional<z.ZodString>;
+    categoryId: z.ZodOptional<z.ZodString>;
+    type: z.ZodOptional<z.ZodEnum<{
+        EXPENSE: "EXPENSE";
+        INCOME: "INCOME";
+    }>>;
+    search: z.ZodOptional<z.ZodString>;
+}, z.core.$strip>;
+export type TransactionTotalsInput = z.infer<typeof transactionTotalsSchema>;
+export interface TransactionTotals {
+    transactionCount: number;
+    byCurrency: Array<{
+        currency: string;
+        incomeMinor: number;
+        expenseMinor: number;
+        netMinor: number;
+    }>;
+}
 //# sourceMappingURL=transaction.d.ts.map

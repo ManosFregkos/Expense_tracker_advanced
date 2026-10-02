@@ -10,6 +10,7 @@ const MESSAGES: Record<string, string> = {
   'functions/unauthenticated': 'Please sign in again.',
   'functions/failed-precondition': 'This action cannot be completed in the current state.',
   'functions/unavailable': 'The service is temporarily unavailable. Please retry.',
+  'functions/aborted': 'This item changed in another session. Refresh and try again.',
 }
 
 export function friendlyError(error: unknown): string {

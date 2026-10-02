@@ -40,6 +40,7 @@ import { TaskDetailsDrawer } from './components/TaskDetailsDrawer'
 import { TaskForm } from './components/TaskForm'
 import { TaskListView } from './components/TaskListView'
 import { TaskQuickAdd } from './components/TaskQuickAdd'
+import { TaskBulkActions } from './components/TaskBulkActions'
 import { useInvalidateTasks, useTaskLists, useTasks } from './hooks'
 
 const VIEWS: TaskView[] = ['all', 'today', 'upcoming', 'completed']
@@ -316,23 +317,29 @@ export function TasksPage() {
         {result.isLoading ? (
           <Loader />
         ) : filtered.length ? (
-          <TaskGroups
+          <TaskBulkActions
+            key={`${household.id}:${params.toString()}:${page}`}
             tasks={filtered}
-            view={view}
-            todayKey={todayKey}
-            timeZone={household.timeZone}
             members={members.data ?? []}
-            lists={lists.data ?? []}
-            manualOrder={
-              view === 'all' &&
-              sort === 'manual' &&
-              !search &&
-              scope === 'household' &&
-              !listId &&
-              !priority
-            }
-            onOpen={(id) => void navigate(`/tasks/${id}${window.location.search}`)}
-          />
+          >
+            <TaskGroups
+              tasks={filtered}
+              view={view}
+              todayKey={todayKey}
+              timeZone={household.timeZone}
+              members={members.data ?? []}
+              lists={lists.data ?? []}
+              manualOrder={
+                view === 'all' &&
+                sort === 'manual' &&
+                !search &&
+                scope === 'household' &&
+                !listId &&
+                !priority
+              }
+              onOpen={(id) => void navigate(`/tasks/${id}${window.location.search}`)}
+            />
+          </TaskBulkActions>
         ) : (
           <EmptyState
             title={

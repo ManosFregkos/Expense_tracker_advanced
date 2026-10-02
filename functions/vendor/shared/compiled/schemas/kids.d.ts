@@ -21,8 +21,8 @@ export declare const learningCardSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     contentVersion: z.ZodOptional<z.ZodNumber>;
     householdId: z.ZodOptional<z.ZodString>;
@@ -66,8 +66,8 @@ export declare const learningDeckSchema: z.ZodObject<{
     cardIds: z.ZodArray<z.ZodString>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     contentVersion: z.ZodOptional<z.ZodNumber>;
     householdId: z.ZodOptional<z.ZodString>;
@@ -101,8 +101,8 @@ export declare const learningRelationshipSchema: z.ZodObject<{
     updatedAt: z.ZodOptional<z.ZodUnknown>;
     enabled: z.ZodOptional<z.ZodBoolean>;
     origin: z.ZodOptional<z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>>;
     archivedAt: z.ZodOptional<z.ZodUnknown>;
 }, z.core.$strip>;
@@ -138,8 +138,8 @@ export declare const everydayScenarioSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -152,9 +152,9 @@ export declare const patternElementSchema: z.ZodObject<{
     assetId: z.ZodString;
     narration: z.ZodOptional<z.ZodString>;
     semanticType: z.ZodEnum<{
+        OBJECT: "OBJECT";
         COLOR: "COLOR";
         SHAPE: "SHAPE";
-        OBJECT: "OBJECT";
     }>;
     value: z.ZodString;
 }, z.core.$strip>;
@@ -173,9 +173,9 @@ export declare const patternDefinitionSchema: z.ZodObject<{
         assetId: z.ZodString;
         narration: z.ZodOptional<z.ZodString>;
         semanticType: z.ZodEnum<{
+            OBJECT: "OBJECT";
             COLOR: "COLOR";
             SHAPE: "SHAPE";
-            OBJECT: "OBJECT";
         }>;
         value: z.ZodString;
     }, z.core.$strip>>;
@@ -185,9 +185,9 @@ export declare const patternDefinitionSchema: z.ZodObject<{
         assetId: z.ZodString;
         narration: z.ZodOptional<z.ZodString>;
         semanticType: z.ZodEnum<{
+            OBJECT: "OBJECT";
             COLOR: "COLOR";
             SHAPE: "SHAPE";
-            OBJECT: "OBJECT";
         }>;
         value: z.ZodString;
     }, z.core.$strip>;
@@ -196,9 +196,9 @@ export declare const patternDefinitionSchema: z.ZodObject<{
         assetId: z.ZodString;
         narration: z.ZodOptional<z.ZodString>;
         semanticType: z.ZodEnum<{
+            OBJECT: "OBJECT";
             COLOR: "COLOR";
             SHAPE: "SHAPE";
-            OBJECT: "OBJECT";
         }>;
         value: z.ZodString;
     }, z.core.$strip>>;
@@ -206,14 +206,14 @@ export declare const patternDefinitionSchema: z.ZodObject<{
     explanationNarration: z.ZodString;
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     category: z.ZodEnum<{
+        OBJECT: "OBJECT";
         COLOR: "COLOR";
         SHAPE: "SHAPE";
-        OBJECT: "OBJECT";
     }>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -253,8 +253,8 @@ export declare const spatialScenarioSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -285,9 +285,9 @@ export declare const patternCompleteRoundSchema: z.ZodObject<{
         assetId: z.ZodString;
         narration: z.ZodOptional<z.ZodString>;
         semanticType: z.ZodEnum<{
+            OBJECT: "OBJECT";
             COLOR: "COLOR";
             SHAPE: "SHAPE";
-            OBJECT: "OBJECT";
         }>;
         value: z.ZodString;
         missing: z.ZodBoolean;
@@ -297,9 +297,9 @@ export declare const patternCompleteRoundSchema: z.ZodObject<{
         assetId: z.ZodString;
         narration: z.ZodOptional<z.ZodString>;
         semanticType: z.ZodEnum<{
+            OBJECT: "OBJECT";
             COLOR: "COLOR";
             SHAPE: "SHAPE";
-            OBJECT: "OBJECT";
         }>;
         value: z.ZodString;
     }, z.core.$strip>>;
@@ -356,8 +356,8 @@ export declare const sequenceDefinitionSchema: z.ZodObject<{
     category: z.ZodString;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -389,8 +389,8 @@ export declare const emotionScenarioSchema: z.ZodObject<{
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     enabled: z.ZodBoolean;
     origin: z.ZodEnum<{
-        SYSTEM: "SYSTEM";
         CUSTOM: "CUSTOM";
+        SYSTEM: "SYSTEM";
     }>;
     householdId: z.ZodOptional<z.ZodString>;
     createdBy: z.ZodOptional<z.ZodString>;
@@ -465,9 +465,9 @@ export declare const updateKidsSettingsSchema: z.ZodObject<{
     animationsEnabled: z.ZodBoolean;
     sessionLength: z.ZodUnion<readonly [z.ZodLiteral<5>, z.ZodLiteral<10>, z.ZodLiteral<15>]>;
     difficultyMode: z.ZodEnum<{
+        MEDIUM: "MEDIUM";
         AUTO: "AUTO";
         EASY: "EASY";
-        MEDIUM: "MEDIUM";
         HARD: "HARD";
     }>;
     earlyMath: z.ZodOptional<z.ZodObject<{
@@ -590,17 +590,15 @@ export declare const completeKidsSessionSchema: z.ZodObject<{
     completedRounds: z.ZodNumber;
 }, z.core.$strip>;
 export declare const kidsComparisonDimensionSchema: z.ZodEnum<{
-    COLOR: "COLOR";
-    SHAPE: "SHAPE";
     OBJECT: "OBJECT";
+    COLOR: "COLOR";
     SIZE: "SIZE";
+    SHAPE: "SHAPE";
     COUNT: "COUNT";
     ORIENTATION: "ORIENTATION";
     DETAIL: "DETAIL";
 }>;
 export declare const kidsCompareRelationSchema: z.ZodEnum<{
-    INSIDE: "INSIDE";
-    OUTSIDE: "OUTSIDE";
     BIGGER: "BIGGER";
     SMALLER: "SMALLER";
     MORE: "MORE";
@@ -609,6 +607,8 @@ export declare const kidsCompareRelationSchema: z.ZodEnum<{
     SHORTER: "SHORTER";
     FULL: "FULL";
     EMPTY: "EMPTY";
+    INSIDE: "INSIDE";
+    OUTSIDE: "OUTSIDE";
     UP: "UP";
     DOWN: "DOWN";
 }>;

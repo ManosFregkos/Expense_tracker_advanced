@@ -16,13 +16,14 @@ import {
 import { Stack, Text } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import type { HouseholdMember, HouseholdTask, TaskList } from '@family-expense-tracker/shared'
 import { api } from '../../../lib/callables'
 import { friendlyError } from '../../../lib/errors'
 import { useHousehold } from '../../households/HouseholdProvider'
 import { useInvalidateTasks } from '../hooks'
 import { TaskRow } from './TaskRow'
+import { TaskSelectionContext } from '../task-selection'
 
 export function TaskListView({
   tasks,
@@ -38,6 +39,7 @@ export function TaskListView({
   onOpen(taskId: string): void
 }) {
   const { household } = useHousehold()
+  const selection = useContext(TaskSelectionContext)
   const invalidate = useInvalidateTasks()
   const [ordered, setOrdered] = useState(tasks)
   useEffect(() => setOrdered(tasks), [tasks])
@@ -106,7 +108,7 @@ export function TaskListView({
               members={members}
               lists={lists}
               timeZone={household?.timeZone ?? 'UTC'}
-              draggable={manualOrder}
+              draggable={manualOrder && !selection}
               onOpen={() => onOpen(task.id)}
             />
           ))}

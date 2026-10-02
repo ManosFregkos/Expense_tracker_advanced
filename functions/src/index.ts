@@ -9,6 +9,7 @@ export {
 } from './services/transactions.js'
 export { createCategory, updateCategory } from './services/categories.js'
 export { rebuildMonthlyAnalytics } from './services/rebuild-analytics.js'
+export { getTransactionTotals } from './services/transaction-totals.js'
 export {
   initializeTaskModule,
   createTask,

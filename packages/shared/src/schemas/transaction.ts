@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TRANSACTION_SOURCES } from '../domain/types.js'
+import { TRANSACTION_SOURCES, TRANSACTION_TYPES } from '../domain/types.js'
 import {
   amountMinorSchema,
   currencySchema,
@@ -67,3 +67,27 @@ export const transactionIdSchema = z.object({ householdId: idSchema, transaction
 
 export type TransactionInput = z.infer<typeof transactionInputSchema>
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>
+
+const filterIdSchema = idSchema.refine((value) => !value.includes('/'), 'Invalid document ID.')
+
+export const transactionTotalsSchema = z.object({
+  householdId: filterIdSchema,
+  start: isoDateSchema.optional(),
+  end: isoDateSchema.optional(),
+  accountId: filterIdSchema.optional(),
+  memberId: filterIdSchema.optional(),
+  categoryId: filterIdSchema.optional(),
+  type: z.enum(TRANSACTION_TYPES).optional(),
+  search: z.string().trim().max(160).optional(),
+})
+
+export type TransactionTotalsInput = z.infer<typeof transactionTotalsSchema>
+export interface TransactionTotals {
+  transactionCount: number
+  byCurrency: Array<{
+    currency: string
+    incomeMinor: number
+    expenseMinor: number
+    netMinor: number
+  }>
+}

@@ -2,6 +2,7 @@ import { ActionIcon, Badge, Checkbox, Group, Paper, Stack, Text, Tooltip } from 
 import { IconGripVertical, IconRepeat } from '@tabler/icons-react'
 import { CSS } from '@dnd-kit/utilities'
 import { useSortable } from '@dnd-kit/sortable'
+import { useContext } from 'react'
 import {
   isTaskOverdue,
   type HouseholdMember,
@@ -10,6 +11,7 @@ import {
 } from '@family-expense-tracker/shared'
 import { TaskPriorityBadge } from './TaskPriorityBadge'
 import { useTaskStatusMutation } from '../hooks'
+import { TaskSelectionContext } from '../task-selection'
 
 export function TaskRow({
   task,
@@ -27,6 +29,8 @@ export function TaskRow({
   onOpen(): void
 }) {
   const status = useTaskStatusMutation(task)
+  const selection = useContext(TaskSelectionContext)
+  const selectable = task.status === 'TODO' || task.status === 'IN_PROGRESS'
   const sortable = useSortable({ id: task.id, disabled: !draggable })
   const member = members.find((item) => item.userId === task.assigneeUserId)
   const completedBy = members.find((item) => item.userId === task.completedBy)
@@ -43,7 +47,10 @@ export function TaskRow({
         transition: sortable.transition,
         opacity: sortable.isDragging ? 0.65 : 1,
       }}
-      onClick={onOpen}
+      onClick={() => {
+        if (!selection) onOpen()
+        else if (selectable && !selection.busy) selection.onToggle(task.id)
+      }}
     >
       <Group wrap="nowrap" align="flex-start">
         {draggable && (
@@ -62,11 +69,25 @@ export function TaskRow({
         <Checkbox
           size="md"
           mt={2}
-          checked={task.status === 'DONE' || status.isPending}
-          disabled={status.isPending || task.status === 'CANCELLED'}
-          aria-label={task.status === 'DONE' ? `Reopen ${task.title}` : `Complete ${task.title}`}
+          checked={
+            selection
+              ? selection.selectedIds.has(task.id)
+              : task.status === 'DONE' || status.isPending
+          }
+          disabled={
+            selection
+              ? selection.busy || !selectable
+              : status.isPending || task.status === 'CANCELLED'
+          }
+          aria-label={
+            selection
+              ? `Select ${task.title}`
+              : task.status === 'DONE'
+                ? `Reopen ${task.title}`
+                : `Complete ${task.title}`
+          }
           onClick={(event) => event.stopPropagation()}
-          onChange={() => status.mutate()}
+          onChange={() => (selection ? selection.onToggle(task.id) : status.mutate())}
         />
         <Stack gap={3} style={{ flex: 1, minWidth: 0 }}>
           <Group gap="xs" wrap="wrap">
