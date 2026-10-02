@@ -3,7 +3,6 @@ export { createInvitation, acceptInvitation, revokeInvitation } from './services
 export { createAccount, updateAccount, archiveAccount } from './services/accounts.js'
 export {
   createTransaction,
-  createTransfer,
   updateTransaction,
   deleteTransaction,
   restoreTransaction,

@@ -8,7 +8,7 @@ Every financial document is scoped beneath a household. IDs sent by clients are 
 | `/households/{householdId}`                                     | Name, reporting currency, timezone, creator, timestamps                             | Member read; Function write                        |
 | `/households/{householdId}/members/{uid}`                       | Role and household display identity                                                 | Member read; Function write                        |
 | `/households/{householdId}/accounts/{accountId}`                | Owner, type, currency, opening and cached current balance                           | Member read; Function write                        |
-| `/households/{householdId}/transactions/{transactionId}`        | Expense, income, or one-document transfer; source, search prefixes, deletion fields | Member read; Function write                        |
+| `/households/{householdId}/transactions/{transactionId}`        | Expense or income; source, search prefixes, deletion fields | Member read; Function write                        |
 | `/households/{householdId}/categories/{categoryId}`             | Hierarchical system/custom categories                                               | Member read; Function write                        |
 | `/households/{householdId}/monthlyAnalytics/{yyyy-MM}`          | Cashflow and expense dimension aggregates                                           | Member read; backend write                         |
 | `/households/{householdId}/auditLogs/{logId}`                   | Actor, action, entity, safe before/after snapshot                                   | Admin/owner read; backend write                    |

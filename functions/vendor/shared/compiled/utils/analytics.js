@@ -18,7 +18,7 @@ export function transactionAnalyticsDelta(transaction, direction = 1) {
     const delta = emptyAnalyticsDelta();
     if (transaction.isDeleted ||
         transaction.deletedAt ||
-        transaction.type === 'TRANSFER' ||
+        (transaction.type !== 'EXPENSE' && transaction.type !== 'INCOME') ||
         transaction.excludeFromAnalytics)
         return delta;
     const amount = transaction.amountMinor * direction;
@@ -47,10 +47,7 @@ export function accountEffects(transaction, direction = 1) {
         return { [transaction.accountId]: -transaction.amountMinor * direction };
     if (transaction.type === 'INCOME')
         return { [transaction.accountId]: transaction.amountMinor * direction };
-    return {
-        [transaction.transfer.sourceAccountId]: -transaction.amountMinor * direction,
-        [transaction.transfer.destinationAccountId]: transaction.amountMinor * direction,
-    };
+    return {};
 }
 export function mergeAnalyticsDeltas(...deltas) {
     const result = emptyAnalyticsDelta();

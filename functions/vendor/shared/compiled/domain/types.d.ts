@@ -2,7 +2,7 @@ export declare const HOUSEHOLD_ROLES: readonly ["OWNER", "ADMIN", "MEMBER"];
 export type HouseholdRole = (typeof HOUSEHOLD_ROLES)[number];
 export declare const ACCOUNT_TYPES: readonly ["BANK", "CASH", "CREDIT_CARD", "DEBIT_CARD"];
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
-export declare const TRANSACTION_TYPES: readonly ["EXPENSE", "INCOME", "TRANSFER"];
+export declare const TRANSACTION_TYPES: readonly ["EXPENSE", "INCOME"];
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 export declare const TRANSACTION_SOURCES: readonly ["MANUAL", "BANK_SYNC", "IMPORT"];
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
@@ -425,14 +425,7 @@ export interface IncomeTransaction extends TransactionBase {
     ownerUserId: string;
     categoryId: string;
 }
-export interface TransferTransaction extends TransactionBase {
-    type: 'TRANSFER';
-    transfer: {
-        sourceAccountId: string;
-        destinationAccountId: string;
-    };
-}
-export type Transaction = ExpenseTransaction | IncomeTransaction | TransferTransaction;
+export type Transaction = ExpenseTransaction | IncomeTransaction;
 export interface Category {
     id: string;
     householdId: string;

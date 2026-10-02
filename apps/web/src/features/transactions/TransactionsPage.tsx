@@ -5,15 +5,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   dateRangeForPreset,
   dateRangeForMonth,
-  type TransactionType,
+  TRANSACTION_TYPES,
 } from '@family-expense-tracker/shared'
 import { Amount } from '../../components/Amount'
 import { EmptyState } from '../../components/EmptyState'
-import {
-  useAccounts,
-  useCategories,
-  useMembers,
-} from '../../hooks/useHouseholdData'
+import { useAccounts, useCategories, useMembers } from '../../hooks/useHouseholdData'
 import { formatDate, historyMonths } from '../../lib/date'
 import { transactionKeys } from '../../lib/query-keys'
 import { listTransactions, type TransactionFilters as QueryFilters } from '../../lib/repositories'
@@ -41,7 +37,7 @@ export function TransactionsPage() {
   const members = useMembers()
   const filters: FilterValues = {
     period: params.get('period') ?? 'THIS_MONTH',
-    type: params.get('type') ?? '',
+    type: TRANSACTION_TYPES.find((type) => type === params.get('type')) ?? '',
     accountId: params.get('account') ?? '',
     memberId: params.get('member') ?? '',
     categoryId: params.get('category') ?? '',
@@ -58,7 +54,7 @@ export function TransactionsPage() {
     return {
       start: range.start,
       end: range.end,
-      ...(filters.type ? { type: filters.type as TransactionType } : {}),
+      ...(filters.type ? { type: filters.type as (typeof TRANSACTION_TYPES)[number] } : {}),
       ...(filters.accountId ? { accountId: filters.accountId } : {}),
       ...(filters.memberId ? { memberId: filters.memberId } : {}),
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
@@ -113,8 +109,7 @@ export function TransactionsPage() {
     setPage((current) => current + 1)
   }
   const accountName = (id?: string) => accounts.data?.find((item) => item.id === id)?.name ?? '—'
-  const categoryName = (id?: string) =>
-    categories.data?.find((item) => item.id === id)?.name ?? 'Transfer'
+  const categoryName = (id?: string) => categories.data?.find((item) => item.id === id)?.name ?? '—'
   const memberName = (id?: string) =>
     members.data?.find((item) => item.userId === id)?.displayName ?? 'Household'
   return (
@@ -168,17 +163,9 @@ export function TransactionsPage() {
                           {item.merchant}
                         </Text>
                       </Table.Td>
-                      <Table.Td>
-                        {categoryName(item.type === 'TRANSFER' ? undefined : item.categoryId)}
-                      </Table.Td>
-                      <Table.Td>
-                        {accountName(
-                          item.type === 'TRANSFER' ? item.transfer.sourceAccountId : item.accountId,
-                        )}
-                      </Table.Td>
-                      <Table.Td>
-                        {memberName(item.type === 'TRANSFER' ? undefined : item.ownerUserId)}
-                      </Table.Td>
+                      <Table.Td>{categoryName(item.categoryId)}</Table.Td>
+                      <Table.Td>{accountName(item.accountId)}</Table.Td>
+                      <Table.Td>{memberName(item.ownerUserId)}</Table.Td>
                       <Table.Td>
                         <Badge variant="light" color="gray">
                           {item.type}
@@ -208,8 +195,7 @@ export function TransactionsPage() {
                   <div style={{ minWidth: 0 }}>
                     <Text fw={650}>{item.description}</Text>
                     <Text size="xs" c="dimmed">
-                      {formatDate(item.transactionDate)} ·{' '}
-                      {categoryName(item.type === 'TRANSFER' ? undefined : item.categoryId)}
+                      {formatDate(item.transactionDate)} · {categoryName(item.categoryId)}
                     </Text>
                   </div>
                   <Amount

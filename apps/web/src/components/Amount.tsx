@@ -10,9 +10,7 @@ export function Amount({
   const sign = type === 'EXPENSE' ? -1 : 1
   return (
     <Text fw={650} className={type ? `amount-${type.toLowerCase()}` : undefined} {...props}>
-      {type === 'TRANSFER'
-        ? formatMoney(amountMinor, currency)
-        : formatMoney(amountMinor * sign, currency)}
+      {formatMoney(amountMinor * sign, currency)}
     </Text>
   )
 }

@@ -12,7 +12,10 @@ vi.mock('../../hooks/useHouseholdData', () => ({
   }),
   useMembers: () => ({ data: [{ userId: 'u1', displayName: 'Emmanouil' }] }),
   useCategories: () => ({
-    data: [{ id: 'c1', name: 'Supermarket', type: 'EXPENSE', isArchived: false }],
+    data: [
+      { id: 'c1', name: 'Supermarket', type: 'EXPENSE', isArchived: false },
+      { id: 'salary', name: 'Salary', type: 'INCOME', isArchived: false },
+    ],
   }),
 }))
 vi.mock('../households/HouseholdProvider', () => ({
@@ -30,19 +33,21 @@ describe('TransactionForm', () => {
     expect(screen.getByLabelText('Category', { selector: 'input' })).toBeVisible()
   })
 
-  it('renders one-document transfer fields without expense categories', () => {
+  it('renders income fields when editing an income transaction', () => {
     const date = new Date('2026-09-18T10:00:00Z')
     renderApp(
       <TransactionForm
         transaction={{
           id: 't1',
           householdId: 'h1',
-          type: 'TRANSFER',
+          type: 'INCOME',
           amountMinor: 1000,
           currency: 'EUR',
-          description: 'Cash withdrawal',
+          description: 'Salary',
           transactionDate: date,
-          transfer: { sourceAccountId: 'a1', destinationAccountId: 'a2' },
+          accountId: 'a1',
+          ownerUserId: 'u1',
+          categoryId: 'salary',
           source: 'MANUAL',
           createdBy: 'u1',
           searchPrefixes: [],
@@ -53,8 +58,9 @@ describe('TransactionForm', () => {
         onSaved={() => undefined}
       />,
     )
-    expect(screen.getByLabelText('From account', { selector: 'input' })).toBeVisible()
-    expect(screen.getByLabelText('To account', { selector: 'input' })).toBeVisible()
-    expect(screen.queryByLabelText('Category', { selector: 'input' })).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Account', { selector: 'input' })).toBeVisible()
+    expect(screen.getByLabelText('Category', { selector: 'input' })).toBeVisible()
+    expect(screen.getByLabelText('Received by', { selector: 'input' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Save income' })).toBeVisible()
   })
 })

@@ -31,7 +31,7 @@ export function transactionAnalyticsDelta(
   if (
     transaction.isDeleted ||
     transaction.deletedAt ||
-    transaction.type === 'TRANSFER' ||
+    (transaction.type !== 'EXPENSE' && transaction.type !== 'INCOME') ||
     transaction.excludeFromAnalytics
   )
     return delta
@@ -61,10 +61,7 @@ export function accountEffects(
     return { [transaction.accountId]: -transaction.amountMinor * direction }
   if (transaction.type === 'INCOME')
     return { [transaction.accountId]: transaction.amountMinor * direction }
-  return {
-    [transaction.transfer.sourceAccountId]: -transaction.amountMinor * direction,
-    [transaction.transfer.destinationAccountId]: transaction.amountMinor * direction,
-  }
+  return {}
 }
 
 export function mergeAnalyticsDeltas(...deltas: AnalyticsDelta[]): AnalyticsDelta {

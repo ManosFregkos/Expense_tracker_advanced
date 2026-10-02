@@ -4,7 +4,7 @@ export type HouseholdRole = (typeof HOUSEHOLD_ROLES)[number]
 export const ACCOUNT_TYPES = ['BANK', 'CASH', 'CREDIT_CARD', 'DEBIT_CARD'] as const
 export type AccountType = (typeof ACCOUNT_TYPES)[number]
 
-export const TRANSACTION_TYPES = ['EXPENSE', 'INCOME', 'TRANSFER'] as const
+export const TRANSACTION_TYPES = ['EXPENSE', 'INCOME'] as const
 export type TransactionType = (typeof TRANSACTION_TYPES)[number]
 
 export const TRANSACTION_SOURCES = ['MANUAL', 'BANK_SYNC', 'IMPORT'] as const
@@ -611,12 +611,7 @@ export interface IncomeTransaction extends TransactionBase {
   categoryId: string
 }
 
-export interface TransferTransaction extends TransactionBase {
-  type: 'TRANSFER'
-  transfer: { sourceAccountId: string; destinationAccountId: string }
-}
-
-export type Transaction = ExpenseTransaction | IncomeTransaction | TransferTransaction
+export type Transaction = ExpenseTransaction | IncomeTransaction
 
 export interface Category {
   id: string

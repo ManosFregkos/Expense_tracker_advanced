@@ -40,23 +40,6 @@ export declare const transactionCoreSchema: z.ZodDiscriminatedUnion<[z.ZodObject
     ownerUserId: z.ZodString;
     categoryId: z.ZodString;
     type: z.ZodLiteral<"INCOME">;
-}, z.core.$strip>, z.ZodObject<{
-    amountMinor: z.ZodNumber;
-    currency: z.ZodString;
-    description: z.ZodString;
-    merchant: z.ZodOptional<z.ZodString>;
-    transactionDate: z.ZodISODateTime;
-    notes: z.ZodOptional<z.ZodString>;
-    source: z.ZodDefault<z.ZodEnum<{
-        MANUAL: "MANUAL";
-        BANK_SYNC: "BANK_SYNC";
-        IMPORT: "IMPORT";
-    }>>;
-    bankTransactionId: z.ZodOptional<z.ZodString>;
-    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    type: z.ZodLiteral<"TRANSFER">;
-    sourceAccountId: z.ZodString;
-    destinationAccountId: z.ZodString;
 }, z.core.$strip>], "type">;
 export declare const transactionInputSchema: z.ZodIntersection<z.ZodObject<{
     householdId: z.ZodString;
@@ -101,23 +84,6 @@ export declare const transactionInputSchema: z.ZodIntersection<z.ZodObject<{
     ownerUserId: z.ZodString;
     categoryId: z.ZodString;
     type: z.ZodLiteral<"INCOME">;
-}, z.core.$strip>, z.ZodObject<{
-    amountMinor: z.ZodNumber;
-    currency: z.ZodString;
-    description: z.ZodString;
-    merchant: z.ZodOptional<z.ZodString>;
-    transactionDate: z.ZodISODateTime;
-    notes: z.ZodOptional<z.ZodString>;
-    source: z.ZodDefault<z.ZodEnum<{
-        MANUAL: "MANUAL";
-        BANK_SYNC: "BANK_SYNC";
-        IMPORT: "IMPORT";
-    }>>;
-    bankTransactionId: z.ZodOptional<z.ZodString>;
-    tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    type: z.ZodLiteral<"TRANSFER">;
-    sourceAccountId: z.ZodString;
-    destinationAccountId: z.ZodString;
 }, z.core.$strip>], "type">>;
 export declare const updateTransactionSchema: z.ZodObject<{
     householdId: z.ZodString;
@@ -163,23 +129,6 @@ export declare const updateTransactionSchema: z.ZodObject<{
         ownerUserId: z.ZodString;
         categoryId: z.ZodString;
         type: z.ZodLiteral<"INCOME">;
-    }, z.core.$strip>, z.ZodObject<{
-        amountMinor: z.ZodNumber;
-        currency: z.ZodString;
-        description: z.ZodString;
-        merchant: z.ZodOptional<z.ZodString>;
-        transactionDate: z.ZodISODateTime;
-        notes: z.ZodOptional<z.ZodString>;
-        source: z.ZodDefault<z.ZodEnum<{
-            MANUAL: "MANUAL";
-            BANK_SYNC: "BANK_SYNC";
-            IMPORT: "IMPORT";
-        }>>;
-        bankTransactionId: z.ZodOptional<z.ZodString>;
-        tags: z.ZodOptional<z.ZodArray<z.ZodString>>;
-        type: z.ZodLiteral<"TRANSFER">;
-        sourceAccountId: z.ZodString;
-        destinationAccountId: z.ZodString;
     }, z.core.$strip>], "type">;
 }, z.core.$strip>;
 export declare const transactionIdSchema: z.ZodObject<{

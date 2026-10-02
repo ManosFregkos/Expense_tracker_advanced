@@ -1,6 +1,6 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deleteTransaction, updateTransaction } from './transactions.js'
+import { createTransaction, deleteTransaction, updateTransaction } from './transactions.js'
 
 const store = vi.hoisted(() => ({
   documents: new Map<string, Record<string, unknown>>(),
@@ -124,4 +124,53 @@ describe('historical bank-linked transactions after banking removal', () => {
       ).toBe(true)
     },
   )
+})
+
+describe('supported transaction types', () => {
+  it('rejects transfer creation before writing financial data', async () => {
+    await expect(
+      createTransaction.run(
+        request({
+          householdId: 'h1',
+          type: 'TRANSFER',
+          amountMinor: 100,
+          currency: 'EUR',
+          description: 'Unsupported movement',
+          transactionDate: date,
+          sourceAccountId: 'a1',
+          destinationAccountId: 'a2',
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'invalid-argument' })
+    expect(store.writes.size).toBe(0)
+  })
+
+  it.each(['edit', 'delete'])('prevents %s of unsupported historical records', async (action) => {
+    store.documents.set(transactionPath, {
+      ...store.documents.get(transactionPath),
+      type: 'TRANSFER',
+      transfer: { sourceAccountId: 'a1', destinationAccountId: 'a2' },
+    })
+    const data = { householdId: 'h1', transactionId: 't1' }
+    const operation =
+      action === 'delete'
+        ? deleteTransaction.run(request(data))
+        : updateTransaction.run(
+            request({
+              ...data,
+              transaction: {
+                type: 'EXPENSE',
+                amountMinor: 100,
+                currency: 'EUR',
+                description: 'Updated purchase',
+                transactionDate: date,
+                accountId: 'a1',
+                ownerUserId: 'u1',
+                categoryId: 'c1',
+              },
+            }),
+          )
+    await expect(operation).rejects.toMatchObject({ code: 'failed-precondition' })
+    expect(store.writes.size).toBe(0)
+  })
 })

@@ -29,22 +29,12 @@ export function transactionsToCsv(
     'currency',
   ]
   const rows = transactions.map((transaction) => {
-    const accountId =
-      transaction.type === 'TRANSFER' ? transaction.transfer.sourceAccountId : transaction.accountId
-    const destination =
-      transaction.type === 'TRANSFER'
-        ? accounts.find((item) => item.id === transaction.transfer.destinationAccountId)?.name
-        : undefined
     return [
       toDate(transaction.transactionDate).toISOString(),
       transaction.type,
-      transaction.type === 'TRANSFER'
-        ? ''
-        : (members.find((item) => item.userId === transaction.ownerUserId)?.displayName ?? ''),
-      `${accounts.find((item) => item.id === accountId)?.name ?? ''}${destination ? ` -> ${destination}` : ''}`,
-      transaction.type === 'TRANSFER'
-        ? ''
-        : (categories.find((item) => item.id === transaction.categoryId)?.name ?? ''),
+      members.find((item) => item.userId === transaction.ownerUserId)?.displayName ?? '',
+      accounts.find((item) => item.id === transaction.accountId)?.name ?? '',
+      categories.find((item) => item.id === transaction.categoryId)?.name ?? '',
       transaction.description,
       transaction.merchant ?? '',
       transaction.amountMinor,

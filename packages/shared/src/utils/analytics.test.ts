@@ -18,7 +18,7 @@ const base = {
 }
 
 describe('transaction accounting', () => {
-  it('counts expenses and income while excluding transfers', () => {
+  it('counts expenses and income and applies their account effects', () => {
     const expense: Transaction = {
       ...base,
       type: 'EXPENSE',
@@ -36,20 +36,13 @@ describe('transaction accounting', () => {
       ownerUserId: 'u',
       categoryId: 'salary',
     }
-    const transfer: Transaction = {
-      ...base,
-      id: 'x',
-      type: 'TRANSFER',
-      amountMinor: 200,
-      transfer: { sourceAccountId: 'a', destinationAccountId: 'b' },
-    }
     const total = mergeAnalyticsDeltas(
       transactionAnalyticsDelta(expense),
       transactionAnalyticsDelta(income),
-      transactionAnalyticsDelta(transfer),
     )
     expect(total).toMatchObject({ incomeMinor: 1000, expenseMinor: 500, transactionCount: 2 })
-    expect(accountEffects(transfer)).toEqual({ a: -200, b: 200 })
+    expect(accountEffects(expense)).toEqual({ a: -500 })
+    expect(accountEffects(income)).toEqual({ a: 1000 })
   })
 
   it('excludes soft-deleted records and reverses edits', () => {

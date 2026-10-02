@@ -6,10 +6,6 @@ export function transactionEffectForAccount(transaction, accountId, accountType)
         return transaction.accountId === accountId ? transaction.amountMinor * (credit ? 1 : -1) : 0;
     if (transaction.type === 'INCOME')
         return transaction.accountId === accountId ? transaction.amountMinor * (credit ? -1 : 1) : 0;
-    if (transaction.transfer.sourceAccountId === accountId)
-        return transaction.amountMinor * (credit ? 1 : -1);
-    if (transaction.transfer.destinationAccountId === accountId)
-        return transaction.amountMinor * (credit ? -1 : 1);
     return 0;
 }
 export class AccountBalanceService {

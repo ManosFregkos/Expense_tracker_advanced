@@ -38,16 +38,6 @@ export const transactionCoreSchema = z
         .optional(),
     }),
     base.extend({ type: z.literal('INCOME'), ...expenseIncomeFields }),
-    base
-      .extend({
-        type: z.literal('TRANSFER'),
-        sourceAccountId: idSchema,
-        destinationAccountId: idSchema,
-      })
-      .refine((value) => value.sourceAccountId !== value.destinationAccountId, {
-        message: 'Source and destination accounts must differ',
-        path: ['destinationAccountId'],
-      }),
   ])
   .superRefine((value, context) => {
     if (

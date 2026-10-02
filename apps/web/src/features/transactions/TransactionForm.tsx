@@ -28,13 +28,11 @@ import { useHousehold } from '../households/HouseholdProvider'
 
 const formSchema = z
   .object({
-    type: z.enum(['EXPENSE', 'INCOME', 'TRANSFER']),
+    type: z.enum(['EXPENSE', 'INCOME']),
     amount: z.string().min(1),
     accountId: z.string().optional(),
     ownerUserId: z.string().optional(),
     categoryId: z.string().optional(),
-    sourceAccountId: z.string().optional(),
-    destinationAccountId: z.string().optional(),
     description: z.string().trim().min(1).max(160),
     merchant: z.string().trim().max(160).optional(),
     date: z.string().min(1),
@@ -46,28 +44,8 @@ const formSchema = z
       .optional(),
   })
   .superRefine((value, context) => {
-    if (value.type === 'TRANSFER') {
-      if (!value.sourceAccountId)
-        context.addIssue({
-          code: 'custom',
-          path: ['sourceAccountId'],
-          message: 'Select a source account',
-        })
-      if (!value.destinationAccountId)
-        context.addIssue({
-          code: 'custom',
-          path: ['destinationAccountId'],
-          message: 'Select a destination account',
-        })
-      if (value.sourceAccountId === value.destinationAccountId)
-        context.addIssue({
-          code: 'custom',
-          path: ['destinationAccountId'],
-          message: 'Accounts must differ',
-        })
-    } else
-      for (const field of ['accountId', 'ownerUserId', 'categoryId'] as const)
-        if (!value[field]) context.addIssue({ code: 'custom', path: [field], message: 'Required' })
+    for (const field of ['accountId', 'ownerUserId', 'categoryId'] as const)
+      if (!value[field]) context.addIssue({ code: 'custom', path: [field], message: 'Required' })
   })
 type Values = z.infer<typeof formSchema>
 type ManualSuggestion = {
@@ -130,13 +108,7 @@ function defaults(transaction?: Transaction): Values {
       type: 'EXPENSE',
       accountId: localStorage.getItem('lastUsedAccountId') ?? undefined,
     }
-  if (transaction.type === 'TRANSFER')
-    return {
-      ...base,
-      type: 'TRANSFER',
-      sourceAccountId: transaction.transfer.sourceAccountId,
-      destinationAccountId: transaction.transfer.destinationAccountId,
-    }
+
   return {
     ...base,
     type: transaction.type,
@@ -165,6 +137,7 @@ export function TransactionForm({
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<Values>({ resolver: zodResolver(formSchema), defaultValues: defaults(transaction) })
   const type = watch('type')
@@ -173,8 +146,9 @@ export function TransactionForm({
   const activeAccounts = (accounts.data ?? []).filter((account) => !account.isArchived)
   useEffect(() => {
     const account = accounts.data?.find((item) => item.id === selectedAccountId && !item.isArchived)
-    if (account) setValue('ownerUserId', account.ownerUserId)
-  }, [accounts.data, selectedAccountId, setValue])
+    if (account && getValues('ownerUserId') !== account.ownerUserId)
+      setValue('ownerUserId', account.ownerUserId)
+  }, [accounts.data, selectedAccountId, setValue, getValues])
   const accountOptions = activeAccounts.map((account) => ({
     value: account.id,
     label: `${account.name} · ${members.data?.find((member) => member.userId === account.ownerUserId)?.displayName ?? 'Member'}`,
@@ -216,30 +190,22 @@ export function TransactionForm({
           : {}),
         source: 'MANUAL' as const,
       }
-      const input =
-        values.type === 'TRANSFER'
+      const input = {
+        ...common,
+        type: values.type,
+        accountId: values.accountId!,
+        ownerUserId: values.ownerUserId!,
+        categoryId: values.categoryId!,
+        ...(values.type === 'EXPENSE' && values.splits?.length
           ? {
-              ...common,
-              type: 'TRANSFER' as const,
-              sourceAccountId: values.sourceAccountId!,
-              destinationAccountId: values.destinationAccountId!,
+              splits: values.splits.map((split) => ({
+                id: split.id,
+                categoryId: split.categoryId,
+                amountMinor: parseMoneyToMinor(split.amount, household.defaultCurrency),
+              })),
             }
-          : {
-              ...common,
-              type: values.type,
-              accountId: values.accountId!,
-              ownerUserId: values.ownerUserId!,
-              categoryId: values.categoryId!,
-              ...(values.type === 'EXPENSE' && values.splits?.length
-                ? {
-                    splits: values.splits.map((split) => ({
-                      id: split.id,
-                      categoryId: split.categoryId,
-                      amountMinor: parseMoneyToMinor(split.amount, household.defaultCurrency),
-                    })),
-                  }
-                : {}),
-            }
+          : {}),
+      }
       return transaction
         ? api.updateTransaction({
             householdId: household.id,
@@ -255,13 +221,7 @@ export function TransactionForm({
       const selectedCategory = watch('categoryId')
       const selectedOwner = watch('ownerUserId')
       const enteredMerchant = watch('merchant') || watch('description')
-      if (
-        type !== 'TRANSFER' &&
-        selectedAccount &&
-        selectedCategory &&
-        selectedOwner &&
-        enteredMerchant
-      ) {
+      if (selectedAccount && selectedCategory && selectedOwner && enteredMerchant) {
         const next = [
           {
             merchant: enteredMerchant,
@@ -285,7 +245,7 @@ export function TransactionForm({
         color: 'teal',
         title: transaction
           ? 'Transaction updated'
-          : `${type === 'EXPENSE' ? 'Expense' : type === 'INCOME' ? 'Income' : 'Transfer'} saved`,
+          : `${type === 'EXPENSE' ? 'Expense' : 'Income'} saved`,
         message: 'Balances and analytics are up to date.',
       })
       onSaved()
@@ -309,7 +269,6 @@ export function TransactionForm({
               data={[
                 { value: 'EXPENSE', label: 'Expense' },
                 { value: 'INCOME', label: 'Income' },
-                { value: 'TRANSFER', label: 'Transfer' },
               ]}
               {...field}
             />
@@ -334,164 +293,120 @@ export function TransactionForm({
             />
           )}
         />
-        {type === 'TRANSFER' ? (
-          <Group grow align="start" className="responsive-fields">
-            <Controller
-              name="sourceAccountId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  searchable
-                  allowDeselect={false}
-                  label="From account"
-                  data={accountOptions}
-                  error={errors.sourceAccountId?.message}
-                  {...field}
-                />
-              )}
+        <Controller
+          name="accountId"
+          control={control}
+          render={({ field }) => (
+            <Select
+              searchable
+              allowDeselect={false}
+              label="Account"
+              data={accountOptions}
+              error={errors.accountId?.message}
+              {...field}
+              onChange={(value) => {
+                field.onChange(value)
+                const account = activeAccounts.find((item) => item.id === value)
+                if (account) setValue('ownerUserId', account.ownerUserId)
+              }}
             />
-            <Controller
-              name="destinationAccountId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  searchable
-                  allowDeselect={false}
-                  label="To account"
-                  data={accountOptions}
-                  error={errors.destinationAccountId?.message}
-                  {...field}
-                />
-              )}
+          )}
+        />
+        <Controller
+          name="categoryId"
+          control={control}
+          render={({ field }) => (
+            <Select
+              searchable
+              allowDeselect={false}
+              label="Category"
+              data={categoryOptions}
+              error={errors.categoryId?.message}
+              {...field}
             />
-          </Group>
-        ) : (
-          <>
-            <Controller
-              name="accountId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  searchable
-                  allowDeselect={false}
-                  label="Account"
-                  data={accountOptions}
-                  error={errors.accountId?.message}
-                  {...field}
-                  onChange={(value) => {
-                    field.onChange(value)
-                    const account = activeAccounts.find((item) => item.id === value)
-                    if (account) setValue('ownerUserId', account.ownerUserId)
+          )}
+        />
+        <Controller
+          name="ownerUserId"
+          control={control}
+          render={({ field }) => (
+            <Select
+              allowDeselect={false}
+              label={type === 'EXPENSE' ? 'Paid by' : 'Received by'}
+              data={(members.data ?? []).map((member) => ({
+                value: member.userId,
+                label: member.displayName,
+              }))}
+              error={errors.ownerUserId?.message}
+              {...field}
+            />
+          )}
+        />
+        {type === 'EXPENSE' && (
+          <Stack gap="xs">
+            <Group justify="space-between">
+              <TextInput readOnly variant="unstyled" value="Split categories (optional)" />
+              <Button
+                type="button"
+                size="xs"
+                variant="light"
+                onClick={() => {
+                  const next = [...splits, { id: crypto.randomUUID(), categoryId: '', amount: '' }]
+                  setSplits(next)
+                  setValue('splits', next)
+                }}
+              >
+                Add split
+              </Button>
+            </Group>
+            {splits.map((split, index) => (
+              <Group key={split.id} align="end" grow className="responsive-fields">
+                <Controller
+                  name={`splits.${index}.categoryId`}
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      searchable
+                      allowDeselect={false}
+                      label={`Split ${index + 1} category`}
+                      data={categoryOptions}
+                      {...field}
+                    />
+                  )}
+                />
+                <Controller
+                  name={`splits.${index}.amount`}
+                  control={control}
+                  render={({ field }) => (
+                    <NumberInput
+                      label="Amount"
+                      decimalScale={2}
+                      fixedDecimalScale
+                      value={field.value}
+                      onChange={(value) => field.onChange(String(value))}
+                    />
+                  )}
+                />
+                <Button
+                  type="button"
+                  color="red"
+                  variant="subtle"
+                  onClick={() => {
+                    const next = splits.filter((_, candidateIndex) => candidateIndex !== index)
+                    setSplits(next)
+                    setValue('splits', next)
                   }}
-                />
-              )}
-            />
-            <Controller
-              name="categoryId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  searchable
-                  allowDeselect={false}
-                  label="Category"
-                  data={categoryOptions}
-                  error={errors.categoryId?.message}
-                  {...field}
-                />
-              )}
-            />
-            <Controller
-              name="ownerUserId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  allowDeselect={false}
-                  label={type === 'EXPENSE' ? 'Paid by' : 'Received by'}
-                  data={(members.data ?? []).map((member) => ({
-                    value: member.userId,
-                    label: member.displayName,
-                  }))}
-                  error={errors.ownerUserId?.message}
-                  {...field}
-                />
-              )}
-            />
-            {type === 'EXPENSE' && (
-              <Stack gap="xs">
-                <Group justify="space-between">
-                  <TextInput readOnly variant="unstyled" value="Split categories (optional)" />
-                  <Button
-                    type="button"
-                    size="xs"
-                    variant="light"
-                    onClick={() => {
-                      const next = [
-                        ...splits,
-                        { id: crypto.randomUUID(), categoryId: '', amount: '' },
-                      ]
-                      setSplits(next)
-                      setValue('splits', next)
-                    }}
-                  >
-                    Add split
-                  </Button>
-                </Group>
-                {splits.map((split, index) => (
-                  <Group key={split.id} align="end" grow className="responsive-fields">
-                    <Controller
-                      name={`splits.${index}.categoryId`}
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          searchable
-                          allowDeselect={false}
-                          label={`Split ${index + 1} category`}
-                          data={categoryOptions}
-                          {...field}
-                        />
-                      )}
-                    />
-                    <Controller
-                      name={`splits.${index}.amount`}
-                      control={control}
-                      render={({ field }) => (
-                        <NumberInput
-                          label="Amount"
-                          decimalScale={2}
-                          fixedDecimalScale
-                          value={field.value}
-                          onChange={(value) => field.onChange(String(value))}
-                        />
-                      )}
-                    />
-                    <Button
-                      type="button"
-                      color="red"
-                      variant="subtle"
-                      onClick={() => {
-                        const next = splits.filter((_, candidateIndex) => candidateIndex !== index)
-                        setSplits(next)
-                        setValue('splits', next)
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </Group>
-                ))}
-              </Stack>
-            )}
-          </>
+                >
+                  Remove
+                </Button>
+              </Group>
+            ))}
+          </Stack>
         )}
         <TextInput
-          label={type === 'TRANSFER' ? 'Description' : 'Description / merchant'}
-          placeholder={
-            type === 'EXPENSE'
-              ? 'e.g. Lidl'
-              : type === 'INCOME'
-                ? 'e.g. September salary'
-                : 'e.g. Cash withdrawal'
-          }
-          list={type === 'TRANSFER' ? undefined : 'merchant-suggestions'}
+          label="Description / merchant"
+          placeholder={type === 'EXPENSE' ? 'e.g. Lidl' : 'e.g. September salary'}
+          list="merchant-suggestions"
           error={errors.description?.message}
           {...descriptionField}
           onChange={(event) => {
@@ -514,7 +429,7 @@ export function TransactionForm({
             <option key={merchant} value={merchant} />
           ))}
         </datalist>
-        {type !== 'TRANSFER' && <TextInput label="Merchant (optional)" {...register('merchant')} />}
+        <TextInput label="Merchant (optional)" {...register('merchant')} />
         <TextInput label="Date" type="date" error={errors.date?.message} {...register('date')} />
         <Textarea label="Notes (optional)" autosize minRows={2} {...register('notes')} />
         <TextInput
@@ -524,7 +439,7 @@ export function TransactionForm({
           {...register('tags')}
         />
         <Button size="md" type="submit" loading={mutation.isPending}>
-          Save {type === 'EXPENSE' ? 'expense' : type === 'INCOME' ? 'income' : 'transfer'}
+          Save {type === 'EXPENSE' ? 'expense' : 'income'}
         </Button>
       </Stack>
     </form>

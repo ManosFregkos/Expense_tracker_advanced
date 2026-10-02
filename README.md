@@ -36,10 +36,10 @@ npm run build
 - Email/password and Google authentication, protected routes, verification gates
 - Multi-household domain with roles, secure invitations, and member visibility
 - Individually owned bank, cash, credit-card, and debit-card accounts
-- Expenses, income, and atomic transfers with soft deletion and audit trails
+- Expenses and income with soft deletion and audit trails
 - Hierarchical categories and fast mobile-first manual entry
 - Paginated/filterable transaction history and CSV export
-- Monthly aggregate analytics; transfers and deleted records are excluded
+- Monthly aggregate analytics; deleted records are excluded
 - Installable PWA with offline shell and Firestore persistence
 - Household tasks with assignment, lists, subtasks, recurring occurrences, reminders, and PWA push
 
@@ -88,7 +88,7 @@ The browser suite expects the emulators and web server; CI starts them automatic
 
 ## Accounting and balance strategy
 
-All amounts are positive integers in currency minor units. Transaction type determines direction: expense subtracts, income adds, and transfer subtracts from the source while adding to the destination. A transfer is one document and never contributes to cashflow analytics.
+All amounts are positive integers in currency minor units. Transaction type determines direction: expense subtracts and income adds.
 
 `openingBalanceMinor` plus non-deleted transaction effects is the deterministic source of truth. Accounts also store `currentBalanceMinor` as a backend-maintained cache updated in the same Firestore transaction as the financial mutation and audit/analytics writes. The rebuild callable can repair monthly aggregates from source transactions.
 
@@ -152,7 +152,7 @@ Previously imported transactions remain editable and deletable. Legacy bank meta
 ## Known limitations and roadmap
 
 - Firestore prefix search is intentionally limited to normalized description/merchant tokens; an external search adapter can later add full text.
-- FX conversion and cross-currency transfers are not implemented.
+- FX conversion and cross-currency transactions are not implemented.
 - Future work: Greek localization, recurring-payment detection, finer permissions, scheduled reports, push notifications, privacy deletion workflow, and a full-text search-provider adapter.
 
 ## Data ownership

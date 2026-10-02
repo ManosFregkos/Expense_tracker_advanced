@@ -1,6 +1,7 @@
 import { Button, Select, SimpleGrid, TextInput } from '@mantine/core'
 import { IconSearch } from '@tabler/icons-react'
 import { useState } from 'react'
+import { TRANSACTION_TYPES } from '@family-expense-tracker/shared'
 import { useAccounts, useCategories, useMembers } from '../../hooks/useHouseholdData'
 import { historyMonths } from '../../lib/date'
 import { useHousehold } from '../households/HouseholdProvider'
@@ -72,7 +73,7 @@ export function TransactionFilters({
           placeholder="All types"
           value={value.type || null}
           onChange={(field) => set('type', field)}
-          data={['EXPENSE', 'INCOME', 'TRANSFER'].map((type) => ({
+          data={TRANSACTION_TYPES.map((type) => ({
             value: type,
             label: type.replace('_', ' '),
           }))}

@@ -51,16 +51,7 @@ function inputToTransaction(input: TransactionInput, id: string, actor: Actor): 
     createdAt: now,
     updatedAt: now,
   }
-  if (input.type === 'TRANSFER') {
-    return {
-      ...common,
-      type: 'TRANSFER',
-      transfer: {
-        sourceAccountId: input.sourceAccountId,
-        destinationAccountId: input.destinationAccountId,
-      },
-    }
-  }
+
   return {
     ...common,
     type: input.type,
@@ -99,9 +90,9 @@ function updatedTransaction(
 }
 
 function involvedAccountIds(transaction: Transaction): string[] {
-  return transaction.type === 'TRANSFER'
-    ? [transaction.transfer.sourceAccountId, transaction.transfer.destinationAccountId]
-    : [transaction.accountId]
+  if (transaction.type !== 'EXPENSE' && transaction.type !== 'INCOME')
+    throw new HttpsError('failed-precondition', 'This transaction type is no longer supported.')
+  return [transaction.accountId]
 }
 
 async function loadHousehold(
@@ -138,56 +129,54 @@ async function validateTransactionRelations(
     }
     accounts.set(account.id, account)
   }
-  if (financialTransaction.type !== 'TRANSFER') {
-    const account = accounts.get(financialTransaction.accountId)
-    if (account?.ownerUserId !== financialTransaction.ownerUserId) {
-      throw new HttpsError('failed-precondition', 'The payer must own the selected account.')
-    }
-    const [owner, category] = await Promise.all([
-      transaction.get(
-        db.doc(
-          `households/${financialTransaction.householdId}/members/${financialTransaction.ownerUserId}`,
+  const account = accounts.get(financialTransaction.accountId)
+  if (account?.ownerUserId !== financialTransaction.ownerUserId) {
+    throw new HttpsError('failed-precondition', 'The payer must own the selected account.')
+  }
+  const [owner, category] = await Promise.all([
+    transaction.get(
+      db.doc(
+        `households/${financialTransaction.householdId}/members/${financialTransaction.ownerUserId}`,
+      ),
+    ),
+    transaction.get(
+      db.doc(
+        `households/${financialTransaction.householdId}/categories/${financialTransaction.categoryId}`,
+      ),
+    ),
+  ])
+  if (!owner.exists)
+    throw new HttpsError('failed-precondition', 'Account owner is not a household member.')
+  if (
+    !category.exists ||
+    category.get('type') !== financialTransaction.type ||
+    category.get('isArchived') === true
+  ) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Select an active category matching the transaction type.',
+    )
+  }
+  if (financialTransaction.type === 'EXPENSE' && financialTransaction.splits?.length) {
+    const splitCategories = await Promise.all(
+      financialTransaction.splits.map((split) =>
+        transaction.get(
+          db.doc(`households/${financialTransaction.householdId}/categories/${split.categoryId}`),
         ),
       ),
-      transaction.get(
-        db.doc(
-          `households/${financialTransaction.householdId}/categories/${financialTransaction.categoryId}`,
-        ),
-      ),
-    ])
-    if (!owner.exists)
-      throw new HttpsError('failed-precondition', 'Account owner is not a household member.')
+    )
     if (
-      !category.exists ||
-      category.get('type') !== financialTransaction.type ||
-      category.get('isArchived') === true
-    ) {
+      splitCategories.some(
+        (splitCategory) =>
+          !splitCategory.exists ||
+          splitCategory.get('type') !== 'EXPENSE' ||
+          splitCategory.get('isArchived'),
+      )
+    )
       throw new HttpsError(
         'failed-precondition',
-        'Select an active category matching the transaction type.',
+        'Every split must use an active expense category in this household.',
       )
-    }
-    if (financialTransaction.type === 'EXPENSE' && financialTransaction.splits?.length) {
-      const splitCategories = await Promise.all(
-        financialTransaction.splits.map((split) =>
-          transaction.get(
-            db.doc(`households/${financialTransaction.householdId}/categories/${split.categoryId}`),
-          ),
-        ),
-      )
-      if (
-        splitCategories.some(
-          (splitCategory) =>
-            !splitCategory.exists ||
-            splitCategory.get('type') !== 'EXPENSE' ||
-            splitCategory.get('isArchived'),
-        )
-      )
-        throw new HttpsError(
-          'failed-precondition',
-          'Every split must use an active expense category in this household.',
-        )
-    }
   }
   return accounts
 }
@@ -320,8 +309,6 @@ export const createTransaction = secureCallable(transactionInputSchema, async (i
   })
   return { transactionId: ref.id }
 })
-
-export const createTransfer = createTransaction
 
 export const updateTransaction = secureCallable(updateTransactionSchema, async (input, actor) => {
   await requireMember(input.householdId, actor.uid)

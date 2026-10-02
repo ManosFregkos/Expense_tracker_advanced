@@ -36,7 +36,7 @@ export const api = {
   createAccount: (input: CreateAccountInput) => call<typeof input, { accountId: string }>('createAccount', input),
   updateAccount: (input: UpdateAccountInput) => call<typeof input, { accountId: string }>('updateAccount', input),
   archiveAccount: (input: { householdId: string; accountId: string }) => call<typeof input, { accountId: string }>('archiveAccount', input),
-  createTransaction: (input: TransactionInput) => call<typeof input, { transactionId: string }>(input.type === 'TRANSFER' ? 'createTransfer' : 'createTransaction', input),
+  createTransaction: (input: TransactionInput) => call<typeof input, { transactionId: string }>('createTransaction', input),
   updateTransaction: (input: UpdateTransactionInput) => call<typeof input, { transactionId: string }>('updateTransaction', input),
   deleteTransaction: (input: { householdId: string; transactionId: string }) => call<typeof input, { transactionId: string }>('deleteTransaction', input),
   restoreTransaction: (input: { householdId: string; transactionId: string }) => call<typeof input, { transactionId: string }>('restoreTransaction', input),

@@ -98,7 +98,7 @@ export function AnalyticsPage() {
           <div>
             <Title order={3}>Month-over-month</Title>
             <Text c="dimmed" size="sm">
-              Income and expense totals exclude transfers.
+              Income and expense totals reflect active transactions.
             </Text>
           </div>
           <Text

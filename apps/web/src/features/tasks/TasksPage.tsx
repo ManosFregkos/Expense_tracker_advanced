@@ -42,7 +42,7 @@ import { TaskListView } from './components/TaskListView'
 import { TaskQuickAdd } from './components/TaskQuickAdd'
 import { useInvalidateTasks, useTaskLists, useTasks } from './hooks'
 
-const VIEWS: TaskView[] = ['today', 'upcoming', 'all', 'completed']
+const VIEWS: TaskView[] = ['all', 'today', 'upcoming', 'completed']
 const initializedHouseholds = new Set<string>()
 type Scope = 'household' | 'me' | 'unassigned'
 type Sort = 'manual' | 'due' | 'priority' | 'created' | 'updated'
@@ -65,7 +65,7 @@ export function TasksPage() {
   const [page, setPage] = useState(0)
   const [cursors, setCursors] = useState<Array<TaskQueryFilters['cursor']>>([undefined])
   const rawView = params.get('view') as TaskView | null
-  const view = rawView && VIEWS.includes(rawView) ? rawView : 'today'
+  const view = rawView && VIEWS.includes(rawView) ? rawView : 'all'
   const scope = (params.get('assignee') ?? 'household') as Scope
   const listId = params.get('list') ?? ''
   const priority = params.get('priority') ?? ''

@@ -101,6 +101,8 @@ export async function listTransactions(householdId: string, filters: Transaction
   if (filters.memberId) constraints.unshift(where('ownerUserId', '==', filters.memberId))
   if (filters.categoryId) constraints.unshift(where('categoryId', '==', filters.categoryId))
   if (filters.type) constraints.unshift(where('type', '==', filters.type))
+  else if (!filters.accountId && !filters.memberId && !filters.categoryId)
+    constraints.unshift(where('type', 'in', ['EXPENSE', 'INCOME']))
   const searchToken = filters.search ? normalizeSearchText(filters.search).split(' ')[0] : undefined
   if (searchToken) constraints.unshift(where('searchPrefixes', 'array-contains', searchToken))
   if (filters.cursor) constraints.push(startAfter(filters.cursor))
@@ -111,7 +113,10 @@ export async function listTransactions(householdId: string, filters: Transaction
 
 export async function getTransaction(householdId: string, transactionId: string): Promise<Transaction | null> {
   const snapshot = await getDoc(doc(firestore, `households/${householdId}/transactions/${transactionId}`))
-  return snapshot.exists() ? (snapshot.data() as Transaction) : null
+  const transaction = snapshot.exists() ? (snapshot.data() as Transaction) : null
+  return transaction && (transaction.type === 'EXPENSE' || transaction.type === 'INCOME')
+    ? transaction
+    : null
 }
 
 export async function listMyInvitations(email: string): Promise<Invitation[]> {
