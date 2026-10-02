@@ -33,7 +33,6 @@ vi.mock('../../hooks/useHouseholdData', () => ({
   useAccounts: () => ({ data: [] }),
   useCategories: () => ({ data: [] }),
   useMembers: () => ({ data: [] }),
-  useReviewBankTransactions: () => ({ data: [] }),
   useLatestTransactions: vi.fn(() => ({ data: { transactions: [] } })),
   useMonthlyAnalytics: () => ({
     data: [

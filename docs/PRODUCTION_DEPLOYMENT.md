@@ -1,6 +1,6 @@
 # Production deployment guide
 
-This runbook publishes the current finance, banking, household Tasks, and Kids Card Learning work
+This runbook publishes the current finance, household Tasks, and Kids Card Learning work
 to the Firebase production project `expense-tracker-v2-9520e`. Run commands from the repository
 root.
 
@@ -19,12 +19,6 @@ attention before the first Tasks deployment:
   `TASK_EMAIL_FROM` in the Functions environment, and set the `RESEND_API_KEY` Functions secret.
 - **Recommended hardening:** add `VITE_FIREBASE_APPCHECK_SITE_KEY`. App Check enforcement must
   remain disabled until the production web app is registered and verified.
-- **Required for all configured banks:** `OPEN_BANKING_PROVIDER` is set to Salt Edge, but the
-  production Functions environment currently has no Eurobank or NBG provider code. Add
-  `SALTEDGE_EUROBANK_PROVIDER_CODE` and `SALTEDGE_NBG_PROVIDER_CODE`, or leave those institutions
-  unavailable intentionally.
-- **Verify manually:** confirm enabled Secret Manager versions exist for `SALTEDGE_APP_ID`,
-  `SALTEDGE_SECRET`, and `SALTEDGE_PRIVATE_KEY`.
 - **Source hosting:** `origin` currently points to the GitHub project. Verify it before pushing.
 
 The `.env.production`, Functions `.env.<project-id>`, private keys, and local `.env` files are
@@ -200,44 +194,11 @@ configured will block callable operations.
 
 ## 5. Complete Functions configuration and secrets
 
-Non-secret production settings live locally in
-`functions/.env.expense-tracker-v2-9520e`. Keep it ignored by Git. Confirm at least:
+Non-secret production settings live locally in `functions/.env.expense-tracker-v2-9520e`. Keep it ignored by Git. Set `ENFORCE_APP_CHECK=false` until App Check is registered and verified. Configure `TASK_EMAIL_FROM` and the `RESEND_API_KEY` secret as described above.
 
-```dotenv
-ENFORCE_APP_CHECK=false
-OPEN_BANKING_PROVIDER=saltedge
-SALTEDGE_BASE_URL=https://www.saltedge.com/api/v6
-SALTEDGE_ALPHA_PROVIDER_CODE=<salt-edge-alpha-code>
-SALTEDGE_EUROBANK_PROVIDER_CODE=<salt-edge-eurobank-code>
-SALTEDGE_NBG_PROVIDER_CODE=<salt-edge-nbg-code>
-OPEN_BANKING_ALLOWED_RETURN_ORIGINS=https://expense-tracker-v2-9520e.web.app
-OPEN_BANKING_WEBHOOK_URL=<exact-deployed-openBankingWebhook-url>
-```
+Bank-provider settings and secrets are no longer used. On deployment, accept removal of the retired banking Functions reported by the Firebase CLI, including `scheduledBankRefresh`, `openBankingWebhook`, and `processOpenBankingWebhook`. Existing financial history is preserved; no database deletion is required.
 
-If a custom domain is used, add its exact HTTPS origin to
-`OPEN_BANKING_ALLOWED_RETURN_ORIGINS`. Configure the exact webhook URL in Salt Edge as well.
-
-Verify secret metadata without displaying secret values:
-
-```bash
-firebase functions:secrets:get SALTEDGE_APP_ID --project production
-firebase functions:secrets:get SALTEDGE_SECRET --project production
-firebase functions:secrets:get SALTEDGE_PRIVATE_KEY --project production
-```
-
-Create or rotate missing secrets interactively:
-
-```bash
-firebase functions:secrets:set SALTEDGE_APP_ID --project production
-firebase functions:secrets:set SALTEDGE_SECRET --project production
-firebase functions:secrets:set SALTEDGE_PRIVATE_KEY --data-file ./saltedge-private.pem --project production
-```
-
-The PEM file is ignored by the repository pattern `saltedge-*.pem`. Updating a secret requires a
-Functions redeployment before the new version is used.
-
-Tasks and FCM do not require a server-side VAPID secret. Firebase Admin Messaging uses the deployed
-Function's service identity; only the public `VITE_FIREBASE_VAPID_KEY` is added to the web build.
+Tasks and FCM do not require a server-side VAPID secret. Firebase Admin Messaging uses the deployed Function's service identity; only the public `VITE_FIREBASE_VAPID_KEY` is added to the web build.
 
 ## 6. Run the release gates
 
@@ -311,7 +272,7 @@ Use a normal browser and a second private/incognito session where noted:
 
 1. Open the production URL and confirm no emulator banner appears.
 2. Register or sign in, verify the email, and select an existing household.
-3. Confirm Dashboard, Accounts, Transactions, Analytics, Categories, and Bank Connections still
+3. Confirm Dashboard, Accounts, Transactions, Analytics, Categories, and Settings still
    load.
 4. Open `/tasks`; verify the five default task lists appear once.
 5. Create a task due today, assign it, edit it, complete it, and reopen it.
@@ -328,7 +289,7 @@ Use a normal browser and a second private/incognito session where noted:
     verified sign-in address. The browser tab can be closed while waiting.
 11. In a second household/user session, verify another household's task URL cannot be read or
     mutated.
-12. Test one production bank connection for every institution whose provider code is enabled.
+12. Confirm `/review`, `/bank-connections`, and `/transactions/review` redirect to the dashboard.
 13. Open **Settings -> Kids settings**, create or select a child profile, and verify narration,
     sounds, animations, session length, and difficulty persist after refresh.
 14. Enter `/kids` and confirm no dashboard balances, transactions, accounts, or administrative

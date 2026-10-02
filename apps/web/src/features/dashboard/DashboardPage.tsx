@@ -36,7 +36,6 @@ import {
   useLatestTransactions,
   useMembers,
   useMonthlyAnalytics,
-  useReviewBankTransactions,
 } from '../../hooks/useHouseholdData'
 import { formatDate, historyMonths } from '../../lib/date'
 import { useHousehold } from '../households/HouseholdProvider'
@@ -56,7 +55,6 @@ export function DashboardPage() {
   const categories = useCategories()
   const members = useMembers()
   const add = useAddTransaction()
-  const review = useReviewBankTransactions()
   if (!household) return null
   const current = analytics.data?.find((item) => item.monthKey === selectedMonth.value)
   const currency = household.defaultCurrency
@@ -131,21 +129,6 @@ export function DashboardPage() {
           </Card>
         ))}
       </SimpleGrid>
-      {(review.data?.length ?? 0) > 0 && (
-        <Paper withBorder p="md" mb="lg" style={{ borderColor: '#e4b85c' }}>
-          <Group justify="space-between">
-            <div>
-              <Text fw={700}>Transactions to review: {review.data?.length}</Text>
-              <Text size="sm" c="dimmed">
-                Resolve possible duplicates or choose categories.
-              </Text>
-            </div>
-            <Text component="a" href="/transactions/review" c="teal.9" fw={700}>
-              Review now
-            </Text>
-          </Group>
-        </Paper>
-      )}
       <Grid>
         <Grid.Col span={12}>
           <DashboardTasksWidget />

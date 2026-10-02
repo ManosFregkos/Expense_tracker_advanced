@@ -80,7 +80,7 @@ export function SettingsPage() {
       <div className="page-header">
         <div>
           <Title order={1}>Settings</Title>
-          <Text c="dimmed">Household configuration, data access, and account links.</Text>
+          <Text c="dimmed">Household configuration and data access.</Text>
         </div>
       </div>
       <Stack maw={760}>
@@ -130,13 +130,6 @@ export function SettingsPage() {
               onClick={() => void navigate('/categories')}
             >
               Categories
-            </Button>
-            <Button
-              variant="subtle"
-              justify="flex-start"
-              onClick={() => void navigate('/bank-connections')}
-            >
-              Bank connections
             </Button>
             <Button variant="subtle" justify="flex-start" onClick={() => void navigate('/profile')}>
               Profile

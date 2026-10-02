@@ -7,22 +7,8 @@ export {
   updateTransaction,
   deleteTransaction,
   restoreTransaction,
-  unlinkBankTransaction,
 } from './services/transactions.js'
 export { createCategory, updateCategory } from './services/categories.js'
-export {
-  createBankConnection,
-  reconnectBankConnection,
-  disconnectBankConnection,
-  syncBankConnection,
-  reviewBankTransaction,
-  processBankTransaction,
-} from './services/banking.js'
-export {
-  createMerchantRule,
-  updateMerchantRule,
-  deleteMerchantRule,
-} from './services/merchant-rules.js'
 export { rebuildMonthlyAnalytics } from './services/rebuild-analytics.js'
 export {
   initializeTaskModule,
@@ -57,8 +43,3 @@ export {
   completeKidsSession,
 } from './services/kids.js'
 export { saveKidsCustomContent, archiveKidsCustomContent } from './services/kids-content.js'
-export {
-  openBankingWebhook,
-  processOpenBankingWebhook,
-  scheduledBankRefresh,
-} from './banking/webhooks.js'

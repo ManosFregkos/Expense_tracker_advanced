@@ -12,11 +12,6 @@ export const transactionKeys = {
 }
 export const analyticsKeys = { monthly: (householdId: string) => ['analytics', householdId, 'monthly'] as const }
 export const invitationKeys = { mine: (email: string) => ['invitations', email] as const }
-export const bankingKeys = {
-  connections: (householdId: string) => ['banking', householdId, 'connections'] as const,
-  review: (householdId: string) => ['banking', householdId, 'review'] as const,
-  pending: (householdId: string) => ['banking', householdId, 'pending'] as const,
-}
 export const taskKeys = {
   all: (householdId: string) => ['tasks', householdId] as const,
   list: (householdId: string, filters: object) => ['tasks', householdId, 'list', filters] as const,

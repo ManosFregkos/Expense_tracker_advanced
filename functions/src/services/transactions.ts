@@ -340,26 +340,6 @@ export const updateTransaction = secureCallable(updateTransactionSchema, async (
       { ...input.transaction, householdId: input.householdId },
       actor,
     )
-    if (before.bankTransactionId) {
-      const immutableChanged =
-        input.transaction.type !== before.type ||
-        input.transaction.amountMinor !== before.amountMinor ||
-        input.transaction.currency !== before.currency ||
-        input.transaction.transactionDate !==
-          timestampToDate(before.transactionDate).toISOString() ||
-        (before.type !== 'TRANSFER' &&
-          input.transaction.type !== 'TRANSFER' &&
-          input.transaction.accountId !== before.accountId) ||
-        (before.type === 'TRANSFER' &&
-          input.transaction.type === 'TRANSFER' &&
-          (input.transaction.sourceAccountId !== before.transfer.sourceAccountId ||
-            input.transaction.destinationAccountId !== before.transfer.destinationAccountId))
-      if (immutableChanged)
-        throw new HttpsError(
-          'failed-precondition',
-          'Unlink this bank transaction before changing its amount, date, account, currency, or type.',
-        )
-    }
     await validateTransactionRelations(transaction, after)
     await applyFinancialMutation(transaction, household, before, after)
     transaction.set(ref, after)
@@ -403,24 +383,6 @@ async function setDeletionState(
     ])
     if (!snapshot.exists) throw new HttpsError('not-found', 'Transaction not found.')
     const before = snapshot.data() as Transaction
-    if (!restore && before.bankTransactionId && before.source !== 'BANK_SYNC')
-      throw new HttpsError(
-        'failed-precondition',
-        'Unlink this bank transaction before deleting it.',
-      )
-    if (
-      restore &&
-      before.bankTransactionId &&
-      (before.bankStatus === 'REVERSED' || before.bankStatus === 'CANCELLED')
-    )
-      throw new HttpsError(
-        'failed-precondition',
-        'A reversed or cancelled bank transaction cannot be restored.',
-      )
-    const bankRefs = (
-      before.bankTransactionIds ?? (before.bankTransactionId ? [before.bankTransactionId] : [])
-    ).map((id) => db.doc(`households/${input.householdId}/bankTransactions/${id}`))
-    const bankSnapshots = await Promise.all(bankRefs.map((bankRef) => transaction.get(bankRef)))
     if (restore === !before.deletedAt) return
     const restored = { ...before, isDeleted: false, updatedAt: Timestamp.now() }
     delete restored.deletedAt
@@ -436,15 +398,6 @@ async function setDeletionState(
         }
     await applyFinancialMutation(transaction, household, before, after)
     transaction.set(ref, after)
-    if (!restore && before.source === 'BANK_SYNC')
-      bankSnapshots.forEach((bankSnapshot, index) => {
-        const bankRef = bankRefs[index]
-        if (bankSnapshot.exists && bankRef)
-          transaction.update(bankRef, {
-            reconciliationStatus: 'IGNORED',
-            updatedAt: Timestamp.now(),
-          })
-      })
     writeAudit(db, transaction, {
       householdId: input.householdId,
       userId: actor.uid,
@@ -465,119 +418,4 @@ export const restoreTransaction = secureCallable(transactionIdSchema, (input, ac
   setDeletionState(input, actor, true),
 )
 
-export const unlinkBankTransaction = secureCallable(transactionIdSchema, async (input, actor) => {
-  await requireMember(input.householdId, actor.uid)
-  const ref = db.doc(`households/${input.householdId}/transactions/${input.transactionId}`)
-  await db.runTransaction(async (transaction) => {
-    const snapshot = await transaction.get(ref)
-    if (!snapshot.exists) throw new HttpsError('not-found', 'Transaction not found.')
-    const financial = snapshot.data() as Transaction
-    if (!financial.bankTransactionId) return
-    if (financial.source === 'BANK_SYNC')
-      throw new HttpsError(
-        'failed-precondition',
-        'Imported transactions cannot be unlinked. Delete it to preserve an ignored bank record.',
-      )
-    const bankRefs = (financial.bankTransactionIds ?? [financial.bankTransactionId]).map((id) =>
-      db.doc(`households/${input.householdId}/bankTransactions/${id}`),
-    )
-    const bankSnapshots = await Promise.all(bankRefs.map((bankRef) => transaction.get(bankRef)))
-    transaction.update(ref, {
-      bankTransactionId: FieldValue.delete(),
-      bankTransactionIds: FieldValue.delete(),
-      bankStatus: FieldValue.delete(),
-      updatedAt: Timestamp.now(),
-    })
-    bankSnapshots.forEach((bank, index) => {
-      const bankRef = bankRefs[index]
-      if (bank.exists && bankRef)
-        transaction.update(bankRef, {
-          normalizedTransactionId: FieldValue.delete(),
-          reconciliationStatus: 'REVIEW',
-          reviewReason: 'POSSIBLE_DUPLICATE',
-          updatedAt: Timestamp.now(),
-        })
-    })
-  })
-  return { transactionId: input.transactionId }
-})
-
 export const internalTransactionHelpers = { inputToTransaction, combineAccountEffects }
-
-export async function createImportedTransaction(
-  financialTransaction: Transaction,
-): Promise<string> {
-  const ref = db.doc(
-    `households/${financialTransaction.householdId}/transactions/${financialTransaction.id}`,
-  )
-  await db.runTransaction(async (transaction) => {
-    const existing = await transaction.get(ref)
-    if (existing.exists) return
-    const household = await loadHousehold(transaction, financialTransaction.householdId)
-    await validateTransactionRelations(transaction, financialTransaction)
-    await applyFinancialMutation(transaction, household, undefined, financialTransaction)
-    transaction.set(ref, financialTransaction)
-  })
-  return ref.id
-}
-
-export async function reverseImportedTransaction(
-  householdId: string,
-  transactionId: string,
-): Promise<void> {
-  const ref = db.doc(`households/${householdId}/transactions/${transactionId}`)
-  await db.runTransaction(async (transaction) => {
-    const [household, snapshot] = await Promise.all([
-      loadHousehold(transaction, householdId),
-      transaction.get(ref),
-    ])
-    if (!snapshot.exists) return
-    const before = snapshot.data() as Transaction
-    if (before.isDeleted) return
-    const after: Transaction = {
-      ...before,
-      bankStatus: 'REVERSED',
-      isDeleted: true,
-      deletedAt: Timestamp.now(),
-      deletedBy: 'OPEN_BANKING_SYNC',
-      updatedAt: Timestamp.now(),
-    }
-    await applyFinancialMutation(transaction, household, before, after)
-    transaction.set(ref, after)
-  })
-}
-
-export async function updateImportedTransactionFromBank(
-  householdId: string,
-  transactionId: string,
-  update: {
-    amountMinor: number
-    transactionDate: Timestamp
-    description: string
-    merchant?: string
-    bankStatus: 'BOOKED' | 'PENDING'
-  },
-): Promise<void> {
-  const ref = db.doc(`households/${householdId}/transactions/${transactionId}`)
-  await db.runTransaction(async (transaction) => {
-    const [household, snapshot] = await Promise.all([
-      loadHousehold(transaction, householdId),
-      transaction.get(ref),
-    ])
-    if (!snapshot.exists) return
-    const before = snapshot.data() as Transaction
-    if (before.source !== 'BANK_SYNC' || before.isDeleted) return
-    const after: Transaction = {
-      ...before,
-      amountMinor: update.amountMinor,
-      transactionDate: update.transactionDate,
-      description: update.description,
-      ...(update.merchant ? { merchant: update.merchant } : {}),
-      bankStatus: update.bankStatus,
-      searchPrefixes: buildSearchPrefixes(update.description, update.merchant),
-      updatedAt: Timestamp.now(),
-    }
-    await applyFinancialMutation(transaction, household, before, after)
-    transaction.set(ref, after)
-  })
-}

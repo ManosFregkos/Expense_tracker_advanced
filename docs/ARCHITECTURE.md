@@ -2,7 +2,7 @@
 
 ## Boundaries
 
-`packages/shared` is pure TypeScript and owns serializable domain contracts, validation, constants, and deterministic calculations. `functions` owns trust boundaries, authorization, audit records, aggregate/balance caches, invitations, import idempotency, and provider secrets. `apps/web` owns presentation and read repositories; financial writes use callable Functions.
+`packages/shared` is pure TypeScript and owns serializable domain contracts, validation, constants, and deterministic calculations. `functions` owns trust boundaries, authorization, audit records, aggregate/balance caches, and invitations. `apps/web` owns presentation and read repositories; financial writes use callable Functions.
 
 Firestore is household-centric. URLs and client state may select a household, but authorization always resolves membership from Firestore. React Query owns remote state and narrowly scoped invalidation; only authentication/active-household UI state uses React context.
 
@@ -44,12 +44,6 @@ notification. Notification-created triggers claim a second push-delivery record 
 provides at-most-once push attempts and duplicate-callback protection; the in-app notification is
 the durable source when a push transport attempt fails.
 
-## Open Banking boundary
+## Account history
 
-Only Functions instantiate `OpenBankingProvider`. Public connection documents contain display/status metadata; `/privateBankConnections` contains provider customer/connection identifiers and is denied by Firestore Rules. Salt Edge Connect/Reconnect URLs are created server-side. Signed callbacks create deterministic queue events, and a Firestore trigger runs the same sync pipeline used by manual and scheduled refreshes.
-
-Each sync takes a recoverable ten-minute lease on the public connection document. Provider transaction documents use a hash of application connection ID and provider transaction ID. A second fingerprint and scored candidate search handle pending IDs that change when booked and manual entries that precede bank import. Equal high-scoring candidates go to review rather than being guessed.
-
-Initial imported history participates in analytics but is marked `affectsBalance: false`, because the newly created account's opening application balance is anchored to the bank's current/outstanding balance. Transactions arriving after that anchor affect the application balance. Bank-reported values remain separate and are snapshotted after successful sync.
-
-Credit-card application balance means outstanding debt: purchases increase it, refunds and transfers into the card reduce it. A card payment is one transfer and never an expense.
+Banking integration has been removed. Account management remains available and supports transaction references, balance updates, filters, CSV exports, and analytics. Imported historical transactions retain their metadata and can be edited or deleted through the normal transaction workflow.

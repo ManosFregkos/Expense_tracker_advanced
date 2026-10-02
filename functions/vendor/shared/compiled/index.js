@@ -5,7 +5,6 @@ export * from './schemas/household.js';
 export * from './schemas/account.js';
 export * from './schemas/category.js';
 export * from './schemas/transaction.js';
-export * from './schemas/banking.js';
 export * from './schemas/task.js';
 export * from './schemas/kids.js';
 export * from './utils/money.js';

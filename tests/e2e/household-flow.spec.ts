@@ -35,6 +35,16 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await expect(page.getByRole('heading', { name: 'Accounts', exact: true })).toBeVisible()
   await page.setViewportSize({ width: 1280, height: 720 })
 
+  for (const route of ['/review', '/bank-connections', '/transactions/review']) {
+    await page.goto(route)
+    await expect(page).toHaveURL(/\/dashboard$/)
+    await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible()
+  }
+  await expect(page.getByRole('link', { name: 'Review transactions' })).toHaveCount(0)
+  await page.goto('/settings')
+  await expect(page.getByRole('button', { name: 'Bank connections' })).toHaveCount(0)
+  await page.goto('/accounts')
+
   await page.getByRole('button', { name: 'Add account' }).first().click()
   await page.getByLabel('Account name').fill('Eurobank')
   await page.getByRole('button', { name: 'Create account' }).click()
@@ -149,8 +159,6 @@ test('register, onboard, and complete the core household finance workflow', asyn
       '/tasks?view=all',
       '/settings',
       '/profile',
-      '/bank-connections',
-      '/transactions/review',
     ]) {
       await page.goto(route)
       await expect(page.locator('.page')).toBeVisible()

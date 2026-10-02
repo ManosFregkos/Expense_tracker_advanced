@@ -30,6 +30,12 @@ describeWithEmulator('Firestore household isolation', () => {
           role: 'OWNER',
         }),
         setDoc(doc(database, 'households/h1/accounts/a1'), { id: 'a1', householdId: 'h1' }),
+        ...['bankConnections', 'bankTransactions', 'bankAccountLinks', 'merchantRules'].map(
+          (name) => setDoc(doc(database, `households/h1/${name}/legacy`), { id: 'legacy' }),
+        ),
+        setDoc(doc(database, 'households/h1/accounts/a1/balanceSnapshots/legacy'), {
+          id: 'legacy',
+        }),
         setDoc(doc(database, 'households/h2'), { id: 'h2', name: 'Household Two' }),
         setDoc(doc(database, 'households/h2/members/bob'), {
           userId: 'bob',
@@ -159,6 +165,21 @@ describeWithEmulator('Firestore household isolation', () => {
     await assertFails(
       getDocs(query(collection(alice, 'households/h2/accounts'), where('householdId', '==', 'h2'))),
     )
+  })
+
+  it('denies reads and writes to retired banking collections even for household owners', async () => {
+    const alice = environment.authenticatedContext('alice').firestore()
+    for (const name of [
+      'bankConnections',
+      'bankTransactions',
+      'bankAccountLinks',
+      'merchantRules',
+    ]) {
+      await assertFails(getDoc(doc(alice, `households/h1/${name}/legacy`)))
+      await assertFails(getDocs(collection(alice, `households/h1/${name}`)))
+      await assertFails(setDoc(doc(alice, `households/h1/${name}/injected`), { id: 'injected' }))
+    }
+    await assertFails(getDoc(doc(alice, 'households/h1/accounts/a1/balanceSnapshots/legacy')))
   })
 
   it('isolates tasks, subtasks, lists, and activity by household', async () => {

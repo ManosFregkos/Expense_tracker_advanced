@@ -41,7 +41,6 @@ npm run build
 - Paginated/filterable transaction history and CSV export
 - Monthly aggregate analytics; transfers and deleted records are excluded
 - Installable PWA with offline shell and Firestore persistence
-- Provider-independent PSD2 integration with Salt Edge API V6 and a deterministic local mock
 - Household tasks with assignment, lists, subtasks, recurring occurrences, reminders, and PWA push
 
 Explicit non-goals include budgets, net worth, investments, loans, receipt OCR, recurring billing, and Splitwise-style settlement.
@@ -58,14 +57,14 @@ docs              Architecture, collections, and implementation plan
 
 ## Environment
 
-Copy `.env.example` to `apps/web/.env.local`. Firebase web configuration values identify a Firebase project but are not server secrets. Production bank-provider credentials must be stored with Firebase Functions secrets / Google Secret Manager and must never use `VITE_` variables.
+Copy `.env.example` to `apps/web/.env.local`. Firebase web configuration values identify a Firebase project but are not server secrets.
 
 App Check is initialized with a reCAPTCHA v3 provider when `VITE_FIREBASE_APPCHECK_SITE_KEY` is configured. Local emulator mode uses the App Check debug token. Callable Functions also enforce authentication, membership, roles, ownership constraints, and server-side Zod validation.
 
 ## Firebase setup and deployment
 
 For the complete production checklist—including Git upload, production environment values,
-`VITE_FIREBASE_VAPID_KEY`, FCM, App Check, Salt Edge secrets, staged deployment, smoke tests, and
+`VITE_FIREBASE_VAPID_KEY`, FCM, App Check, staged deployment, smoke tests, and
 rollback—use the [Production deployment guide](docs/PRODUCTION_DEPLOYMENT.md).
 
 1. Create Firebase projects for development and production.
@@ -80,10 +79,10 @@ Hosting serves `apps/web/dist` and rewrites client routes to `index.html`. Fires
 
 ## Testing
 
-- Vitest covers money, dates, transaction effects, aggregates, month moves, deletion/restoration, and bank idempotency.
+- Vitest covers money, dates, transaction effects, aggregates, month moves, deletion/restoration.
 - React Testing Library covers high-value forms and filters.
 - Rules Unit Testing runs against the Firestore emulator and verifies household isolation and backend-only collections.
-- Playwright exercises registration, onboarding, accounts, all transaction types, dashboard totals, edits, and deletion against the emulators.
+- Playwright exercises registration, onboarding, accounts, retired-route redirects, all transaction types, dashboard totals, edits, and deletion against the emulators.
 
 The browser suite expects the emulators and web server; CI starts them automatically. Real Google sign-in is not exercised by emulator E2E.
 
@@ -144,31 +143,16 @@ Local task testing uses the normal `npm run emulators`, `npm run dev`, and optio
 commands. Rules tests cover task/list/subtask/activity isolation, and the Playwright household flow
 includes task creation, completion/reopen, recurrence, and duplicate-completion behavior.
 
-## Open Banking
+## Removed features
 
-`OpenBankingProvider` isolates the application from providers. `SaltEdgeProvider` implements Salt Edge Account Information API V6; `MockBankProvider` runs locally and models Alpha Bank, Eurobank, and National Bank of Greece, checking/card accounts, pending-to-booked IDs, duplicate records, balances, consent expiry, and refresh cooldowns. No scraping or bank credentials are used.
+Bank connections and transaction review have been removed, including their callable Functions, bank webhooks, and scheduled bank refresh. Account management and its Firebase calls remain available.
 
-For local use, set `OPEN_BANKING_PROVIDER=mock` in the Functions environment, start the emulators, open **Settings → Bank connections**, and connect one of the three banks. The mock's initial sync supplies a pending card purchase and a booked transaction for review; the next eligible refresh books the pending purchase under a changed provider ID.
-
-For production:
-
-1. Obtain a Salt Edge Account Information client account and the contractual/PSD2 coverage needed for the intended Greek institutions.
-2. Store `SALTEDGE_APP_ID`, `SALTEDGE_SECRET`, and the PEM-encoded `SALTEDGE_PRIVATE_KEY` with `firebase functions:secrets:set`. Upload the matching public key to the Salt Edge Dashboard; never commit either key.
-3. Set `OPEN_BANKING_PROVIDER=saltedge`, the three `SALTEDGE_*_PROVIDER_CODE` values returned by the provider catalogue, the allowed frontend origin, and the success/failure URLs.
-4. In Salt Edge Dashboard callbacks, configure the deployed `openBankingWebhook` HTTPS URL for Success, Failure, Notify, and Consent Status. Set `OPEN_BANKING_SUCCESS_URL`, `OPEN_BANKING_FAILURE_URL`, and `OPEN_BANKING_WEBHOOK_URL` to that same exact URL. Signature verification includes the URL, raw body, and V6 public key; progress callbacks are acknowledged and only `stage: finish` starts an import.
-5. Deploy Functions, rules, and indexes, then validate the flow in Salt Edge test mode before live enablement.
-
-Live support is not claimed until real credentials, provider codes, callbacks, and bank consents have been tested. Sync is best effort and subject to bank availability, SCA, consent duration, pending-data support, and provider refresh limits.
-
-## V2 migration
-
-Take a Firestore backup, then run `npm run migrate:open-banking-v2` for a dry run. Review the count and re-run with `npm run migrate:open-banking-v2 -- --apply`. The migration adds `appCalculatedBalanceMinor` from the existing cached balance, category normalization and split-reference metadata, and moves any legacy provider connection IDs to backend-only documents. It never changes transaction amounts or opening balances. Legacy live connections without a known provider customer ID require reconnecting.
+Previously imported transactions remain editable and deletable. Legacy bank metadata is retained for historical records; the application no longer reads or writes bank collections. Deploy the updated Functions and Firestore rules to apply the removal in Firebase. When deploying, remove the retired Functions reported by the Firebase CLI, including `scheduledBankRefresh`, so previously deployed sync jobs stop running.
 
 ## Known limitations and roadmap
 
 - Firestore prefix search is intentionally limited to normalized description/merchant tokens; an external search adapter can later add full text.
 - FX conversion and cross-currency transfers are not implemented.
-- The mock bank provider is development-only; Salt Edge credentials and an appropriate provider contract are external requirements.
 - Future work: Greek localization, recurring-payment detection, finer permissions, scheduled reports, push notifications, privacy deletion workflow, and a full-text search-provider adapter.
 
 ## Data ownership

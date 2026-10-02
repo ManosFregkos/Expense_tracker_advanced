@@ -32,18 +32,6 @@ export function TransactionDetailPage() {
     },
     onError: (error) => notifications.show({ color: 'red', message: friendlyError(error) }),
   })
-  const unlink = useMutation({
-    mutationFn: () => api.unlinkBankTransaction({ householdId: household!.id, transactionId }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: transactionKeys.detail(household!.id, transactionId),
-      })
-      notifications.show({
-        message: 'Bank record unlinked. You can now edit or delete this manual transaction.',
-      })
-    },
-    onError: (error) => notifications.show({ color: 'red', message: friendlyError(error) }),
-  })
   if (query.isLoading)
     return (
       <div className="page">
@@ -68,21 +56,6 @@ export function TransactionDetailPage() {
       </div>
       <Paper withBorder p="xl" maw={680}>
         <Stack>
-          {query.data.bankTransactionId && query.data.source === 'MANUAL' && (
-            <Alert color="blue">
-              This transaction is matched to a bank record. Amount, date, account, currency, and
-              type are locked.
-              <Button
-                variant="light"
-                size="xs"
-                ml="md"
-                loading={unlink.isPending}
-                onClick={() => unlink.mutate()}
-              >
-                Unlink
-              </Button>
-            </Alert>
-          )}
           <TransactionForm
             transaction={query.data}
             onSaved={() => void navigate('/transactions')}

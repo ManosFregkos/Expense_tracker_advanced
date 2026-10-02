@@ -12,7 +12,7 @@ import {
   type DocumentSnapshot,
   type QueryConstraint,
 } from 'firebase/firestore'
-import { normalizeSearchText, taskDueAt, type BankConnection, type BankTransaction, type CardLearningProgress, type Category, type FinancialAccount, type Household, type HouseholdMember, type HouseholdTask, type Invitation, type KidsCardSession, type KidsChildProfile, type KidsSettings, type MonthlyAnalytics, type TaskActivity, type TaskList, type TaskNotification, type TaskNotificationSettings, type TaskSubtask, type Transaction } from '@family-expense-tracker/shared'
+import { normalizeSearchText, taskDueAt, type CardLearningProgress, type Category, type FinancialAccount, type Household, type HouseholdMember, type HouseholdTask, type Invitation, type KidsCardSession, type KidsChildProfile, type KidsSettings, type MonthlyAnalytics, type TaskActivity, type TaskList, type TaskNotification, type TaskNotificationSettings, type TaskSubtask, type Transaction } from '@family-expense-tracker/shared'
 import { firestore } from './firebase'
 
 export async function listHouseholds(userId: string): Promise<Household[]> {
@@ -30,7 +30,6 @@ export const listMembers = (householdId: string) => listCollection<HouseholdMemb
 export const listAccounts = (householdId: string) => listCollection<FinancialAccount>(`households/${householdId}/accounts`)
 export const listCategories = (householdId: string) => listCollection<Category>(`households/${householdId}/categories`)
 export const listMonthlyAnalytics = (householdId: string) => listCollection<MonthlyAnalytics>(`households/${householdId}/monthlyAnalytics`)
-export const listBankConnections = (householdId: string) => listCollection<BankConnection>(`households/${householdId}/bankConnections`)
 export const listKidsChildProfiles = (householdId: string) =>
   listCollection<KidsChildProfile>(`households/${householdId}/childProfiles`)
 export async function getKidsSettings(householdId: string, profileId: string): Promise<KidsSettings> {
@@ -80,14 +79,6 @@ export async function listKidsSessions(householdId: string, profileId: string) {
       const leftDate = left.startedAt instanceof Date ? left.startedAt : left.startedAt.toDate()
       return Number(rightDate) - Number(leftDate)
     })
-}
-export async function listReviewBankTransactions(householdId: string): Promise<BankTransaction[]> {
-  const snapshot = await getDocs(query(collection(firestore, `households/${householdId}/bankTransactions`), where('reconciliationStatus', '==', 'REVIEW'), orderBy('bookingDate', 'desc')))
-  return snapshot.docs.map((document) => document.data() as BankTransaction)
-}
-export async function listPendingBankTransactions(householdId: string): Promise<BankTransaction[]> {
-  const snapshot = await getDocs(query(collection(firestore, `households/${householdId}/bankTransactions`), where('status', '==', 'PENDING')))
-  return snapshot.docs.map((document) => document.data() as BankTransaction)
 }
 
 export interface TransactionFilters {

@@ -18,7 +18,6 @@ vi.mock('../../hooks/useHouseholdData', () => ({
   useAccounts: () => ({ data: [] }),
   useCategories: () => ({ data: [] }),
   useMembers: () => ({ data: [] }),
-  usePendingBankTransactions: () => ({ data: [] }),
 }))
 vi.mock('../../lib/repositories', () => ({
   listTransactions: vi.fn(async () => ({ transactions: [], hasMore: false })),

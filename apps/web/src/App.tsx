@@ -46,16 +46,6 @@ const SettingsPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./features/profile/ProfilePage').then((module) => ({ default: module.ProfilePage })),
 )
-const BankConnectionsPage = lazy(() =>
-  import('./features/banking/BankConnectionsPage').then((module) => ({
-    default: module.BankConnectionsPage,
-  })),
-)
-const ReviewTransactionsPage = lazy(() =>
-  import('./features/banking/ReviewTransactionsPage').then((module) => ({
-    default: module.ReviewTransactionsPage,
-  })),
-)
 const TasksPage = lazy(() =>
   import('./features/tasks/TasksPage').then((module) => ({ default: module.TasksPage })),
 )
@@ -136,6 +126,7 @@ export default function App() {
             >
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/transactions" element={<TransactionsPage />} />
+              <Route path="/transactions/review" element={<Navigate to="/dashboard" replace />} />
               <Route path="/transactions/:transactionId" element={<TransactionDetailPage />} />
               <Route path="/accounts" element={<AccountsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
@@ -143,8 +134,6 @@ export default function App() {
               <Route path="/members" element={<MembersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/bank-connections" element={<BankConnectionsPage />} />
-              <Route path="/transactions/review" element={<ReviewTransactionsPage />} />
               <Route path="/tasks" element={<TasksPage />} />
               <Route path="/tasks/:taskId" element={<TasksPage />} />
               <Route path="/settings/kids" element={<KidsParentSettingsPage />} />
