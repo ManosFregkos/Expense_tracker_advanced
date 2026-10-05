@@ -43,6 +43,9 @@ npm run build
 - Installable PWA with offline shell and Firestore persistence
 - Household tasks with assignment, lists, subtasks, recurring occurrences, reminders, and PWA push
 - Bulk task completion, assignment, and rescheduling with per-task failure reporting
+- Study Studio: AI transcript notes, a focused Markdown reader, spaced review cards, topic connections, and source-linked Q&A
+
+Open `/study` after signing in. See [Study Studio](docs/STUDY_STUDIO.md) for AI setup, local storage behavior, and backup instructions.
 
 See [Transaction totals and bulk task actions](docs/TRANSACTION_TOTALS_AND_BULK_TASKS.md) for usage,
 behavior, and deployment details.

@@ -43,3 +43,4 @@ export {
   completeKidsSession,
 } from './services/kids.js'
 export { saveKidsCustomContent, archiveKidsCustomContent } from './services/kids-content.js'
+export { processStudyTranscript, askStudyNotes } from './services/study.js'
