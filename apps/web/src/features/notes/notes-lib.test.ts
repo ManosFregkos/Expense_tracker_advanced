@@ -9,9 +9,21 @@ import {
   scheduleCard,
   toggleTask,
   filterNotes,
+  normalizeTags,
 } from './notes-lib'
 
 describe('notes library integrity', () => {
+  it('trims tags, removes hash prefixes and duplicates, and enforces tag limits', () => {
+    expect(normalizeTags([' daily ', '#work', 'work', ' ', '###ideas', 'work, ideas'])).toEqual([
+      'daily',
+      'work',
+      'ideas',
+    ])
+    expect(
+      normalizeTags(Array.from({ length: 25 }, (_, i) => `${i}${'x'.repeat(50)}`)),
+    ).toHaveLength(20)
+    expect(normalizeTags(['x'.repeat(50)])[0]).toHaveLength(40)
+  })
   it('rejects corrupt backups, duplicates, missing notebooks and orphan review cards', () => {
     const library = initialLibrary()
     const note = createNote('personal')

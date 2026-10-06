@@ -180,6 +180,16 @@ export function plainText(body: string) {
     .replace(/\s+/g, ' ')
     .trim()
 }
+export function normalizeTags(tags: string[]) {
+  return [
+    ...new Set(
+      tags
+        .flatMap((tag) => tag.split(','))
+        .map((tag) => tag.trim().replace(/^#+/, '').trim().slice(0, 40))
+        .filter(Boolean),
+    ),
+  ].slice(0, 20)
+}
 export function filterNotes(notes: Note[], query: string, tag: string, sort: string) {
   const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean)
   return notes

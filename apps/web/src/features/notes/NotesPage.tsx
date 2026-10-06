@@ -1,16 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Alert,
   Badge,
   Button,
   Group,
   Modal,
+  Menu,
   NumberInput,
   Select,
   Stack,
   Text,
   TextInput,
   Textarea,
+  TagsInput,
 } from '@mantine/core'
 import {
   IconArrowLeft,
@@ -20,6 +22,7 @@ import {
   IconChecklist,
   IconClock,
   IconDownload,
+  IconDots,
   IconFileText,
   IconFocus2,
   IconFolder,
@@ -42,6 +45,7 @@ import {
   linkedTitles,
   localDate,
   mergeLibrary,
+  normalizeTags,
   notebookSchema,
   noteTasks,
   plainText,
@@ -93,7 +97,13 @@ function NotesWorkspace({ uid }: { uid: string }) {
   const [newNote, setNewNote] = useState(false)
   const [bookEditor, setBookEditor] = useState<Notebook | 'new' | null>(null)
   const [settings, setSettings] = useState(false)
-  const [notice, setNotice] = useState('')
+  const [notice, updateNotice] = useState('')
+  const [undo, setUndo] = useState<{ id: string; status: Note['status'] } | null>(null)
+  const [deleting, setDeleting] = useState<Note | null>(null)
+  function setNotice(message: string) {
+    updateNotice(message)
+    setUndo(null)
+  }
   const [importError, setImportError] = useState('')
   const [imported, setImported] = useState<NotesLibrary | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -131,6 +141,12 @@ function NotesWorkspace({ uid }: { uid: string }) {
         library.notebooks.find((b) => b.id === n.notebookId)?.kind === 'course'),
   )
   const filtered = filterNotes(available, query, tag, sort)
+  const tags = [...new Set(available.flatMap((n) => n.tags))].sort()
+  const hasSelectedTag = !tag || tags.includes(tag)
+  const checklistNotes = available.filter((n) => noteTasks(n.body).length)
+  useEffect(() => {
+    if (!hasSelectedTag) setTag('')
+  }, [hasSelectedTag])
   function navigate(nextView: View, book = '', note = '') {
     setParams({
       ...(nextView !== 'all' ? { view: nextView } : {}),
@@ -138,19 +154,46 @@ function NotesWorkspace({ uid }: { uid: string }) {
       ...(note ? { note } : {}),
     })
     setTag('')
+    setQuery('')
   }
   function open(note: Note) {
-    navigate(
-      note.status === 'trash' ? 'trash' : note.status === 'archived' ? 'archived' : 'all',
-      note.notebookId,
-      note.id,
-    )
+    const nextView =
+      note.status === 'trash'
+        ? 'trash'
+        : note.status === 'archived'
+          ? 'archived'
+          : ['trash', 'archived'].includes(view)
+            ? 'all'
+            : view
+    const book = notebookId === note.notebookId ? notebookId : ''
+    setParams({
+      ...(nextView !== 'all' ? { view: nextView } : {}),
+      ...(book ? { book } : {}),
+      note: note.id,
+    })
   }
   function patch(id: string, changes: Partial<Note>) {
     return commit((l) => ({
       ...l,
       notes: l.notes.map((n) => (n.id === id ? { ...n, ...changes, updatedAt: Date.now() } : n)),
     }))
+  }
+  function changeStatus(note: Note, status: Note['status']) {
+    if (unsavedDrafts.current.has(note.id)) {
+      setNotice('Open this note and save or export its unsaved draft before moving it.')
+      return false
+    }
+    if (!patch(note.id, { status })) return false
+    setNotice(
+      `“${note.title || 'Untitled note'}” ${status === 'trash' ? 'moved to Trash' : status === 'archived' ? 'archived' : 'restored'}.`,
+    )
+    setUndo({ id: note.id, status: note.status })
+    return true
+  }
+  function backToList() {
+    const next = new URLSearchParams(params)
+    next.delete('note')
+    setParams(next)
   }
   function add(template: Template, book = notebookId || library.notebooks[0]!.id) {
     if (template === 'daily') {
@@ -207,7 +250,7 @@ function NotesWorkspace({ uid }: { uid: string }) {
     trash: library.notes.filter((n) => n.status === 'trash').length,
   }
   return (
-    <div className="notes-page">
+    <div className={`notes-page ${selected ? 'is-editing' : ''}`}>
       <header className="nt-header">
         <div>
           <div className="nt-eyebrow">YOUR EVERYDAY COMPANION</div>
@@ -242,8 +285,32 @@ function NotesWorkspace({ uid }: { uid: string }) {
         </Alert>
       )}
       {notice && (
-        <Alert withCloseButton onClose={() => setNotice('')} mb="md">
+        <Alert
+          withCloseButton
+          closeButtonLabel="Close"
+          onClose={() => {
+            setNotice('')
+            setUndo(null)
+          }}
+          mb="md"
+        >
           {notice}
+          {undo && (
+            <Button
+              variant="light"
+              size="xs"
+              ml="sm"
+              disabled={blocked}
+              onClick={() => {
+                if (patch(undo.id, { status: undo.status })) {
+                  setUndo(null)
+                  setNotice('Change undone.')
+                }
+              }}
+            >
+              Undo
+            </Button>
+          )}
         </Alert>
       )}
       <div className="nt-workspace">
@@ -266,18 +333,49 @@ function NotesWorkspace({ uid }: { uid: string }) {
           </button>
           <div className="nt-eyebrow nt-side-label">MY LIBRARY</div>
           <nav aria-label="Notes library">
-            {views.map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                className={`nt-nav ${view === value && !notebookId ? 'is-active' : ''}`}
-                onClick={() => navigate(value)}
-              >
-                <Icon size={18} />
-                <span>{label}</span>
-                <small>{navCounts[value]}</small>
-              </button>
-            ))}
+            {views
+              .filter((v) => ['all', 'pinned', 'tasks'].includes(v.value))
+              .map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  className={`nt-nav ${view === value && !notebookId ? 'is-active' : ''}`}
+                  aria-current={view === value && !notebookId ? 'page' : undefined}
+                  onClick={() => navigate(value)}
+                >
+                  <Icon size={18} />
+                  <span>{label}</span>
+                  <small>{navCounts[value]}</small>
+                </button>
+              ))}
           </nav>
+          {[
+            { label: 'Learning', values: ['courses', 'review'] },
+            { label: 'Archive & Trash', values: ['archived', 'trash'] },
+          ].map((group) => (
+            <details
+              className="nt-nav-group"
+              key={group.label}
+              open={group.values.includes(view) || undefined}
+            >
+              <summary>{group.label}</summary>
+              <nav aria-label={group.label}>
+                {views
+                  .filter((v) => group.values.includes(v.value))
+                  .map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      className={`nt-nav ${view === value && !notebookId ? 'is-active' : ''}`}
+                      aria-current={view === value && !notebookId ? 'page' : undefined}
+                      onClick={() => navigate(value)}
+                    >
+                      <Icon size={18} />
+                      <span>{label}</span>
+                      <small>{navCounts[value]}</small>
+                    </button>
+                  ))}
+              </nav>
+            </details>
+          ))}
           <div className="nt-book-label">
             <span className="nt-eyebrow">NOTEBOOKS</span>
             <button
@@ -315,7 +413,10 @@ function NotesWorkspace({ uid }: { uid: string }) {
               blocked={blocked}
               patch={patch}
               commit={commit}
-              onBack={() => navigate(view, notebookId)}
+              onBack={backToList}
+              backLabel={currentBook?.title ?? views.find((v) => v.value === view)!.label}
+              onStatus={changeStatus}
+              onDelete={() => setDeleting(selected)}
               onLink={follow}
               onOpen={open}
               onNotice={setNotice}
@@ -329,18 +430,21 @@ function NotesWorkspace({ uid }: { uid: string }) {
             <>
               <section className="nt-welcome">
                 <div>
-                  <span className="nt-eyebrow">CAPTURE A LITTLE. REMEMBER MORE.</span>
                   <h2>
                     {currentBook
                       ? currentBook.title
                       : view === 'all'
-                        ? 'Good ideas deserve a place.'
+                        ? 'All notes'
                         : views.find((v) => v.value === view)!.label}
                   </h2>
                   <p>
                     {currentBook?.kind === 'course'
                       ? `${currentBook.instructor ? `With ${currentBook.instructor} · ` : ''}Your lessons, examples, and discoveries, together.`
-                      : 'From a passing thought to your next course. Keep what matters, find it when you need it.'}
+                      : view === 'trash'
+                        ? 'Restore deleted notes or remove them permanently.'
+                        : view === 'archived'
+                          ? 'Notes you’ve set aside. Restore them whenever you need them.'
+                          : `${available.length} notes · Saved on this device`}
                   </p>
                   {currentBook && (
                     <Group gap="xs" mt="sm">
@@ -367,43 +471,7 @@ function NotesWorkspace({ uid }: { uid: string }) {
                     </Group>
                   )}
                 </div>
-                <div className="nt-paper-art" aria-hidden="true">
-                  <div className="nt-art-page">
-                    <span />
-                    <span />
-                    <span />
-                    <i />
-                    <span />
-                    <span />
-                  </div>
-                  <div className="nt-art-stamp">
-                    <IconCheck size={23} />
-                  </div>
-                  <span className="nt-art-spark">✦</span>
-                </div>
               </section>
-              <div className="nt-stats">
-                <Stat
-                  label="Notes captured"
-                  value={active.length}
-                  icon={<IconNotebook size={19} />}
-                />
-                <Stat
-                  label="Course notebooks"
-                  value={navCounts.courses}
-                  icon={<IconBook2 size={19} />}
-                />
-                <Stat
-                  label="To revisit"
-                  value={navCounts.review}
-                  icon={<IconSparkles size={19} />}
-                />
-                <Stat
-                  label="Open checklist items"
-                  value={openTasks}
-                  icon={<IconChecklist size={19} />}
-                />
-              </div>
               {view === 'review' ? (
                 <ReviewPanel
                   cards={dueCards}
@@ -414,30 +482,25 @@ function NotesWorkspace({ uid }: { uid: string }) {
                 />
               ) : view === 'tasks' ? (
                 <div className="nt-task-board">
-                  {active
-                    .filter(
-                      (n) =>
-                        noteTasks(n.body).length && (!notebookId || n.notebookId === notebookId),
-                    )
-                    .map((n) => (
-                      <section className="nt-task-card" key={n.id}>
-                        <button className="nt-text-link" onClick={() => open(n)}>
-                          {n.title || 'Untitled note'} <IconArrowUpRight size={15} />
-                        </button>
-                        {noteTasks(n.body).map((t) => (
-                          <label className="nt-task" key={t.line}>
-                            <input
-                              type="checkbox"
-                              checked={t.done}
-                              disabled={blocked}
-                              onChange={() => patch(n.id, { body: toggleTask(n.body, t.line) })}
-                            />
-                            <span>{t.text}</span>
-                          </label>
-                        ))}
-                      </section>
-                    ))}
-                  {!active.some((n) => noteTasks(n.body).length) && (
+                  {checklistNotes.map((n) => (
+                    <section className="nt-task-card" key={n.id}>
+                      <button className="nt-text-link" onClick={() => open(n)}>
+                        {n.title || 'Untitled note'} <IconArrowUpRight size={15} />
+                      </button>
+                      {noteTasks(n.body).map((t) => (
+                        <label className="nt-task" key={t.line}>
+                          <input
+                            type="checkbox"
+                            checked={t.done}
+                            disabled={blocked}
+                            onChange={() => patch(n.id, { body: toggleTask(n.body, t.line) })}
+                          />
+                          <span>{t.text}</span>
+                        </label>
+                      ))}
+                    </section>
+                  ))}
+                  {!checklistNotes.length && (
                     <Empty
                       title="A little less to keep in your head"
                       text="Write - [ ] in any note to make a checklist. You can tick items here or in the reading view."
@@ -516,7 +579,9 @@ function NotesWorkspace({ uid }: { uid: string }) {
                         value={tag || null}
                         clearable
                         onChange={(v) => setTag(v ?? '')}
-                        data={[...new Set(available.flatMap((n) => n.tags))].sort()}
+                        data={tags}
+                        searchable
+                        nothingFoundMessage="Add tags inside a note to filter by them"
                         w={140}
                       />
                       <Select
@@ -544,7 +609,7 @@ function NotesWorkspace({ uid }: { uid: string }) {
                   />
                   <div className="nt-note-grid">
                     {filtered.map((n) => (
-                      <button className="nt-note-card" key={n.id} onClick={() => open(n)}>
+                      <article className="nt-note-card" key={n.id}>
                         <div className="nt-note-top">
                           <span
                             className={`nt-book-dot nt-${library.notebooks.find((b) => b.id === n.notebookId)?.color ?? 'teal'}`}
@@ -552,27 +617,40 @@ function NotesWorkspace({ uid }: { uid: string }) {
                           <span>{library.notebooks.find((b) => b.id === n.notebookId)?.title}</span>
                           {n.pinned && <IconPin size={15} />}
                           {n.completed && <IconCheck size={15} />}
+                          <NoteActions
+                            note={n}
+                            disabled={blocked}
+                            onPin={() => patch(n.id, { pinned: !n.pinned })}
+                            onStatus={(status) => changeStatus(n, status)}
+                            onDelete={() => setDeleting(n)}
+                          />
                         </div>
-                        <h4>{n.title || 'Untitled note'}</h4>
-                        <p>
-                          {plainText(n.body).slice(0, 145) ||
-                            'A fresh page, ready for your thoughts.'}
-                        </p>
-                        <div className="nt-card-tags">
-                          {n.tags.slice(0, 3).map((t) => (
-                            <span key={t}>#{t}</span>
-                          ))}
-                        </div>
-                        <footer>
-                          <span>{formatDate(n.updatedAt)}</span>
-                          <span>
-                            {noteTasks(n.body).length
-                              ? `${noteTasks(n.body).filter((t) => t.done).length}/${noteTasks(n.body).length} tasks`
-                              : `${Math.max(1, Math.ceil(n.body.split(/\s+/).length / 200))} min read`}
-                            <IconArrowUpRight size={15} />
-                          </span>
-                        </footer>
-                      </button>
+                        <button
+                          className="nt-note-open"
+                          aria-label={`Open note: ${n.title || 'Untitled note'}`}
+                          onClick={() => open(n)}
+                        >
+                          <h4>{n.title || 'Untitled note'}</h4>
+                          <p>
+                            {plainText(n.body).slice(0, 145) ||
+                              'A fresh page, ready for your thoughts.'}
+                          </p>
+                          <div className="nt-card-tags">
+                            {n.tags.slice(0, 3).map((t) => (
+                              <span key={t}>#{t}</span>
+                            ))}
+                          </div>
+                          <footer>
+                            <span>{formatDate(n.updatedAt)}</span>
+                            <span>
+                              {noteTasks(n.body).length
+                                ? `${noteTasks(n.body).filter((t) => t.done).length}/${noteTasks(n.body).length} tasks`
+                                : `${Math.max(1, Math.ceil(n.body.split(/\s+/).length / 200))} min read`}
+                              <IconArrowUpRight size={15} />
+                            </span>
+                          </footer>
+                        </button>
+                      </article>
                     ))}
                   </div>
                   {!filtered.length && (
@@ -593,8 +671,15 @@ function NotesWorkspace({ uid }: { uid: string }) {
                             ? 'Deleted notes stay here until you choose to remove them permanently.'
                             : 'Capture your day, take a lesson note, or write something just for you.'
                       }
-                      action={() => setNewNote(true)}
-                      label="Create a note"
+                      action={
+                        query || tag
+                          ? () => {
+                              setQuery('')
+                              setTag('')
+                            }
+                          : () => setNewNote(true)
+                      }
+                      label={query || tag ? 'Clear filters' : 'Create a note'}
                     />
                   )}
                 </>
@@ -604,6 +689,7 @@ function NotesWorkspace({ uid }: { uid: string }) {
         </main>
       </div>
       <Modal
+        closeButtonProps={{ 'aria-label': 'Close' }}
         opened={newNote}
         onClose={() => setNewNote(false)}
         title="What would you like to capture?"
@@ -616,6 +702,49 @@ function NotesWorkspace({ uid }: { uid: string }) {
         />
       </Modal>
       <Modal
+        closeButtonProps={{ 'aria-label': 'Close' }}
+        opened={Boolean(deleting)}
+        onClose={() => setDeleting(null)}
+        title="Permanently delete this note?"
+      >
+        <Text size="sm" mb="md">
+          “{deleting?.title || 'Untitled note'}” and its review cards will be removed. This cannot
+          be undone.
+        </Text>
+        <Group justify="flex-end">
+          <Button variant="default" onClick={() => setDeleting(null)}>
+            Keep note
+          </Button>
+          <Button
+            color="red"
+            disabled={blocked}
+            onClick={() => {
+              if (!deleting) return
+              if (unsavedDrafts.current.has(deleting.id)) {
+                setDeleting(null)
+                setNotice('Open this note and save or export its unsaved draft before deleting it.')
+                return
+              }
+              if (
+                commit((l) => ({
+                  ...l,
+                  notes: l.notes.filter((n) => n.id !== deleting.id),
+                  cards: l.cards.filter((c) => c.noteId !== deleting.id),
+                }))
+              ) {
+                if (selected?.id === deleting.id) backToList()
+                setDeleting(null)
+                setUndo(null)
+                setNotice('Note permanently deleted.')
+              }
+            }}
+          >
+            Delete note permanently
+          </Button>
+        </Group>
+      </Modal>
+      <Modal
+        closeButtonProps={{ 'aria-label': 'Close' }}
         opened={bookEditor !== null}
         onClose={() => setBookEditor(null)}
         title={bookEditor === 'new' ? 'New notebook' : 'Notebook details'}
@@ -637,6 +766,7 @@ function NotesWorkspace({ uid }: { uid: string }) {
         )}
       </Modal>
       <Modal
+        closeButtonProps={{ 'aria-label': 'Close' }}
         opened={settings}
         onClose={() => setSettings(false)}
         title="Your library, wherever you go"
@@ -688,7 +818,12 @@ function NotesWorkspace({ uid }: { uid: string }) {
           </Text>
         </Stack>
       </Modal>
-      <Modal opened={Boolean(imported)} onClose={() => setImported(null)} title="Import your notes">
+      <Modal
+        closeButtonProps={{ 'aria-label': 'Close' }}
+        opened={Boolean(imported)}
+        onClose={() => setImported(null)}
+        title="Import your notes"
+      >
         <Stack>
           <Text>
             {imported?.notebooks.length} notebooks, {imported?.notes.length} notes, and{' '}
@@ -732,17 +867,6 @@ function NotesWorkspace({ uid }: { uid: string }) {
           </Button>
         </Stack>
       </Modal>
-    </div>
-  )
-}
-function Stat({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
-  return (
-    <div className="nt-stat">
-      <span>{icon}</span>
-      <div>
-        <strong>{value}</strong>
-        <small>{label}</small>
-      </div>
     </div>
   )
 }
@@ -886,6 +1010,63 @@ function NotebookEditor({
 }
 
 type Commit = (update: (l: NotesLibrary) => NotesLibrary, recover?: boolean) => boolean
+function NoteActions({
+  note,
+  disabled,
+  onPin,
+  onStatus,
+  onDelete,
+}: {
+  note: Note
+  disabled: boolean
+  onPin: () => void
+  onStatus: (status: Note['status']) => void
+  onDelete: () => void
+}) {
+  return (
+    <Menu position="bottom-end" withinPortal>
+      <Menu.Target>
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          aria-label={`Actions for ${note.title || 'Untitled note'}`}
+          disabled={disabled}
+        >
+          <IconDots size={18} />
+        </Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {note.status === 'active' ? (
+          <>
+            <Menu.Item leftSection={<IconPin size={16} />} onClick={onPin}>
+              {note.pinned ? 'Unpin note' : 'Pin note'}
+            </Menu.Item>
+            <Menu.Item leftSection={<IconFolder size={16} />} onClick={() => onStatus('archived')}>
+              Archive note
+            </Menu.Item>
+          </>
+        ) : (
+          <Menu.Item leftSection={<IconArrowLeft size={16} />} onClick={() => onStatus('active')}>
+            Restore note
+          </Menu.Item>
+        )}
+        {note.status === 'trash' ? (
+          <Menu.Item color="red" leftSection={<IconTrash size={16} />} onClick={onDelete}>
+            Delete permanently
+          </Menu.Item>
+        ) : (
+          <Menu.Item
+            color="red"
+            leftSection={<IconTrash size={16} />}
+            onClick={() => onStatus('trash')}
+          >
+            Move to trash
+          </Menu.Item>
+        )}
+      </Menu.Dropdown>
+    </Menu>
+  )
+}
 function NoteEditor({
   note,
   library,
@@ -893,6 +1074,9 @@ function NoteEditor({
   patch,
   commit,
   onBack,
+  backLabel,
+  onStatus,
+  onDelete,
   onLink,
   onOpen,
   onNotice,
@@ -905,6 +1089,9 @@ function NoteEditor({
   patch: (id: string, changes: Partial<Note>) => boolean
   commit: Commit
   onBack: () => void
+  backLabel: string
+  onStatus: (note: Note, status: Note['status']) => boolean
+  onDelete: () => void
   onLink: (title: string) => void
   onOpen: (note: Note) => void
   onNotice: (message: string) => void
@@ -916,7 +1103,6 @@ function NoteEditor({
   const [history, setHistory] = useState(false)
   const [details, setDetails] = useState(false)
   const [cardModal, setCardModal] = useState(false)
-  const [deleteModal, setDeleteModal] = useState(false)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [draft, setDraft] = useState(recoveredDraft ?? { title: note.title, body: note.body })
@@ -1006,7 +1192,7 @@ function NoteEditor({
       <div className="nt-editor-top">
         <button className="nt-text-link" onClick={leave}>
           <IconArrowLeft size={16} />
-          All notes
+          Back to {backLabel}
         </button>
         <Group gap="xs">
           <span className={`nt-save-state ${saveFailed ? 'is-error' : ''}`}>
@@ -1047,7 +1233,8 @@ function NoteEditor({
             size="xs"
             variant="light"
             ml="sm"
-            onClick={() => patch(note.id, { status: 'active' })}
+            disabled={blocked}
+            onClick={() => onStatus(note, 'active')}
           >
             Restore note
           </Button>
@@ -1057,7 +1244,8 @@ function NoteEditor({
               color="red"
               variant="subtle"
               ml="sm"
-              onClick={() => setDeleteModal(true)}
+              disabled={blocked}
+              onClick={onDelete}
             >
               Delete permanently
             </Button>
@@ -1128,8 +1316,30 @@ function NoteEditor({
           >
             <IconDownload size={17} />
           </button>
+          <NoteActions
+            note={note}
+            disabled={blocked || saveFailed}
+            onPin={() => patch(note.id, { pinned: !note.pinned })}
+            onStatus={(status) => {
+              checkpoint()
+              if (!saveFailed && onStatus(note, status)) onBack()
+            }}
+            onDelete={onDelete}
+          />
         </Group>
       </div>
+      <TagsInput
+        className="nt-editor-tags"
+        label="Tags"
+        description="Type a tag and press Enter or comma. Reuse existing tags from the suggestions."
+        placeholder="Add tags…"
+        data={[...new Set(library.notes.flatMap((n) => n.tags))].sort()}
+        value={note.tags}
+        maxTags={20}
+        maxLength={40}
+        disabled={locked}
+        onChange={(tags) => patch(note.id, { tags: normalizeTags(tags) })}
+      />
       {details && (
         <section className="nt-note-details">
           <Select
@@ -1139,31 +1349,15 @@ function NoteEditor({
             data={library.notebooks.map((b) => ({ value: b.id, label: b.title }))}
             onChange={(v) => v && patch(note.id, { notebookId: v })}
           />
-          <TextInput
-            label="Tags"
-            description="Comma-separated · up to 20 tags"
-            defaultValue={note.tags.join(', ')}
-            disabled={locked}
-            onBlur={(e) =>
-              patch(note.id, {
-                tags: [
-                  ...new Set(
-                    e.currentTarget.value
-                      .split(',')
-                      .map((t) => t.trim().slice(0, 40))
-                      .filter(Boolean),
-                  ),
-                ].slice(0, 20),
-              })
-            }
-          />
-          <TextInput
-            label="Lesson / chapter"
-            disabled={locked}
-            value={note.lesson}
-            maxLength={100}
-            onChange={(e) => patch(note.id, { lesson: e.currentTarget.value })}
-          />
+          {notebook.kind === 'course' && (
+            <TextInput
+              label="Lesson / chapter"
+              disabled={locked}
+              value={note.lesson}
+              maxLength={100}
+              onChange={(e) => patch(note.id, { lesson: e.currentTarget.value })}
+            />
+          )}
           <TextInput
             label="Source URL or reference"
             disabled={locked}
@@ -1178,31 +1372,6 @@ function NoteEditor({
             value={note.reviewDate}
             onChange={(e) => patch(note.id, { reviewDate: e.currentTarget.value })}
           />
-          <div className="nt-detail-actions">
-            <Button
-              variant="light"
-              size="xs"
-              disabled={locked}
-              onClick={() => {
-                checkpoint()
-                if (!saveFailed && patch(note.id, { status: 'archived' })) onBack()
-              }}
-            >
-              Archive note
-            </Button>
-            <Button
-              color="red"
-              variant="subtle"
-              size="xs"
-              disabled={locked}
-              onClick={() => {
-                checkpoint()
-                if (!saveFailed && patch(note.id, { status: 'trash' })) onBack()
-              }}
-            >
-              Move to trash
-            </Button>
-          </div>
         </section>
       )}
       {notebook.kind === 'course' && (
@@ -1298,17 +1467,20 @@ function NoteEditor({
         </span>
         <span>{note.tags.map((t) => `#${t}`).join('  ')}</span>
       </footer>
-      <section className="nt-learning-tools">
-        <div>
-          <IconSparkles size={22} />
-          <h3>Make it stick.</h3>
-          <p>Turn an idea into a question. Come back and see what you remember.</p>
-          <Button variant="light" size="sm" disabled={locked} onClick={() => setCardModal(true)}>
-            Add review card
-          </Button>
-        </div>
-        <FocusTimer />
-      </section>
+      <details className="nt-learning-section" open={notebook.kind === 'course' || undefined}>
+        <summary>Learning tools · review cards & focus timer</summary>
+        <section className="nt-learning-tools">
+          <div>
+            <IconSparkles size={22} />
+            <h3>Make it stick.</h3>
+            <p>Turn an idea into a question. Come back and see what you remember.</p>
+            <Button variant="light" size="sm" disabled={locked} onClick={() => setCardModal(true)}>
+              Add review card
+            </Button>
+          </div>
+          <FocusTimer />
+        </section>
+      </details>
       {safeUrl(note.source) && (
         <a
           className="nt-source-link"
@@ -1330,7 +1502,13 @@ function NoteEditor({
           ))}
         </section>
       )}
-      <Modal opened={history} onClose={() => setHistory(false)} title="Previous versions" size="lg">
+      <Modal
+        closeButtonProps={{ 'aria-label': 'Close' }}
+        opened={history}
+        onClose={() => setHistory(false)}
+        title="Previous versions"
+        size="lg"
+      >
         <Text size="sm" c="dimmed" mb="md">
           The last 12 editing checkpoints. Restoring saves your current version first.
         </Text>
@@ -1380,6 +1558,7 @@ function NoteEditor({
         ))}
       </Modal>
       <Modal
+        closeButtonProps={{ 'aria-label': 'Close' }}
         opened={cardModal}
         onClose={() => setCardModal(false)}
         title="A question for your future self"
@@ -1427,36 +1606,6 @@ function NoteEditor({
             <Button type="submit">Save review card</Button>
           </Stack>
         </form>
-      </Modal>
-      <Modal
-        opened={deleteModal}
-        onClose={() => setDeleteModal(false)}
-        title="Permanently delete this note?"
-      >
-        <Text size="sm" mb="md">
-          “{note.title}” and its review cards will be removed. Export a backup first if you want to
-          keep a copy.
-        </Text>
-        <Group>
-          <Button variant="default" onClick={() => setDeleteModal(false)}>
-            Keep note
-          </Button>
-          <Button
-            color="red"
-            onClick={() => {
-              if (
-                commit((l) => ({
-                  ...l,
-                  notes: l.notes.filter((n) => n.id !== note.id),
-                  cards: l.cards.filter((c) => c.noteId !== note.id),
-                }))
-              )
-                onBack()
-            }}
-          >
-            Delete note permanently
-          </Button>
-        </Group>
       </Modal>
     </article>
   )

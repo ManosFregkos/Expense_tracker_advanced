@@ -52,7 +52,7 @@
   border-radius: 16px;
   box-shadow: 0 5px 30px #214d3c05;
   overflow: hidden;
-  min-height: 740px;
+  min-height: 560px;
 }
 .nt-sidebar {
   background: #fbfcfa;
@@ -133,6 +133,21 @@
   color: #315e46;
   font-weight: 700;
 }
+.nt-nav-group {
+  margin-top: 12px;
+}
+.nt-nav-group summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #586e60;
+}
+.nt-nav-group summary:focus-visible,
+.nt-learning-section summary:focus-visible {
+  outline: 3px solid #62b8a6;
+  outline-offset: 2px;
+}
 .nt-book-label {
   display: flex;
   align-items: center;
@@ -198,10 +213,8 @@
   min-width: 0;
 }
 .nt-welcome {
-  padding: 27px 30px;
-  background: #f3f4e9;
-  border: 1px solid #e9eadb;
-  border-radius: 12px;
+  padding: 0 0 18px;
+  border-bottom: 1px solid #e9eee5;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -221,7 +234,7 @@
   font-weight: 400;
   letter-spacing: -0.8px;
   line-height: 1.25;
-  margin: 12px 0;
+  margin: 0 0 8px;
 }
 .nt-welcome p {
   font-size: 12px;
@@ -229,98 +242,6 @@
   color: #829078;
   max-width: 410px;
   margin: 0;
-}
-.nt-paper-art {
-  position: relative;
-  flex-shrink: 0;
-  width: 130px;
-  height: 130px;
-  margin-right: 12px;
-}
-.nt-art-page {
-  transform: rotate(-10deg);
-  background: #fffef7;
-  box-shadow: 6px 8px 0 #dce0cc;
-  border: 1px solid #e1e4d2;
-  border-radius: 5px;
-  padding: 22px 15px;
-  width: 97px;
-  height: 119px;
-  position: absolute;
-  left: 10px;
-  top: 4px;
-}
-.nt-art-page span {
-  display: block;
-  height: 3px;
-  background: #d9dfce;
-  margin: 7px 0;
-}
-.nt-art-page span:nth-child(2n) {
-  width: 75%;
-}
-.nt-art-page i {
-  display: block;
-  width: 17px;
-  height: 17px;
-  background: #e7eedc;
-  border: 1px solid #b8c7a0;
-  margin-top: 15px;
-}
-.nt-art-stamp {
-  position: absolute;
-  right: 0;
-  bottom: 6px;
-  width: 42px;
-  height: 42px;
-  border: 5px solid #f3f4e9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: #5d8872;
-  color: white;
-  transform: rotate(10deg);
-}
-.nt-art-spark {
-  position: absolute;
-  right: 2px;
-  top: -8px;
-  color: #a3b38b;
-  font-size: 24px;
-}
-.nt-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin: 22px 0 28px;
-}
-.nt-stat {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid #e9ede7;
-  border-radius: 9px;
-  padding: 16px 12px;
-}
-.nt-stat > span {
-  background: #f2f5ed;
-  color: #83977b;
-  border-radius: 8px;
-  padding: 9px;
-  display: flex;
-}
-.nt-stat strong {
-  font-size: 21px;
-  font-weight: 600;
-  display: block;
-  line-height: 1.15;
-}
-.nt-stat small {
-  font-size: 9px;
-  color: #879488;
-  display: block;
-  margin-top: 5px;
 }
 .nt-list-heading {
   display: flex;
@@ -370,6 +291,20 @@
     box-shadow 0.15s;
   overflow-wrap: anywhere;
 }
+.nt-note-open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+.nt-editor-tags {
+  margin: 16px 0;
+}
 .nt-note-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 5px 18px #274c3510;
@@ -379,7 +314,7 @@
   display: flex;
   gap: 7px;
   align-items: center;
-  font-size: 9px;
+  font-size: 11px;
   color: #91a086;
   min-height: 15px;
 }
@@ -394,8 +329,8 @@
   line-height: 1.3;
 }
 .nt-note-card p {
-  font-size: 11px;
-  color: #8c9888;
+  font-size: 12px;
+  color: #697963;
   line-height: 1.8;
   margin: 0 0 15px;
   min-height: 58px;
@@ -407,7 +342,7 @@
   margin: auto 0 16px;
 }
 .nt-card-tags > span {
-  font-size: 8px;
+  font-size: 10px;
   border-radius: 4px;
   padding: 3px 6px;
   background: #f1f4ed;
@@ -418,8 +353,8 @@
   justify-content: space-between;
   border-top: 1px solid #f0f2ed;
   padding-top: 12px;
-  font-size: 9px;
-  color: #9aa393;
+  font-size: 11px;
+  color: #71816a;
   gap: 8px;
 }
 .nt-note-card footer > span:last-child {
@@ -548,7 +483,7 @@
 .nt-editor.is-focused {
   position: fixed;
   inset: 0;
-  z-index: 220;
+  z-index: 190;
   background: #fffffc;
   overflow: auto;
   padding: 32px max(24px, calc((100vw - 950px) / 2));
@@ -659,12 +594,6 @@
   padding: 18px;
   border-radius: 8px;
   margin: 16px 0;
-}
-.nt-detail-actions {
-  display: flex;
-  align-items: end;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 .nt-lesson-banner {
   display: flex;
@@ -892,8 +821,17 @@
   border: 1px solid #e5ebdb;
   border-radius: 10px;
   padding: 24px;
-  margin-top: 34px;
+  margin-top: 12px;
   color: #839779;
+}
+.nt-learning-section {
+  margin-top: 24px;
+}
+.nt-learning-section summary {
+  cursor: pointer;
+  color: #58704f;
+  font-size: 12px;
+  padding: 12px 0;
 }
 .nt-learning-tools h3 {
   font-family: Georgia, serif;
@@ -1085,18 +1023,11 @@
   .nt-course-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .nt-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .nt-welcome {
-    padding: 23px;
+    padding: 0 0 18px;
   }
   .nt-welcome h2 {
     font-size: 27px;
-  }
-  .nt-paper-art {
-    width: 110px;
-    transform: scale(0.85);
   }
   .nt-sidebar {
     padding: 20px 10px;
@@ -1106,6 +1037,9 @@
   }
 }
 @media (max-width: 900px) {
+  .notes-page.is-editing .nt-sidebar {
+    display: none;
+  }
   .nt-workspace {
     grid-template-columns: 1fr;
   }
@@ -1140,9 +1074,29 @@
     margin-left: 4px;
   }
   .nt-side-label,
-  .nt-book-label,
   .nt-side-footer {
     display: none;
+  }
+  .nt-book-label {
+    display: flex;
+    grid-column: 1/-1;
+    margin: 6px 8px 0;
+    order: 3;
+  }
+  .nt-nav-group,
+  .nt-notebooks {
+    grid-column: 1/-1;
+  }
+  .nt-nav-group {
+    margin-top: 0;
+    grid-column: auto;
+    order: 2;
+  }
+  .nt-notebooks {
+    order: 4;
+  }
+  .nt-sidebar > nav {
+    order: 1;
   }
   .nt-notebooks {
     display: flex;
@@ -1159,11 +1113,12 @@
   .nt-welcome h2 {
     font-size: 30px;
   }
-  .nt-paper-art {
-    transform: scale(1);
-  }
 }
 @media (max-width: 600px) {
+  .notes-page.is-editing .nt-header .nt-eyebrow,
+  .notes-page.is-editing .nt-header p {
+    display: none;
+  }
   .notes-page {
     padding: 20px 12px 110px;
   }
@@ -1194,20 +1149,20 @@
   .nt-sidebar {
     padding: 13px;
     gap: 9px;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .nt-daily {
     padding: 11px;
+    grid-column: 1/-1;
   }
   .nt-daily small {
     font-size: 10px;
   }
-  .nt-sidebar nav {
-    grid-column: auto;
-    order: 2;
+  .nt-sidebar > nav {
+    grid-column: 1/-1;
+    order: 1;
   }
   .nt-notebooks {
-    order: 3;
     max-width: 100%;
     padding-bottom: 2px;
   }
@@ -1222,7 +1177,7 @@
     padding: 17px;
   }
   .nt-welcome {
-    padding: 22px 18px;
+    padding: 0 0 18px;
     gap: 0;
     position: relative;
   }
@@ -1237,28 +1192,8 @@
     font-size: 11px;
     max-width: 250px;
   }
-  .nt-paper-art {
-    display: none;
-  }
   .nt-welcome .nt-eyebrow {
     font-size: 8px;
-  }
-  .nt-stats {
-    gap: 8px;
-    margin: 15px 0 23px;
-  }
-  .nt-stat {
-    padding: 12px 8px;
-    gap: 8px;
-  }
-  .nt-stat > span {
-    padding: 6px;
-  }
-  .nt-stat small {
-    font-size: 8px;
-  }
-  .nt-stat strong {
-    font-size: 20px;
   }
   .nt-list-heading {
     align-items: flex-start;
