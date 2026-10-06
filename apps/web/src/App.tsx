@@ -14,6 +14,9 @@ const DashboardPage = lazy(() =>
     default: module.DashboardPage,
   })),
 )
+const NotesPage = lazy(() =>
+  import('./features/notes/NotesPage').then((module) => ({ default: module.NotesPage })),
+)
 const TransactionsPage = lazy(() =>
   import('./features/transactions/TransactionsPage').then((module) => ({
     default: module.TransactionsPage,
@@ -125,6 +128,8 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/notes" element={<NotesPage />} />
+              <Route path="/study" element={<Navigate to="/notes" replace />} />
               <Route path="/transactions" element={<TransactionsPage />} />
               <Route path="/transactions/review" element={<Navigate to="/dashboard" replace />} />
               <Route path="/transactions/:transactionId" element={<TransactionDetailPage />} />

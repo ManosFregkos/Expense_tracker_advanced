@@ -162,3 +162,5 @@ Previously imported transactions remain editable and deletable. Legacy bank meta
 ## Data ownership
 
 Transactions can be exported as CSV. Financial documents are separate, typed collections rather than opaque blobs, leaving room for account deletion, household deletion, export, retention, and privacy-request jobs.
+
+Personal notes and course learning are available in **Notes**. See [the Notes guide](docs/NOTES.md) for notebooks, Markdown, checklists, review cards, and backup/recovery.
