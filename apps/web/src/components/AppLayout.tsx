@@ -22,7 +22,6 @@ import {
   IconChecklist,
   IconUsers,
   IconMoodKid,
-  IconBook2,
 } from '@tabler/icons-react'
 import { signOut } from 'firebase/auth'
 import { NavLink as RouterNavLink, Outlet, useLocation } from 'react-router-dom'
@@ -42,7 +41,6 @@ const nav = [
   ['/members', 'Members', IconUsers],
   ['/tasks', 'Tasks', IconChecklist],
   ['/kids', 'Kids', IconMoodKid],
-  ['/study', 'Study Studio', IconBook2],
   ['/settings', 'Settings', IconSettings],
 ] as const
 
