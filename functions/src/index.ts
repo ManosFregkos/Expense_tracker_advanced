@@ -43,4 +43,9 @@ export {
   completeKidsSession,
 } from './services/kids.js'
 export { saveKidsCustomContent, archiveKidsCustomContent } from './services/kids-content.js'
-export { jarvisChat, jarvisTranscribe, jarvisSpeak } from './services/jarvis.js'
+export {
+  jarvisChat,
+  jarvisTranscribe,
+  jarvisSpeak,
+  jarvisStartRealtime,
+} from './services/jarvis.js'

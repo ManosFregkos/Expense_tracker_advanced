@@ -6,6 +6,7 @@ import {
   createSubtaskSchema,
   createTaskListSchema,
   createTaskSchema,
+  completeTaskSchema,
   deleteSubtaskSchema,
   idSchema,
   nextTaskRecurrenceDate,
@@ -392,7 +393,7 @@ export const updateTask = secureCallable(updateTaskSchema, async (input, actor) 
   return { taskId: ref.id }
 })
 
-export const completeTask = secureCallable(taskIdSchema, async (input, actor) => {
+export const completeTask = secureCallable(completeTaskSchema, async (input, actor) => {
   const ref = taskRef(input.householdId, input.taskId)
   let nextTaskId: string | null = null
   await db.runTransaction(async (transaction) => {
@@ -410,6 +411,11 @@ export const completeTask = secureCallable(taskIdSchema, async (input, actor) =>
       nextTaskId = before.nextOccurrenceId ?? null
       return
     }
+    if (input.expectedVersion !== undefined && before.version !== input.expectedVersion)
+      throw new HttpsError(
+        'aborted',
+        'This task changed. Ask Jarvis for a fresh preview before confirming.',
+      )
     const nextNumber = (before.occurrenceNumber ?? 1) + 1
     const nextDate =
       before.recurrence && before.dueDate

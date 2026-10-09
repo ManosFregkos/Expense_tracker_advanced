@@ -41,3 +41,9 @@ export const jarvisSpeechSchema = z.object({
     householdId: documentId,
     text: z.string().trim().min(1).max(4000),
 });
+export const jarvisRealtimeSchema = z.object({
+    householdId: documentId,
+    sdp: z.string().min(1).max(64_000).startsWith('v=0'),
+    language: z.enum(['en-US', 'el-GR']),
+    webSearch: z.boolean().default(false),
+});

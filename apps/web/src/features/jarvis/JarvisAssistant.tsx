@@ -14,14 +14,22 @@ import {
   Textarea,
 } from '@mantine/core'
 import { IconMicrophone, IconPlayerStop, IconRobot, IconVolume } from '@tabler/icons-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { taskKeys } from '../../lib/query-keys'
 import { FirebaseError } from 'firebase/app'
-import type { JarvisMessage, JarvisReply, JarvisExpenseDraft } from '@family-expense-tracker/shared'
+import type {
+  JarvisMessage,
+  JarvisReply,
+  JarvisExpenseDraft,
+  JarvisTaskAction,
+} from '@family-expense-tracker/shared'
 import { api } from '../../lib/callables'
 import { friendlyError } from '../../lib/errors'
 import { useHousehold } from '../households/HouseholdProvider'
 import { TransactionDrawer } from '../transactions/TransactionDrawer'
 import { parseJarvisCommand } from './commands'
 import { blobToBase64, JarvisVoiceInput, voiceCapabilities } from './voice-input'
+import { JarvisRealtimeVoice, type RealtimeState } from './realtime-voice'
 
 type ChatEntry = JarvisMessage & { sources?: JarvisReply['sources'] }
 export function JarvisAssistant() {
@@ -30,6 +38,7 @@ export function JarvisAssistant() {
 }
 
 function AssistantSession({ householdId }: { householdId: string }) {
+  const queryClient = useQueryClient()
   const [opened, setOpened] = useState(false)
   const [messages, setMessages] = useState<ChatEntry[]>([])
   const history = useRef<ChatEntry[]>([])
@@ -51,14 +60,21 @@ function AssistantSession({ householdId }: { householdId: string }) {
   const webSearchRef = useRef(webSearch)
   webSearchRef.current = webSearch
   const [draft, setDraft] = useState<JarvisExpenseDraft | null>(null)
+  const [taskAction, setTaskAction] = useState<JarvisTaskAction | null>(null)
+  const [savingTask, setSavingTask] = useState(false)
+  const savingTaskRef = useRef(false)
   const [review, setReview] = useState(false)
   const [playback, setPlayback] = useState<string | null>(null)
   const player = useRef<HTMLAudioElement | null>(null)
   const voice = useRef<JarvisVoiceInput | null>(null)
+  const realtime = useRef<JarvisRealtimeVoice | null>(null)
+  const [liveState, setLiveState] = useState<RealtimeState>('off')
+  const [playbackBlocked, setPlaybackBlocked] = useState(false)
+  const liveSources = useRef<JarvisReply['sources']>([])
   const generation = useRef(0)
   const alive = useRef(true)
   const speechComplete = useRef<(() => void) | null>(null)
-  const consumeRef = useRef<(value: string) => void>(() => undefined)
+  const consumeRef = useRef<(value: string, liveInput?: boolean) => void>(() => undefined)
   const caps = voiceCapabilities()
 
   function addMessage(message: ChatEntry) {
@@ -68,6 +84,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
   function setActive(value: boolean) {
     awakeRef.current = value
     setAwake(value)
+    realtime.current?.setAwake(value)
   }
   function setWorking(value: boolean) {
     busyRef.current = value
@@ -82,6 +99,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
     speakingRef.current = false
     if (alive.current) setSpeaking(false)
     voice.current?.muteRecording(false)
+    realtime.current?.mute(false)
   }
   async function speak(value: string, instant = false, token = generation.current) {
     cancelSpeech()
@@ -96,6 +114,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
     }
     setSpeaking(true)
     voice.current?.muteRecording(true)
+    realtime.current?.mute(true)
     try {
       // Local greeting has no AI round-trip; regular replies use the configured AI voice.
       if (!instant || !window.speechSynthesis) {
@@ -142,6 +161,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
         setSpeaking(false)
         speechComplete.current = null
         voice.current?.muteRecording(false)
+        realtime.current?.mute(false)
       }
     }
   }
@@ -152,19 +172,32 @@ function AssistantSession({ householdId }: { householdId: string }) {
     setWorking(false)
     setActive(false)
     setDraft(null)
+    setTaskAction(null)
     setReview(false)
     setPlayback(null)
+    liveSources.current = []
     addMessage({ role: 'assistant', content: 'Goodbye sir' })
     void speak('Goodbye sir', true, token)
   }
-  async function ask(question: string) {
-    if (busyRef.current || speakingRef.current) return
+  async function ask(question: string, liveInput = false) {
+    if (savingTaskRef.current) return
+    if ((busyRef.current || speakingRef.current) && !realtime.current?.ready) return
+    if (realtime.current?.ready) {
+      generation.current++
+      cancelSpeech()
+      liveSources.current = []
+    }
     const token = generation.current
     setWorking(true)
     setError('')
     setDraft(null)
+    setTaskAction(null)
     setPlayback(null)
     addMessage({ role: 'user', content: question })
+    if (realtime.current?.ready) {
+      realtime.current.respond(liveInput ? undefined : question)
+      return
+    }
     try {
       const result = await api.jarvisChat({
         householdId,
@@ -174,6 +207,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
       if (token !== generation.current || !alive.current) return
       addMessage({ role: 'assistant', content: result.reply, sources: result.sources })
       setDraft(result.draft)
+      setTaskAction(result.taskAction ?? null)
       setWorking(false)
       await speak(result.reply, false, token)
     } catch (reason) {
@@ -183,13 +217,14 @@ function AssistantSession({ householdId }: { householdId: string }) {
       if (token === generation.current && alive.current) setWorking(false)
     }
   }
-  async function consume(value: string, typed = false) {
+  async function consume(value: string, typed = false, liveInput = false) {
     const command = parseJarvisCommand(value, typed || awakeRef.current)
     if (command.type === 'stop') {
       // A repeated interim/final stop result should not speak goodbye twice.
       if (awakeRef.current || busyRef.current) stopConversation()
       return
     }
+    if (savingTaskRef.current) return
     const heard = value
       .toLowerCase()
       .replace(/[^\p{L}\p{N}]+/gu, ' ')
@@ -201,8 +236,13 @@ function AssistantSession({ householdId }: { householdId: string }) {
       lastSpoken.current.text.includes(heard)
     )
       return
-    if (busyRef.current || speakingRef.current) return
+    if (savingTaskRef.current) return
+    if ((busyRef.current || speakingRef.current) && !realtime.current?.ready) return
     if (command.type === 'wake') {
+      if (awakeRef.current) {
+        if (command.question) await ask(command.question)
+        return
+      }
       setActive(true)
       setOpened(true)
       addMessage({ role: 'assistant', content: 'Hello Sir' })
@@ -211,11 +251,11 @@ function AssistantSession({ householdId }: { householdId: string }) {
       if (token === generation.current && command.question) await ask(command.question)
     } else if (command.type === 'question') {
       setActive(true)
-      await ask(command.question)
+      await ask(command.question, liveInput)
     }
   }
-  consumeRef.current = (value) => {
-    void consume(value)
+  consumeRef.current = (value, liveInput = false) => {
+    void consume(value, false, liveInput)
   }
 
   useEffect(() => {
@@ -240,10 +280,66 @@ function AssistantSession({ householdId }: { householdId: string }) {
       },
     })
     voice.current = input
+    const live = new JarvisRealtimeVoice({
+      connect: (sdp) =>
+        api.jarvisStartRealtime({
+          householdId,
+          sdp,
+          language: languageRef.current as 'en-US' | 'el-GR',
+          webSearch: webSearchRef.current,
+        }),
+      transcript: (value) => consumeRef.current(value, true),
+      answer: (value) => {
+        if (!alive.current || !awakeRef.current) return
+        addMessage({ role: 'assistant', content: value, sources: liveSources.current })
+        liveSources.current = []
+      },
+      tool: async (question) => {
+        const token = generation.current
+        const result = await api.jarvisChat({
+          householdId,
+          webSearch: webSearchRef.current,
+          messages: [
+            ...history.current.slice(-18).map(({ role, content }) => ({ role, content })),
+            { role: 'user', content: question },
+          ],
+        })
+        if (token === generation.current && alive.current && awakeRef.current) {
+          setDraft(result.draft)
+          setTaskAction(result.taskAction ?? null)
+          liveSources.current = result.sources
+        }
+        return result
+      },
+      state: (state) => {
+        if (!alive.current) return
+        setLiveState(state)
+        setWorking(state === 'thinking')
+        if (!speechComplete.current) {
+          speakingRef.current = state === 'speaking'
+          setSpeaking(state === 'speaking')
+        }
+      },
+      error: (message) => {
+        if (alive.current) setError(message)
+      },
+      playbackBlocked: (blocked) => {
+        if (alive.current) setPlaybackBlocked(blocked)
+      },
+      interrupted: () => {
+        generation.current++
+        liveSources.current = []
+        setDraft(null)
+        setTaskAction(null)
+        cancelSpeech()
+      },
+    })
+    realtime.current = live
     const hide = () => {
       if (document.visibilityState !== 'hidden') return
       sessionGeneration.current++
       input.stop()
+      live.stop()
       window.speechSynthesis?.cancel()
       speechComplete.current?.()
       player.current?.pause()
@@ -255,6 +351,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
       setAwake(false)
       setPlayback(null)
       setDraft(null)
+      setTaskAction(null)
       setReview(false)
     }
     document.addEventListener('visibilitychange', hide)
@@ -262,6 +359,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
       alive.current = false
       sessionGeneration.current++
       input.stop()
+      live.stop()
       window.speechSynthesis?.cancel()
       speechComplete.current?.()
       player.current?.pause()
@@ -273,42 +371,124 @@ function AssistantSession({ householdId }: { householdId: string }) {
     generation.current++
     cancelSpeech()
     voice.current?.stop()
+    realtime.current?.stop()
     setWorking(false)
     setActive(false)
     setPlayback(null)
+    setTaskAction(null)
   }
-  async function enable(manual: boolean) {
+  async function confirmTaskChange() {
+    if (!taskAction || savingTaskRef.current) return
+    const proposal = taskAction
+    savingTaskRef.current = true
+    setSavingTask(true)
+    const token = ++generation.current
+    cancelSpeech()
+    realtime.current?.interrupt()
+    voice.current?.muteRecording(true)
+    realtime.current?.mute(true)
+    setWorking(true)
     setError('')
-    if (manual) setActive(true)
+    try {
+      let confirmation: string
+      if (proposal.kind === 'create') {
+        await api.createTask({
+          householdId,
+          clientRequestId: proposal.clientRequestId,
+          ...proposal.task,
+        })
+        confirmation = `Task created: ${proposal.task.title}.`
+      } else if (proposal.kind === 'complete') {
+        const result = await api.completeTask({
+          householdId,
+          taskId: proposal.taskId,
+          expectedVersion: proposal.expectedVersion,
+        })
+        confirmation = `Task completed: ${proposal.title}.${result.nextTaskId ? ' The next recurring occurrence was created.' : ''}`
+      } else {
+        await api.updateTask({
+          householdId,
+          taskId: proposal.taskId,
+          expectedVersion: proposal.expectedVersion,
+          task: proposal.task,
+        })
+        confirmation = `Task rescheduled: ${proposal.task.title}, ${proposal.task.dueDate ?? 'no due date'}${proposal.task.dueTime ? ` at ${proposal.task.dueTime}` : ''}.`
+      }
+      void queryClient.invalidateQueries({ queryKey: taskKeys.all(householdId) })
+      if (!alive.current) return
+      setTaskAction(null)
+      addMessage({ role: 'assistant', content: confirmation })
+      setWorking(false)
+      // An authorized save can finish after Stop/backgrounding. Still report its
+      // actual result, but do not restart speech or interrupt the goodbye.
+      if (token === generation.current && document.visibilityState !== 'hidden') {
+        realtime.current?.addAppResult(confirmation)
+        void speak(confirmation, true, token)
+      }
+    } catch (reason) {
+      if (alive.current)
+        setError(reason instanceof FirebaseError ? reason.message : friendlyError(reason))
+    } finally {
+      savingTaskRef.current = false
+      if (alive.current) {
+        setSavingTask(false)
+        setWorking(false)
+        if (!speakingRef.current) {
+          voice.current?.muteRecording(false)
+          realtime.current?.mute(false)
+        }
+      }
+    }
+  }
+  async function enable(manual: boolean, startNow = false) {
+    setError('')
     // Unlock mobile audio on the initial user gesture.
     if (window.speechSynthesis) {
       const unlock = new SpeechSynthesisUtterance('')
       window.speechSynthesis.speak(unlock)
     }
+    if (!manual && caps.realtime) {
+      if (!realtime.current?.ready) {
+        setActive(false)
+        voice.current?.stop()
+        await realtime.current?.start(history.current)
+      }
+      if (startNow && realtime.current?.ready) await consume('Hello Jarvis', true)
+      return
+    }
+    realtime.current?.stop()
+    if (manual) setActive(true)
     await voice.current?.start(language, manual)
+    if (startNow) await consume('Hello Jarvis', true)
   }
-  const status = busy
-    ? 'Thinking'
-    : speaking
-      ? 'Speaking'
-      : mic === 'transcribing'
-        ? 'Transcribing'
-        : mic === 'off'
-          ? 'Microphone off'
-          : awake
-            ? 'Listening to you'
-            : 'Waiting for Hello Jarvis'
+  const microphoneEnabled = mic !== 'off' || liveState !== 'off'
+  const status =
+    liveState === 'connecting'
+      ? 'Connecting live voice'
+      : busy
+        ? 'Thinking'
+        : speaking
+          ? 'Speaking'
+          : mic === 'transcribing'
+            ? 'Transcribing'
+            : !microphoneEnabled
+              ? 'Microphone off'
+              : awake
+                ? 'Listening to you'
+                : 'Waiting for Hello Jarvis'
   return (
     <>
       <Button
-        variant={mic === 'off' ? 'light' : 'filled'}
+        variant={!microphoneEnabled ? 'light' : 'filled'}
         size="compact-sm"
         leftSection={<IconRobot size={18} />}
         onClick={() => setOpened(true)}
-        aria-label={mic === 'off' ? 'Open Jarvis assistant' : `Open Jarvis assistant, ${status}`}
+        aria-label={
+          !microphoneEnabled ? 'Open Jarvis assistant' : `Open Jarvis assistant, ${status}`
+        }
         className="jarvis-launcher"
       >
-        <span className="jarvis-label">Jarvis{mic !== 'off' ? ' •' : ''}</span>
+        <span className="jarvis-label">Jarvis{microphoneEnabled ? ' •' : ''}</span>
       </Button>
       <Drawer
         opened={opened}
@@ -321,32 +501,41 @@ function AssistantSession({ householdId }: { householdId: string }) {
       >
         <Stack>
           <Group justify="space-between">
-            <Badge color={mic === 'off' ? 'gray' : 'teal'} aria-live="polite">
+            <Badge color={!microphoneEnabled ? 'gray' : 'teal'} aria-live="polite">
               {status}
             </Badge>
             <Button
               variant="subtle"
               color="red"
               onClick={disable}
-              disabled={mic === 'off' && !busy && !speaking}
+              disabled={!microphoneEnabled && !busy && !speaking}
             >
               Turn microphone off
             </Button>
           </Group>
           <Text size="sm">
-            Enable the microphone, then say “Hello Jarvis” to hear “Hello Sir”. Ask your question.
-            Say “Jarvis stop” to hear “Goodbye sir”; Jarvis will wait for “Hello Jarvis” again.
+            Click Start live conversation to talk now, or Enable microphone once and allow access,
+            then say “Hello Jarvis” to hear “Hello Sir”. Ask your question. Say “Jarvis stop” to
+            hear “Goodbye sir”; Jarvis will wait for “Hello Jarvis” again.
           </Text>
           <Text size="xs" c="dimmed">
             AI-generated voice. Voice requires HTTPS, microphone permission, and this app in the
             foreground. Some TV browsers support text only. Closing this panel keeps listening
             enabled; use Turn microphone off to end listening.
           </Text>
-          <Alert color="blue" title={caps.recognition ? 'Voice privacy' : 'Cloud voice listening'}>
-            {caps.recognition
-              ? 'Browser speech recognition may send audio to your browser’s speech service. Questions and requested household data are sent to OpenAI.'
-              : 'In hands-free mode, spoken audio—including wake phrases and nearby speech—is sent to OpenAI for transcription. Use Record question for one recording at a time.'}
+          <Alert color="blue" title="Voice privacy">
+            {caps.realtime
+              ? 'Live voice streams microphone audio to OpenAI, including nearby speech while waiting for the wake phrase. You can interrupt a spoken answer. Requested household data is sent only through authorized app tools.'
+              : caps.recognition
+                ? 'Browser speech recognition may send audio to your browser’s speech service. Questions and requested household data are sent to OpenAI.'
+                : 'In hands-free mode, spoken audio—including wake phrases and nearby speech—is sent to OpenAI for transcription. Use Record question for one recording at a time.'}
           </Alert>
+          {!microphoneEnabled && (
+            <Alert color="teal" title="One click is needed before Jarvis can hear you">
+              Voice commands cannot turn on a disabled microphone. Enable it here first; listening
+              continues when you close this panel while the app stays in the foreground.
+            </Alert>
+          )}
           {error && (
             <Alert color="red" role="alert" withCloseButton onClose={() => setError('')}>
               {error}
@@ -356,7 +545,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
             label="Voice input language"
             value={language}
             onChange={(value) => value && setLanguage(value)}
-            disabled={mic !== 'off'}
+            disabled={microphoneEnabled}
             data={[
               { value: 'en-US', label: 'English' },
               { value: 'el-GR', label: 'Greek' },
@@ -365,12 +554,32 @@ function AssistantSession({ householdId }: { householdId: string }) {
           <Checkbox
             label="Use web search for current information"
             checked={webSearch}
+            disabled={liveState !== 'off'}
             onChange={(event) => setWebSearch(event.currentTarget.checked)}
           />
           <Group>
+            {caps.realtime && (
+              <Button
+                leftSection={<IconMicrophone size={18} />}
+                disabled={
+                  liveState === 'connecting' ||
+                  (liveState !== 'off' && awake) ||
+                  (busy && liveState === 'off')
+                }
+                onClick={() => void enable(false, true)}
+              >
+                Start live conversation
+              </Button>
+            )}
             <Button
               leftSection={<IconMicrophone size={18} />}
-              disabled={mic !== 'off' || (!caps.recognition && !caps.recording) || busy || speaking}
+              variant={caps.realtime ? 'light' : 'filled'}
+              disabled={
+                microphoneEnabled ||
+                (!caps.realtime && !caps.recognition && !caps.recording) ||
+                busy ||
+                speaking
+              }
               onClick={() => void enable(false)}
             >
               Enable microphone
@@ -379,6 +588,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
               variant="light"
               disabled={
                 !caps.recording ||
+                liveState !== 'off' ||
                 busy ||
                 speaking ||
                 mic === 'transcribing' ||
@@ -399,7 +609,17 @@ function AssistantSession({ householdId }: { householdId: string }) {
               Jarvis stop
             </Button>
           </Group>
-          {!caps.recognition && !caps.recording && (
+          {liveState !== 'off' && (
+            <Text size="sm" c="dimmed">
+              Live voice · speak naturally, pause for an answer, and interrupt to ask a follow-up.
+              Say “Jarvis stop” to return to wake listening. Ask about tasks, transactions or
+              balances; task changes require confirmation below.
+            </Text>
+          )}
+          {playbackBlocked && (
+            <Button onClick={() => void realtime.current?.playAudio()}>Play live audio</Button>
+          )}
+          {!caps.realtime && !caps.recognition && !caps.recording && (
             <Text size="sm">
               Microphone recording is unavailable in this browser. You can still type questions and
               play spoken answers.
@@ -411,7 +631,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
                 <Text fw={600}>What can I help with, Sir?</Text>
                 <Text size="sm" c="dimmed">
                   Try “What can I cook with eggs and rice?”, “How much did our household spend this
-                  month?”, or “Add a €25 supermarket expense”.
+                  month?”, “What tasks are overdue?”, or “Find supermarket transactions this week”.
                 </Text>
               </Paper>
             )}
@@ -445,7 +665,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
                     variant="subtle"
                     size="compact-xs"
                     leftSection={<IconVolume size={14} />}
-                    disabled={busy || speaking}
+                    disabled={busy || speaking || liveState !== 'off'}
                     onClick={() =>
                       void speak(
                         entry.content,
@@ -459,6 +679,43 @@ function AssistantSession({ householdId }: { householdId: string }) {
               </Paper>
             ))}
           </Stack>
+          {taskAction && (
+            <Alert color="teal" title="Confirm task change">
+              <Text fw={600}>
+                {taskAction.kind === 'complete' ? taskAction.title : taskAction.task.title}
+              </Text>
+              <Text size="sm">
+                {taskAction.kind === 'complete'
+                  ? `Mark this task complete.${taskAction.recurring ? ' Completing it may create the next recurring occurrence.' : ''}`
+                  : `${taskAction.kind === 'create' ? 'Create task' : `Reschedule from ${taskAction.previousDueDate ?? 'no due date'} ${taskAction.previousDueTime ?? ''}`} · ${taskAction.task.dueDate ?? 'No due date'} ${taskAction.task.dueTime ?? ''}${taskAction.kind === 'create' ? ` · Priority: ${taskAction.task.priority} · Assignee: ${taskAction.assigneeName ?? 'unassigned'} · List: ${taskAction.listName ?? 'none'}` : ''}`}
+              </Text>
+              <Text size="xs" c="dimmed">
+                Dates and times use your household time zone. Nothing is saved until you confirm
+                with the button.
+              </Text>
+              <Group mt="sm">
+                <Button
+                  loading={savingTask}
+                  disabled={savingTask}
+                  onClick={() => void confirmTaskChange()}
+                >
+                  Confirm task change
+                </Button>
+                <Button
+                  variant="subtle"
+                  disabled={savingTask}
+                  onClick={() => {
+                    setTaskAction(null)
+                    const content = 'Task change cancelled. Nothing was saved.'
+                    addMessage({ role: 'assistant', content })
+                    realtime.current?.addAppResult(content)
+                  }}
+                >
+                  Cancel task change
+                </Button>
+              </Group>
+            </Alert>
+          )}
           {draft && (
             <Alert color="teal" title="Expense ready for review">
               <Text size="sm">
@@ -530,7 +787,11 @@ function AssistantSession({ householdId }: { householdId: string }) {
                 autosize
                 minRows={2}
               />
-              <Button type="submit" loading={busy} disabled={!text.trim() || speaking}>
+              <Button
+                type="submit"
+                loading={busy}
+                disabled={savingTask || !text.trim() || (speaking && liveState === 'off')}
+              >
                 Send question
               </Button>
             </Stack>
@@ -544,6 +805,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
               history.current = []
               setMessages([])
               setDraft(null)
+              setTaskAction(null)
               setError('')
             }}
           >
@@ -557,6 +819,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
           onClose={() => {
             setReview(false)
             setDraft(null)
+            setTaskAction(null)
           }}
           initialDraft={draft}
         />

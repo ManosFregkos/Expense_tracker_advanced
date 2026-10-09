@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { currencySchema, shortTextSchema } from './common.js'
+import type { TaskCoreInput } from './task.js'
 
 const documentId = z
   .string()
@@ -45,13 +46,45 @@ export const jarvisSpeechSchema = z.object({
   householdId: documentId,
   text: z.string().trim().min(1).max(4000),
 })
+export const jarvisRealtimeSchema = z.object({
+  householdId: documentId,
+  sdp: z.string().min(1).max(64_000).startsWith('v=0'),
+  language: z.enum(['en-US', 'el-GR']),
+  webSearch: z.boolean().default(false),
+})
 export type JarvisMessage = z.infer<typeof jarvisMessageSchema>
 export type JarvisChatInput = z.infer<typeof jarvisChatSchema>
 export type JarvisExpenseDraft = z.infer<typeof jarvisExpenseDraftSchema>
 export type JarvisAudioInput = z.infer<typeof jarvisAudioSchema>
 export type JarvisSpeechInput = z.infer<typeof jarvisSpeechSchema>
+export type JarvisRealtimeInput = z.infer<typeof jarvisRealtimeSchema>
+export interface JarvisRealtimeSession {
+  sdp: string
+  model: string
+}
 export interface JarvisReply {
   reply: string
   draft: JarvisExpenseDraft | null
   sources: Array<{ title: string; url: string }>
+  taskAction?: JarvisTaskAction | null
 }
+
+// Proposals contain no write authority. The user explicitly confirms through the
+// existing authenticated task APIs, which recheck membership and task versions.
+export type JarvisTaskAction =
+  | {
+      kind: 'create'
+      clientRequestId: string
+      task: TaskCoreInput
+      assigneeName: string | null
+      listName: string | null
+    }
+  | { kind: 'complete'; taskId: string; title: string; expectedVersion: number; recurring: boolean }
+  | {
+      kind: 'reschedule'
+      taskId: string
+      expectedVersion: number
+      task: TaskCoreInput
+      previousDueDate: string | null
+      previousDueTime: string | null
+    }

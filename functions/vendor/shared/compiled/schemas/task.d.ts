@@ -27,10 +27,10 @@ export declare const taskCoreInputSchema: z.ZodObject<{
     title: z.ZodString;
     description: z.ZodOptional<z.ZodString>;
     status: z.ZodDefault<z.ZodEnum<{
-        CANCELLED: "CANCELLED";
         TODO: "TODO";
         IN_PROGRESS: "IN_PROGRESS";
         DONE: "DONE";
+        CANCELLED: "CANCELLED";
     }>>;
     priority: z.ZodDefault<z.ZodEnum<{
         NONE: "NONE";
@@ -79,10 +79,10 @@ export declare const createTaskSchema: z.ZodIntersection<z.ZodObject<{
     title: z.ZodString;
     description: z.ZodOptional<z.ZodString>;
     status: z.ZodDefault<z.ZodEnum<{
-        CANCELLED: "CANCELLED";
         TODO: "TODO";
         IN_PROGRESS: "IN_PROGRESS";
         DONE: "DONE";
+        CANCELLED: "CANCELLED";
     }>>;
     priority: z.ZodDefault<z.ZodEnum<{
         NONE: "NONE";
@@ -132,10 +132,10 @@ export declare const updateTaskSchema: z.ZodObject<{
         title: z.ZodString;
         description: z.ZodOptional<z.ZodString>;
         status: z.ZodDefault<z.ZodEnum<{
-            CANCELLED: "CANCELLED";
             TODO: "TODO";
             IN_PROGRESS: "IN_PROGRESS";
             DONE: "DONE";
+            CANCELLED: "CANCELLED";
         }>>;
         priority: z.ZodDefault<z.ZodEnum<{
             NONE: "NONE";
@@ -181,6 +181,11 @@ export declare const updateTaskSchema: z.ZodObject<{
 export declare const taskIdSchema: z.ZodObject<{
     householdId: z.ZodString;
     taskId: z.ZodString;
+}, z.core.$strip>;
+export declare const completeTaskSchema: z.ZodObject<{
+    householdId: z.ZodString;
+    taskId: z.ZodString;
+    expectedVersion: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const createTaskListSchema: z.ZodObject<{
     householdId: z.ZodString;

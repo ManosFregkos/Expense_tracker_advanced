@@ -29,6 +29,8 @@ import type {
   JarvisReply,
   JarvisAudioInput,
   JarvisSpeechInput,
+  JarvisRealtimeInput,
+  JarvisRealtimeSession,
 } from '@family-expense-tracker/shared'
 import { functions } from './firebase'
 
@@ -38,6 +40,7 @@ async function call<TInput, TOutput>(name: string, input: TInput): Promise<TOutp
 }
 
 export const api = {
+  jarvisStartRealtime: (input: JarvisRealtimeInput) => call<typeof input, JarvisRealtimeSession>('jarvisStartRealtime', input),
   jarvisChat: (input: JarvisChatInput) => call<typeof input, JarvisReply>('jarvisChat', input),
   jarvisTranscribe: (input: JarvisAudioInput) => call<typeof input, { text: string }>('jarvisTranscribe', input),
   jarvisSpeak: (input: JarvisSpeechInput) => call<typeof input, { audio: string; mimeType: string }>('jarvisSpeak', input),
@@ -61,7 +64,7 @@ export const api = {
   initializeTaskModule: (input: { householdId: string }) => call<typeof input, { initialized: boolean }>('initializeTaskModule', input),
   createTask: (input: CreateTaskInput) => call<typeof input, { taskId: string }>('createTask', input),
   updateTask: (input: UpdateTaskInput) => call<typeof input, { taskId: string }>('updateTask', input),
-  completeTask: (input: { householdId: string; taskId: string }) => call<typeof input, { taskId: string; nextTaskId: string | null }>('completeTask', input),
+  completeTask: (input: { householdId: string; taskId: string; expectedVersion?: number }) => call<typeof input, { taskId: string; nextTaskId: string | null }>('completeTask', input),
   reopenTask: (input: { householdId: string; taskId: string }) => call<typeof input, { taskId: string }>('reopenTask', input),
   cancelTask: (input: { householdId: string; taskId: string }) => call<typeof input, { taskId: string }>('cancelTask', input),
   deleteTask: (input: { householdId: string; taskId: string }) => call<typeof input, { taskId: string }>('deleteTask', input),

@@ -42,6 +42,7 @@ export async function openaiRequest(
   path: string,
   body: string | FormData,
   json = true,
+  extraHeaders: Record<string, string> = {},
 ) {
   let response: Response
   try {
@@ -50,6 +51,7 @@ export async function openaiRequest(
       headers: {
         Authorization: `Bearer ${key}`,
         ...(json ? { 'Content-Type': 'application/json' } : {}),
+        ...extraHeaders,
       },
       body,
       signal: AbortSignal.timeout(40_000),
@@ -84,7 +86,7 @@ export async function runJarvis(
   input: unknown[],
   tools: unknown[],
   execute: (name: string, argumentsText: string) => Promise<unknown>,
-): Promise<Omit<JarvisReply, 'draft'>> {
+): Promise<Pick<JarvisReply, 'reply' | 'sources'>> {
   const conversation = [...input]
   for (let round = 0; round < 4; round++) {
     const response = await openaiRequest(

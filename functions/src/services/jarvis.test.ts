@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { jarvisChat, jarvisTranscribe, reserveJarvisRequest } from './jarvis.js'
-import { runJarvis } from './jarvis-provider.js'
+import {
+  jarvisChat,
+  jarvisTranscribe,
+  jarvisStartRealtime,
+  reserveJarvisRequest,
+} from './jarvis.js'
+import { runJarvis, openaiRequest } from './jarvis-provider.js'
 import { requireMember } from './permissions.js'
 
 const store = vi.hoisted(() => ({
@@ -57,6 +62,91 @@ beforeEach(() => {
   })
 })
 describe('Jarvis callable boundaries', () => {
+  it('exposes the authorized read/proposal tools and returns a task preview without writes', async () => {
+    vi.mocked(runJarvis).mockImplementationOnce(
+      async (_key, _model, instructions, _input, tools, execute) => {
+        expect(instructions).toContain('A spoken yes is not confirmation')
+        expect(tools).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ name: 'search_transactions' }),
+            expect.objectContaining({ name: 'get_account_balances' }),
+            expect.objectContaining({ name: 'list_tasks' }),
+          ]),
+        )
+        expect(
+          await execute(
+            'draft_task_create',
+            JSON.stringify({
+              title: 'Buy milk',
+              dueDate: '2026-10-10',
+              dueTime: null,
+              priority: 'NONE',
+              assigneeUserId: null,
+              listId: null,
+            }),
+          ),
+        ).toMatchObject({ saved: false, status: 'confirmation_required' })
+        expect(await execute('draft_expense', '{}')).toHaveProperty('error')
+        expect(await execute('complete_task', '{"taskId":"t1"}')).toHaveProperty('error')
+        return { reply: 'Please confirm the task, Sir.', sources: [] }
+      },
+    )
+    const result = await jarvisChat.run(request(chat))
+    expect(result).toMatchObject({
+      draft: null,
+      taskAction: { kind: 'create', task: { title: 'Buy milk' } },
+    })
+    expect(store.writes).toEqual(['privateJarvisUsage/u1'])
+  })
+  it('creates a live session with server configuration and returns SDP without credentials', async () => {
+    vi.mocked(openaiRequest).mockResolvedValueOnce(new Response('v=0\r\nanswer'))
+    const result = await jarvisStartRealtime.run(
+      request({
+        householdId: 'h1',
+        sdp: 'v=0\r\noffer',
+        language: 'el-GR',
+        webSearch: true,
+      }),
+    )
+    expect(result).toEqual({ sdp: 'v=0\r\nanswer', model: 'gpt-realtime-2.1-mini' })
+    expect(requireMember).toHaveBeenCalledWith('h1', 'u1')
+    const [key, path, form, json, headers] = vi.mocked(openaiRequest).mock.calls[0]!
+    expect(key).toBe('test-key')
+    expect(path).toBe('realtime/calls')
+    expect(json).toBe(false)
+    expect(headers?.['OpenAI-Safety-Identifier']).toMatch(/^[a-f0-9]{64}$/)
+    const data = form as FormData
+    expect(data.get('sdp')).toBe('v=0\r\noffer')
+    const session = JSON.parse(data.get('session') as string) as {
+      audio: { input: { turn_detection: Record<string, unknown> } }
+      instructions: string
+      tools: Array<Record<string, unknown>>
+    }
+    expect(session.audio.input.turn_detection).toMatchObject({
+      create_response: false,
+      interrupt_response: true,
+    })
+    expect(session.instructions).toContain('Greek')
+    expect(session.tools).toEqual([expect.objectContaining({ name: 'ask_app_assistant' })])
+    expect(store.writes).toEqual(['privateJarvisUsage/u1'])
+  })
+  it('checks live-session authentication, verification, membership and SDP before provider access', async () => {
+    const data = { householdId: 'h1', sdp: 'v=0\r\noffer', language: 'en-US' }
+    await expect(
+      jarvisStartRealtime.run({ data } as Parameters<typeof jarvisStartRealtime.run>[0]),
+    ).rejects.toMatchObject({ code: 'unauthenticated' })
+    const unverified = request(data)
+    unverified.auth!.token.email_verified = false
+    await expect(jarvisStartRealtime.run(unverified)).rejects.toMatchObject({
+      code: 'failed-precondition',
+    })
+    await expect(
+      jarvisStartRealtime.run(request({ ...data, sdp: 'bad SDP' })),
+    ).rejects.toMatchObject({ code: 'invalid-argument' })
+    vi.mocked(requireMember).mockRejectedValueOnce(new Error('access denied'))
+    await expect(jarvisStartRealtime.run(request(data))).rejects.toThrow('access denied')
+    expect(openaiRequest).not.toHaveBeenCalled()
+  })
   it('requires authentication, membership, and safe household IDs before contacting OpenAI', async () => {
     await expect(
       jarvisChat.run({ data: chat } as Parameters<typeof jarvisChat.run>[0]),

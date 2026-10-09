@@ -1,3 +1,5 @@
+import { parseJarvisCommand } from './commands'
+
 type RecognitionResult = { isFinal: boolean; 0: { transcript: string } }
 interface Recognition {
   lang: string
@@ -19,6 +21,9 @@ function recognitionConstructor() {
 }
 export function voiceCapabilities() {
   return {
+    realtime: Boolean(
+      typeof RTCPeerConnection !== 'undefined' && navigator.mediaDevices?.getUserMedia,
+    ),
     recognition: Boolean(recognitionConstructor()),
     recording: Boolean(
       typeof navigator.mediaDevices?.getUserMedia === 'function' &&
@@ -84,11 +89,11 @@ export class JarvisVoiceInput {
         this.failures = 0
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i]
-          if (result?.isFinal && (!this.muted || /\bjarvis\s+stop\b/i.test(result[0].transcript)))
+          const command = parseJarvisCommand(result?.[0].transcript ?? '', false)
+          if (result?.isFinal && (!this.muted || command.type === 'stop'))
             this.callbacks.transcript(result[0].transcript)
           // Interrupt as soon as the stop phrase is recognized, without waiting for a final result.
-          else if (/\bjarvis\s+stop\b/i.test(result?.[0].transcript ?? ''))
-            this.callbacks.transcript('Jarvis stop')
+          else if (command.type === 'stop') this.callbacks.transcript('Jarvis stop')
         }
       }
       recognition.onerror = (event) => {
@@ -188,7 +193,7 @@ export class JarvisVoiceInput {
                 this.enabled &&
                 generation === this.generation &&
                 text.trim() &&
-                (!interruptsOnly || /\bjarvis\s+stop\b/i.test(text))
+                (!interruptsOnly || parseJarvisCommand(text, false).type === 'stop')
               )
                 this.callbacks.transcript(text)
             })

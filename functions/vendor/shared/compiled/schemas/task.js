@@ -74,6 +74,9 @@ export const updateTaskSchema = z.object({
     task: taskCoreInputSchema,
 });
 export const taskIdSchema = z.object({ householdId: documentIdSchema, taskId: documentIdSchema });
+export const completeTaskSchema = taskIdSchema.extend({
+    expectedVersion: z.number().int().positive().optional(),
+});
 export const createTaskListSchema = z.object({
     householdId: documentIdSchema,
     name: z.string().trim().min(1).max(80),

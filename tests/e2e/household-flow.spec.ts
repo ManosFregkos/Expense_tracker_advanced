@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Request } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -22,7 +22,58 @@ test('register, onboard, and complete the core household finance workflow', asyn
           }),
       },
     })
+    // Exercise real browser/controller wiring without hardware audio or paid OpenAI sessions.
+    const bridge = window as Window & {
+      jarvisVoiceEvent(event: Record<string, unknown>): void
+      jarvisVoiceSent: Array<Record<string, unknown>>
+    }
+    bridge.jarvisVoiceSent = []
+    const track = { enabled: true, stop: () => undefined }
+    Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+      configurable: true,
+      value: async () => ({ getTracks: () => [track], getAudioTracks: () => [track] }),
+    })
+    Object.defineProperty(window, 'RTCPeerConnection', {
+      configurable: true,
+      value: class {
+        iceGatheringState = 'complete'
+        connectionState = 'connected'
+        localDescription: { sdp: string } | null = null
+        channel = {
+          readyState: 'connecting',
+          onopen: null as (() => void) | null,
+          onmessage: null as ((event: { data: string }) => void) | null,
+          send: (data: string) =>
+            bridge.jarvisVoiceSent.push(JSON.parse(data) as Record<string, unknown>),
+          close: () => undefined,
+        }
+        createDataChannel() {
+          bridge.jarvisVoiceEvent = (event) =>
+            this.channel.onmessage?.({ data: JSON.stringify(event) })
+          return this.channel
+        }
+        addTrack() {}
+        close() {}
+        async createOffer() {
+          return { type: 'offer', sdp: 'v=0\r\noffer' }
+        }
+        async setLocalDescription(offer: { sdp: string }) {
+          this.localDescription = offer
+        }
+        async setRemoteDescription() {
+          this.channel.readyState = 'open'
+          this.channel.onopen?.()
+        }
+      },
+    })
   })
+  await page.route('**/jarvisStartRealtime', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ result: { sdp: 'v=0\r\nanswer', model: 'gpt-realtime-2.1-mini' } }),
+    }),
+  )
   const email = `family-${Date.now()}@example.test`
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/register')
@@ -64,8 +115,64 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await page.setViewportSize({ width: 1280, height: 720 })
   await page.getByRole('button', { name: 'Open Jarvis assistant' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('textbox', { name: 'Voice input language' }).click()
+  await page.getByRole('option', { name: 'Greek' }).click()
+  await page.getByRole('button', { name: 'Start live conversation' }).click()
+  await expect(page.getByText('Listening to you', { exact: true })).toBeVisible()
+  await page.evaluate(() => {
+    const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
+    bridge.jarvisVoiceEvent({
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'q1',
+      transcript: 'Τι μπορώ να μαγειρέψω;',
+    })
+  })
+  await expect(
+    page.getByRole('log').getByText('Τι μπορώ να μαγειρέψω;', { exact: true }),
+  ).toBeVisible()
+  await page.evaluate(() => {
+    const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
+    bridge.jarvisVoiceEvent({ type: 'response.created', response: { id: 'r1' } })
+    bridge.jarvisVoiceEvent({
+      type: 'response.output_audio_transcript.done',
+      response_id: 'r1',
+      transcript: 'Μπορείτε να φτιάξετε μια ομελέτα, Sir.',
+    })
+    bridge.jarvisVoiceEvent({
+      type: 'response.done',
+      response: { id: 'r1', status: 'completed', output: [] },
+    })
+    bridge.jarvisVoiceEvent({ type: 'output_audio_buffer.stopped', response_id: 'r1' })
+  })
+  await expect(
+    page.getByRole('log').getByText('Μπορείτε να φτιάξετε μια ομελέτα, Sir.'),
+  ).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('desktop-jarvis.png') })
   await page.getByRole('button', { name: 'Close Jarvis', exact: true }).click({ timeout: 5000 })
+  await page.evaluate(() => {
+    const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
+    bridge.jarvisVoiceEvent({
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'stop',
+      transcript: 'Τζάρβις στοπ',
+    })
+  })
+  await expect(
+    page.getByRole('button', { name: 'Open Jarvis assistant, Waiting for Hello Jarvis' }),
+  ).toBeVisible()
+  await page.evaluate(() => {
+    const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
+    bridge.jarvisVoiceEvent({
+      type: 'conversation.item.input_audio_transcription.completed',
+      item_id: 'wake',
+      transcript: 'Χέλο Τζάρβις',
+    })
+  })
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByText('Listening to you', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Turn microphone off' }).click()
+  await expect(page.getByText('Microphone off', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Close Jarvis', exact: true }).click()
 
   for (const route of ['/review', '/bank-connections', '/transactions/review']) {
     await page.goto(route)
@@ -186,6 +293,100 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await page.getByRole('button', { name: 'Reopen' }).click()
   await expect(page.getByText('TODO')).toBeVisible()
   await page.keyboard.press('Escape')
+
+  // AI proposes changes; real authenticated emulator task APIs perform them only
+  // after confirmation. Exercise create, reschedule, and complete end to end.
+  let jarvisTaskId = ''
+  const jarvisTask = {
+    title: 'Jarvis confirmation task',
+    status: 'TODO',
+    priority: 'NONE',
+    tags: [],
+    dueDate: '2026-10-12',
+    dueTime: null,
+    assigneeUserId: null,
+    listId: null,
+  }
+  await page.route('**/jarvisChat', async (route) => {
+    const body = route.request().postDataJSON() as {
+      data: { messages: Array<{ content: string }> }
+    }
+    const question = body.data.messages.at(-1)?.content ?? ''
+    const taskAction = question.startsWith('Create')
+      ? {
+          kind: 'create',
+          clientRequestId: 'jarvis_e2e_task',
+          task: jarvisTask,
+          assigneeName: null,
+          listName: null,
+        }
+      : question.startsWith('Reschedule')
+        ? {
+            kind: 'reschedule',
+            taskId: jarvisTaskId,
+            expectedVersion: 1,
+            task: { ...jarvisTask, dueDate: '2026-10-13' },
+            previousDueDate: '2026-10-12',
+            previousDueTime: null,
+          }
+        : {
+            kind: 'complete',
+            taskId: jarvisTaskId,
+            title: jarvisTask.title,
+            expectedVersion: 2,
+            recurring: false,
+          }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        result: { reply: 'Review the task change, Sir.', draft: null, sources: [], taskAction },
+      }),
+    })
+  })
+  await page.route('**/jarvisSpeak', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ result: { audio: 'AAAA', mimeType: 'audio/mpeg' } }),
+    }),
+  )
+  await page.getByRole('button', { name: 'Open Jarvis assistant' }).click()
+  await page.getByLabel('Ask Jarvis').fill('Create Jarvis confirmation task')
+  await page.getByRole('button', { name: 'Send question' }).click()
+  await expect(page.getByRole('button', { name: 'Confirm task change' })).toBeVisible()
+  let creates = 0
+  const trackCreation = (request: Request) => {
+    if (request.url().endsWith('/createTask')) creates++
+  }
+  page.on('request', trackCreation)
+  expect(creates).toBe(0)
+  const created = page.waitForResponse((response) => response.url().endsWith('/createTask'))
+  await page.getByRole('button', { name: 'Confirm task change' }).click()
+  const createdBody = (await (await created).json()) as { result: { taskId: string } }
+  jarvisTaskId = createdBody.result.taskId
+  await expect(
+    page.getByRole('log').getByText('Task created: Jarvis confirmation task.'),
+  ).toBeVisible()
+  expect(creates).toBe(1)
+  page.off('request', trackCreation)
+  await page.getByLabel('Ask Jarvis').fill('Reschedule Jarvis confirmation task to October 13')
+  await page.getByRole('button', { name: 'Send question' }).click()
+  await expect(page.getByText(/Reschedule from 2026-10-12/)).toBeVisible()
+  await page.getByRole('button', { name: 'Confirm task change' }).click()
+  await expect(
+    page.getByRole('log').getByText('Task rescheduled: Jarvis confirmation task, 2026-10-13.'),
+  ).toBeVisible()
+  await page.getByLabel('Ask Jarvis').fill('Complete Jarvis confirmation task')
+  await page.getByRole('button', { name: 'Send question' }).click()
+  await page.getByRole('button', { name: 'Confirm task change' }).click()
+  await expect(
+    page.getByRole('log').getByText('Task completed: Jarvis confirmation task.'),
+  ).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click()
+  await expect(page.getByText('Jarvis confirmation task', { exact: true })).toHaveCount(0)
+  await page.unroute('**/jarvisChat')
+  await page.unroute('**/jarvisSpeak')
 
   await page.getByRole('button', { name: 'Add task' }).first().click()
   const taskDialog = page.getByRole('dialog')
