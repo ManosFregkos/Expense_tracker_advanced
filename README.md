@@ -47,6 +47,9 @@ npm run build
 See [Transaction totals and bulk task actions](docs/TRANSACTION_TOTALS_AND_BULK_TASKS.md) for usage,
 behavior, and deployment details.
 
+Jarvis adds voice questions, spoken replies, wake/stop commands, everyday help,
+optional web search, and expense drafts for review. See [Jarvis setup and browser support](docs/JARVIS.md).
+
 Explicit non-goals include budgets, net worth, investments, loans, receipt OCR, recurring billing, and Splitwise-style settlement.
 
 ## Monorepo

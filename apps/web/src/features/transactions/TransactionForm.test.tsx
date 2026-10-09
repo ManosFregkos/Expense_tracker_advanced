@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { renderApp } from '../../test/render'
 import { TransactionForm } from './TransactionForm'
+import { api } from '../../lib/callables'
 
 vi.mock('../../hooks/useHouseholdData', () => ({
   useAccounts: () => ({
@@ -26,6 +27,28 @@ vi.mock('../../lib/callables', () => ({
 }))
 
 describe('TransactionForm', () => {
+  it('prefills a Jarvis draft for explicit review without saving or guessing an account', () => {
+    localStorage.setItem('lastUsedAccountId', 'a1')
+    renderApp(
+      <TransactionForm
+        initialDraft={{
+          amount: '25.00',
+          currency: 'EUR',
+          description: 'Supermarket',
+          date: '2026-10-09',
+          accountId: null,
+          categoryId: 'c1',
+        }}
+        onSaved={() => undefined}
+      />,
+    )
+    expect(screen.getByLabelText('Amount')).toHaveValue('EUR 25.00')
+    expect(screen.getByLabelText('Description / merchant')).toHaveValue('Supermarket')
+    expect(screen.getByLabelText('Account', { selector: 'input' })).toHaveValue('')
+    expect(api.createTransaction).not.toHaveBeenCalled()
+    expect(screen.getByText('Save expense')).toBeInTheDocument()
+    localStorage.removeItem('lastUsedAccountId')
+  })
   it('starts with the fast expense fields', () => {
     renderApp(<TransactionForm onSaved={() => undefined} />)
     expect(screen.getByLabelText('Amount')).toHaveFocus()

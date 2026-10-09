@@ -9,6 +9,20 @@ test('register, onboard, and complete the core household finance workflow', asyn
   page,
 }, testInfo) => {
   test.setTimeout(240_000)
+  // Exercise voice-command UI without native audio or paid AI calls in the emulator suite.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        cancel: () => undefined,
+        getVoices: () => [],
+        speak: (utterance: SpeechSynthesisUtterance) =>
+          queueMicrotask(() => {
+            utterance.onend?.call(utterance, new Event('end') as SpeechSynthesisEvent)
+          }),
+      },
+    })
+  })
   const email = `family-${Date.now()}@example.test`
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/register')
@@ -33,7 +47,25 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await expect(page.getByRole('button', { name: 'Go to accounts' })).toBeVisible()
   await page.getByRole('button', { name: 'Go to accounts' }).click()
   await expect(page.getByRole('heading', { name: 'Accounts', exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 320, height: 844 })
+  await page.getByRole('button', { name: 'Open Jarvis assistant' }).click()
+  await page.getByLabel('Ask Jarvis').fill('Hello Jarvis')
+  await page.getByRole('button', { name: 'Send question' }).click()
+  await expect(page.getByRole('log').getByText('Hello Sir', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('mobile-jarvis.png') })
+  await page.getByLabel('Ask Jarvis').fill('Jarvis stop', { timeout: 5000 })
+  await page.getByRole('button', { name: 'Send question' }).click({ timeout: 5000 })
+  await expect(page.getByRole('log').getByText('Goodbye sir', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Turn microphone off' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Close Jarvis', exact: true }).click({ timeout: 5000 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
   await page.setViewportSize({ width: 1280, height: 720 })
+  await page.getByRole('button', { name: 'Open Jarvis assistant' }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('desktop-jarvis.png') })
+  await page.getByRole('button', { name: 'Close Jarvis', exact: true }).click({ timeout: 5000 })
 
   for (const route of ['/review', '/bank-connections', '/transactions/review']) {
     await page.goto(route)

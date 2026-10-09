@@ -285,6 +285,12 @@ textarea {
   }
 }
 @media (max-width: 24em) {
+  .jarvis-label {
+    display: none;
+  }
+  .jarvis-launcher .mantine-Button-section {
+    margin-inline-end: 0;
+  }
   .page {
     padding-right: 12px;
     padding-left: 12px;
