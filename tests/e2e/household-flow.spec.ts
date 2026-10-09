@@ -11,6 +11,7 @@ test('register, onboard, and complete the core household finance workflow', asyn
   test.setTimeout(240_000)
   // Exercise voice-command UI without native audio or paid AI calls in the emulator suite.
   await page.addInitScript(() => {
+    if (!localStorage.getItem('jarvis-language')) localStorage.setItem('jarvis-language', 'en-US')
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
       value: {
@@ -117,8 +118,8 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('textbox', { name: 'Voice input language' }).click()
   await page.getByRole('option', { name: 'Greek' }).click()
-  await page.getByRole('button', { name: 'Start live conversation' }).click()
-  await expect(page.getByText('Listening to you', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Έναρξη ζωντανής συνομιλίας' }).click()
+  await expect(page.getByText('Σας ακούω', { exact: true })).toBeVisible()
   await page.evaluate(() => {
     const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
     bridge.jarvisVoiceEvent({
@@ -136,7 +137,7 @@ test('register, onboard, and complete the core household finance workflow', asyn
     bridge.jarvisVoiceEvent({
       type: 'response.output_audio_transcript.done',
       response_id: 'r1',
-      transcript: 'Μπορείτε να φτιάξετε μια ομελέτα, Sir.',
+      transcript: 'Μπορείτε να φτιάξετε μια ομελέτα, κύριε.',
     })
     bridge.jarvisVoiceEvent({
       type: 'response.done',
@@ -145,34 +146,89 @@ test('register, onboard, and complete the core household finance workflow', asyn
     bridge.jarvisVoiceEvent({ type: 'output_audio_buffer.stopped', response_id: 'r1' })
   })
   await expect(
-    page.getByRole('log').getByText('Μπορείτε να φτιάξετε μια ομελέτα, Sir.'),
+    page.getByRole('log').getByText('Μπορείτε να φτιάξετε μια ομελέτα, κύριε.'),
   ).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('desktop-jarvis.png') })
-  await page.getByRole('button', { name: 'Close Jarvis', exact: true }).click({ timeout: 5000 })
+  await page.getByRole('button', { name: 'Κλείσιμο Τζάρβις', exact: true }).click({ timeout: 5000 })
   await page.evaluate(() => {
     const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
     bridge.jarvisVoiceEvent({
       type: 'conversation.item.input_audio_transcription.completed',
       item_id: 'stop',
-      transcript: 'Τζάρβις στοπ',
+      transcript: 'Τζάρβις σταμάτα',
     })
   })
   await expect(
-    page.getByRole('button', { name: 'Open Jarvis assistant, Waiting for Hello Jarvis' }),
+    page.getByRole('button', { name: 'Άνοιγμα βοηθού Τζάρβις, Περιμένω το «Γεια σου Τζάρβις»' }),
   ).toBeVisible()
   await page.evaluate(() => {
     const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
     bridge.jarvisVoiceEvent({
       type: 'conversation.item.input_audio_transcription.completed',
       item_id: 'wake',
-      transcript: 'Χέλο Τζάρβις',
+      transcript: 'Γεια σου Τζάρβις',
     })
   })
   await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.getByText('Listening to you', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Turn microphone off' }).click()
-  await expect(page.getByText('Microphone off', { exact: true })).toBeVisible()
+  await expect(page.getByText('Σας ακούω', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Απενεργοποίηση μικροφώνου' }).click()
+  await expect(page.getByText('Μικρόφωνο κλειστό', { exact: true })).toBeVisible()
+  await page.route('**/jarvisChat', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        result: {
+          reply:
+            'Σήμερα δεν έχετε εργασίες. Δεν υπάρχουν εκπρόθεσμες εργασίες ή καταγεγραμμένες προσεχείς υποχρεώσεις. Δεν υπάρχουν διαθέσιμα έξοδα του μήνα.',
+          draft: null,
+          sources: [],
+          briefing: {
+            date: '2026-10-10',
+            timeZone: 'Europe/Athens',
+            scope: 'household',
+            today: { tasks: [], truncated: false },
+            overdue: { tasks: [], truncated: false },
+            upcomingBills: {
+              tasks: [],
+              truncated: false,
+              throughDate: '2026-10-17',
+              listConfigured: false,
+              source: 'bill_tasks',
+            },
+            monthlySpending: {
+              month: '2026-10',
+              currency: 'EUR',
+              currencyMinorDigits: 2,
+              expenseMinor: null,
+              available: false,
+            },
+          },
+        },
+      }),
+    }),
+  )
+  await page.route('**/jarvisSpeak', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ result: { audio: 'AAAA', mimeType: 'audio/mpeg' } }),
+    }),
+  )
+  await page.setViewportSize({ width: 320, height: 844 })
+  await page.getByRole('button', { name: 'Πρωινή ενημέρωση', exact: true }).click()
+  await expect(page.getByText('Σημερινές εργασίες', { exact: true })).toBeVisible()
+  await expect(page.getByText('Έξοδα του μήνα · 2026-10')).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('mobile-greek-briefing.png') })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  )
+  await page.getByRole('textbox', { name: 'Γλώσσα φωνής και απαντήσεων' }).click()
+  await page.getByRole('option', { name: 'Αγγλικά' }).click()
   await page.getByRole('button', { name: 'Close Jarvis', exact: true }).click()
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await page.unroute('**/jarvisChat')
+  await page.unroute('**/jarvisSpeak')
 
   for (const route of ['/review', '/bank-connections', '/transactions/review']) {
     await page.goto(route)

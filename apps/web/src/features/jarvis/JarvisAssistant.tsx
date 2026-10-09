@@ -22,6 +22,7 @@ import type {
   JarvisReply,
   JarvisExpenseDraft,
   JarvisTaskAction,
+  JarvisMorningBriefing,
 } from '@family-expense-tracker/shared'
 import { api } from '../../lib/callables'
 import { friendlyError } from '../../lib/errors'
@@ -30,6 +31,16 @@ import { TransactionDrawer } from '../transactions/TransactionDrawer'
 import { parseJarvisCommand } from './commands'
 import { blobToBase64, JarvisVoiceInput, voiceCapabilities } from './voice-input'
 import { JarvisRealtimeVoice, type RealtimeState } from './realtime-voice'
+import {
+  jarvisCopy,
+  jarvisExamples,
+  readJarvisLanguage,
+  saveJarvisLanguage,
+  taskConfirmation,
+  taskPreview,
+  type JarvisLanguage,
+} from './language'
+import { MorningBriefing } from './MorningBriefing'
 
 type ChatEntry = JarvisMessage & { sources?: JarvisReply['sources'] }
 export function JarvisAssistant() {
@@ -53,7 +64,8 @@ function AssistantSession({ householdId }: { householdId: string }) {
   const [speaking, setSpeaking] = useState(false)
   const speakingRef = useRef(false)
   const lastSpoken = useRef({ text: '', time: 0 })
-  const [language, setLanguage] = useState('en-US')
+  const [language, setLanguage] = useState<JarvisLanguage>(readJarvisLanguage)
+  const copy = jarvisCopy(language)
   const languageRef = useRef(language)
   languageRef.current = language
   const [webSearch, setWebSearch] = useState(false)
@@ -63,6 +75,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
   const [taskAction, setTaskAction] = useState<JarvisTaskAction | null>(null)
   const [savingTask, setSavingTask] = useState(false)
   const savingTaskRef = useRef(false)
+  const [briefing, setBriefing] = useState<JarvisMorningBriefing | null>(null)
   const [review, setReview] = useState(false)
   const [playback, setPlayback] = useState<string | null>(null)
   const player = useRef<HTMLAudioElement | null>(null)
@@ -140,7 +153,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
       if (window.speechSynthesis) {
         await new Promise<void>((resolve) => {
           const utterance = new SpeechSynthesisUtterance(value)
-          utterance.lang = instant ? 'en-US' : languageRef.current
+          utterance.lang = languageRef.current
           const voices = window.speechSynthesis.getVoices()
           utterance.voice = voices.find((item) => item.lang === utterance.lang) ?? null
           const timeout = setTimeout(resolve, 60_000)
@@ -153,7 +166,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
           utterance.onerror = done
           window.speechSynthesis.speak(utterance)
         })
-      } else setError('Automatic playback is unavailable. Use the audio player or read the answer.')
+      } else setError(jarvisCopy(languageRef.current).playbackError)
     } finally {
       if (token === generation.current && alive.current) {
         lastSpoken.current.time = Date.now()
@@ -172,12 +185,14 @@ function AssistantSession({ householdId }: { householdId: string }) {
     setWorking(false)
     setActive(false)
     setDraft(null)
+    setBriefing(null)
     setTaskAction(null)
     setReview(false)
     setPlayback(null)
     liveSources.current = []
-    addMessage({ role: 'assistant', content: 'Goodbye sir' })
-    void speak('Goodbye sir', true, token)
+    const goodbye = jarvisCopy(languageRef.current).goodbye
+    addMessage({ role: 'assistant', content: goodbye })
+    void speak(goodbye, true, token)
   }
   async function ask(question: string, liveInput = false) {
     if (savingTaskRef.current) return
@@ -191,6 +206,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
     setWorking(true)
     setError('')
     setDraft(null)
+    setBriefing(null)
     setTaskAction(null)
     setPlayback(null)
     addMessage({ role: 'user', content: question })
@@ -203,11 +219,13 @@ function AssistantSession({ householdId }: { householdId: string }) {
         householdId,
         messages: history.current.slice(-20).map(({ role, content }) => ({ role, content })),
         webSearch: webSearchRef.current,
+        language: languageRef.current,
       })
       if (token !== generation.current || !alive.current) return
       addMessage({ role: 'assistant', content: result.reply, sources: result.sources })
       setDraft(result.draft)
       setTaskAction(result.taskAction ?? null)
+      setBriefing(result.briefing ?? null)
       setWorking(false)
       await speak(result.reply, false, token)
     } catch (reason) {
@@ -245,9 +263,10 @@ function AssistantSession({ householdId }: { householdId: string }) {
       }
       setActive(true)
       setOpened(true)
-      addMessage({ role: 'assistant', content: 'Hello Sir' })
+      const greeting = jarvisCopy(languageRef.current).greeting
+      addMessage({ role: 'assistant', content: greeting })
       const token = generation.current
-      await speak('Hello Sir', true, token)
+      await speak(greeting, true, token)
       if (token === generation.current && command.question) await ask(command.question)
     } else if (command.type === 'question') {
       setActive(true)
@@ -267,7 +286,14 @@ function AssistantSession({ householdId }: { householdId: string }) {
         const audio = await blobToBase64(blob)
         const mimeType = blob.type.split(';')[0] as
           'audio/webm' | 'audio/mp4' | 'audio/ogg' | 'audio/wav'
-        return (await api.jarvisTranscribe({ householdId, audio, mimeType })).text
+        return (
+          await api.jarvisTranscribe({
+            householdId,
+            audio,
+            mimeType,
+            language: languageRef.current,
+          })
+        ).text
       },
       state: (state, currentEngine) => {
         if (alive.current) {
@@ -285,7 +311,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
         api.jarvisStartRealtime({
           householdId,
           sdp,
-          language: languageRef.current as 'en-US' | 'el-GR',
+          language: languageRef.current,
           webSearch: webSearchRef.current,
         }),
       transcript: (value) => consumeRef.current(value, true),
@@ -299,6 +325,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
         const result = await api.jarvisChat({
           householdId,
           webSearch: webSearchRef.current,
+          language: languageRef.current,
           messages: [
             ...history.current.slice(-18).map(({ role, content }) => ({ role, content })),
             { role: 'user', content: question },
@@ -307,6 +334,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
         if (token === generation.current && alive.current && awakeRef.current) {
           setDraft(result.draft)
           setTaskAction(result.taskAction ?? null)
+          setBriefing(result.briefing ?? null)
           liveSources.current = result.sources
         }
         return result
@@ -330,6 +358,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
         generation.current++
         liveSources.current = []
         setDraft(null)
+        setBriefing(null)
         setTaskAction(null)
         cancelSpeech()
       },
@@ -351,6 +380,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
       setAwake(false)
       setPlayback(null)
       setDraft(null)
+      setBriefing(null)
       setTaskAction(null)
       setReview(false)
     }
@@ -397,14 +427,14 @@ function AssistantSession({ householdId }: { householdId: string }) {
           clientRequestId: proposal.clientRequestId,
           ...proposal.task,
         })
-        confirmation = `Task created: ${proposal.task.title}.`
+        confirmation = taskConfirmation(languageRef.current, proposal)
       } else if (proposal.kind === 'complete') {
         const result = await api.completeTask({
           householdId,
           taskId: proposal.taskId,
           expectedVersion: proposal.expectedVersion,
         })
-        confirmation = `Task completed: ${proposal.title}.${result.nextTaskId ? ' The next recurring occurrence was created.' : ''}`
+        confirmation = taskConfirmation(languageRef.current, proposal, result.nextTaskId)
       } else {
         await api.updateTask({
           householdId,
@@ -412,7 +442,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
           expectedVersion: proposal.expectedVersion,
           task: proposal.task,
         })
-        confirmation = `Task rescheduled: ${proposal.task.title}, ${proposal.task.dueDate ?? 'no due date'}${proposal.task.dueTime ? ` at ${proposal.task.dueTime}` : ''}.`
+        confirmation = taskConfirmation(languageRef.current, proposal)
       }
       void queryClient.invalidateQueries({ queryKey: taskKeys.all(householdId) })
       if (!alive.current) return
@@ -453,29 +483,30 @@ function AssistantSession({ householdId }: { householdId: string }) {
         voice.current?.stop()
         await realtime.current?.start(history.current)
       }
-      if (startNow && realtime.current?.ready) await consume('Hello Jarvis', true)
+      if (startNow && realtime.current?.ready)
+        await consume(jarvisCopy(languageRef.current).wake, true)
       return
     }
     realtime.current?.stop()
     if (manual) setActive(true)
     await voice.current?.start(language, manual)
-    if (startNow) await consume('Hello Jarvis', true)
+    if (startNow) await consume(jarvisCopy(languageRef.current).wake, true)
   }
   const microphoneEnabled = mic !== 'off' || liveState !== 'off'
   const status =
     liveState === 'connecting'
-      ? 'Connecting live voice'
+      ? copy.connecting
       : busy
-        ? 'Thinking'
+        ? copy.thinking
         : speaking
-          ? 'Speaking'
+          ? copy.speaking
           : mic === 'transcribing'
-            ? 'Transcribing'
+            ? copy.transcribing
             : !microphoneEnabled
-              ? 'Microphone off'
+              ? copy.off
               : awake
-                ? 'Listening to you'
-                : 'Waiting for Hello Jarvis'
+                ? copy.listening
+                : copy.waiting
   return (
     <>
       <Button
@@ -483,9 +514,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
         size="compact-sm"
         leftSection={<IconRobot size={18} />}
         onClick={() => setOpened(true)}
-        aria-label={
-          !microphoneEnabled ? 'Open Jarvis assistant' : `Open Jarvis assistant, ${status}`
-        }
+        aria-label={!microphoneEnabled ? copy.open : `${copy.open}, ${status}`}
         className="jarvis-launcher"
       >
         <span className="jarvis-label">Jarvis{microphoneEnabled ? ' •' : ''}</span>
@@ -493,8 +522,8 @@ function AssistantSession({ householdId }: { householdId: string }) {
       <Drawer
         opened={opened}
         onClose={() => setOpened(false)}
-        title="Jarvis · Everyday assistant"
-        closeButtonProps={{ 'aria-label': 'Close Jarvis' }}
+        title={copy.title}
+        closeButtonProps={{ 'aria-label': copy.close }}
         position="right"
         size="lg"
         trapFocus={!review}
@@ -510,30 +539,23 @@ function AssistantSession({ householdId }: { householdId: string }) {
               onClick={disable}
               disabled={!microphoneEnabled && !busy && !speaking}
             >
-              Turn microphone off
+              {copy.microphoneOff}
             </Button>
           </Group>
-          <Text size="sm">
-            Click Start live conversation to talk now, or Enable microphone once and allow access,
-            then say “Hello Jarvis” to hear “Hello Sir”. Ask your question. Say “Jarvis stop” to
-            hear “Goodbye sir”; Jarvis will wait for “Hello Jarvis” again.
-          </Text>
+          <Text size="sm">{copy.instructions}</Text>
           <Text size="xs" c="dimmed">
-            AI-generated voice. Voice requires HTTPS, microphone permission, and this app in the
-            foreground. Some TV browsers support text only. Closing this panel keeps listening
-            enabled; use Turn microphone off to end listening.
+            {copy.notice}
           </Text>
-          <Alert color="blue" title="Voice privacy">
+          <Alert color="blue" title={copy.privacy}>
             {caps.realtime
-              ? 'Live voice streams microphone audio to OpenAI, including nearby speech while waiting for the wake phrase. You can interrupt a spoken answer. Requested household data is sent only through authorized app tools.'
+              ? copy.realtimePrivacy
               : caps.recognition
-                ? 'Browser speech recognition may send audio to your browser’s speech service. Questions and requested household data are sent to OpenAI.'
-                : 'In hands-free mode, spoken audio—including wake phrases and nearby speech—is sent to OpenAI for transcription. Use Record question for one recording at a time.'}
+                ? copy.recognitionPrivacy
+                : copy.recordingPrivacy}
           </Alert>
           {!microphoneEnabled && (
-            <Alert color="teal" title="One click is needed before Jarvis can hear you">
-              Voice commands cannot turn on a disabled microphone. Enable it here first; listening
-              continues when you close this panel while the app stays in the foreground.
+            <Alert color="teal" title={copy.firstClick}>
+              {copy.firstClickHelp}
             </Alert>
           )}
           {error && (
@@ -542,17 +564,22 @@ function AssistantSession({ householdId }: { householdId: string }) {
             </Alert>
           )}
           <Select
-            label="Voice input language"
+            label={copy.language}
             value={language}
-            onChange={(value) => value && setLanguage(value)}
-            disabled={microphoneEnabled}
+            onChange={(value) => {
+              if (value === 'el-GR' || value === 'en-US') {
+                setLanguage(value)
+                saveJarvisLanguage(value)
+              }
+            }}
+            disabled={microphoneEnabled || busy || speaking || savingTask}
             data={[
-              { value: 'en-US', label: 'English' },
-              { value: 'el-GR', label: 'Greek' },
+              { value: 'en-US', label: copy.english },
+              { value: 'el-GR', label: copy.greek },
             ]}
           />
           <Checkbox
-            label="Use web search for current information"
+            label={copy.web}
             checked={webSearch}
             disabled={liveState !== 'off'}
             onChange={(event) => setWebSearch(event.currentTarget.checked)}
@@ -568,7 +595,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
                 }
                 onClick={() => void enable(false, true)}
               >
-                Start live conversation
+                {copy.start}
               </Button>
             )}
             <Button
@@ -582,7 +609,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
               }
               onClick={() => void enable(false)}
             >
-              Enable microphone
+              {copy.enable}
             </Button>
             <Button
               variant="light"
@@ -598,7 +625,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
                 mic === 'recording' ? voice.current?.finishRecording() : void enable(true)
               }
             >
-              {mic === 'recording' && engine === 'cloud' ? 'Send recording' : 'Record question'}
+              {mic === 'recording' && engine === 'cloud' ? copy.sendRecording : copy.record}
             </Button>
             <Button
               variant="light"
@@ -606,32 +633,65 @@ function AssistantSession({ householdId }: { householdId: string }) {
               onClick={stopConversation}
               disabled={!awake && !busy && !speaking}
             >
-              Jarvis stop
+              {copy.stop}
             </Button>
           </Group>
           {liveState !== 'off' && (
             <Text size="sm" c="dimmed">
-              Live voice · speak naturally, pause for an answer, and interrupt to ask a follow-up.
-              Say “Jarvis stop” to return to wake listening. Ask about tasks, transactions or
-              balances; task changes require confirmation below.
+              {copy.liveHelp}
             </Text>
           )}
           {playbackBlocked && (
-            <Button onClick={() => void realtime.current?.playAudio()}>Play live audio</Button>
+            <Button onClick={() => void realtime.current?.playAudio()}>{copy.playLive}</Button>
           )}
           {!caps.realtime && !caps.recognition && !caps.recording && (
-            <Text size="sm">
-              Microphone recording is unavailable in this browser. You can still type questions and
-              play spoken answers.
-            </Text>
+            <Text size="sm">{copy.unavailable}</Text>
           )}
-          <Stack role="log" aria-label="Conversation with Jarvis" aria-live="polite" gap="sm">
+          <Button
+            variant="light"
+            disabled={busy || savingTask || (speaking && liveState === 'off')}
+            onClick={() => void consume(copy.briefingQuestion, true)}
+          >
+            {copy.briefing}
+          </Button>
+          <details>
+            <summary>{copy.examplesTitle}</summary>
+            <Text size="sm" c="dimmed">
+              {copy.examplesHelp}
+            </Text>
+            <Stack gap="xs" mt="sm">
+              {jarvisExamples(language).map((example) => (
+                <Button
+                  key={example}
+                  variant="subtle"
+                  size="compact-sm"
+                  styles={{
+                    label: { whiteSpace: 'normal', textAlign: 'left' },
+                    root: { height: 'auto', minHeight: 30 },
+                  }}
+                  onClick={() => setText(example)}
+                >
+                  {example}
+                </Button>
+              ))}
+            </Stack>
+          </details>
+          {briefing && (
+            <MorningBriefing
+              briefing={briefing}
+              language={language}
+              onOpenTask={() => {
+                disable()
+                setOpened(false)
+              }}
+            />
+          )}
+          <Stack role="log" aria-label={copy.log} aria-live="polite" gap="sm">
             {messages.length === 0 && (
               <Paper p="md" withBorder>
-                <Text fw={600}>What can I help with, Sir?</Text>
+                <Text fw={600}>{copy.welcome}</Text>
                 <Text size="sm" c="dimmed">
-                  Try “What can I cook with eggs and rice?”, “How much did our household spend this
-                  month?”, “What tasks are overdue?”, or “Find supermarket transactions this week”.
+                  {copy.examplesHelp}
                 </Text>
               </Paper>
             )}
@@ -643,7 +703,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
                 bg={entry.role === 'user' ? 'gray.0' : undefined}
               >
                 <Text size="xs" fw={700} c="dimmed">
-                  {entry.role === 'user' ? 'You' : 'Jarvis'}
+                  {entry.role === 'user' ? copy.you : 'Τζάρβις'}
                 </Text>
                 <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                   {entry.content}
@@ -669,29 +729,29 @@ function AssistantSession({ householdId }: { householdId: string }) {
                     onClick={() =>
                       void speak(
                         entry.content,
-                        entry.content === 'Hello Sir' || entry.content === 'Goodbye sir',
+                        [
+                          jarvisCopy('en-US').greeting,
+                          jarvisCopy('en-US').goodbye,
+                          jarvisCopy('el-GR').greeting,
+                          jarvisCopy('el-GR').goodbye,
+                        ].includes(entry.content),
                       )
                     }
                   >
-                    Play answer
+                    {copy.play}
                   </Button>
                 )}
               </Paper>
             ))}
           </Stack>
           {taskAction && (
-            <Alert color="teal" title="Confirm task change">
+            <Alert color="teal" title={copy.confirm}>
               <Text fw={600}>
                 {taskAction.kind === 'complete' ? taskAction.title : taskAction.task.title}
               </Text>
-              <Text size="sm">
-                {taskAction.kind === 'complete'
-                  ? `Mark this task complete.${taskAction.recurring ? ' Completing it may create the next recurring occurrence.' : ''}`
-                  : `${taskAction.kind === 'create' ? 'Create task' : `Reschedule from ${taskAction.previousDueDate ?? 'no due date'} ${taskAction.previousDueTime ?? ''}`} · ${taskAction.task.dueDate ?? 'No due date'} ${taskAction.task.dueTime ?? ''}${taskAction.kind === 'create' ? ` · Priority: ${taskAction.task.priority} · Assignee: ${taskAction.assigneeName ?? 'unassigned'} · List: ${taskAction.listName ?? 'none'}` : ''}`}
-              </Text>
+              <Text size="sm">{taskPreview(language, taskAction)}</Text>
               <Text size="xs" c="dimmed">
-                Dates and times use your household time zone. Nothing is saved until you confirm
-                with the button.
+                {copy.confirmHelp}
               </Text>
               <Group mt="sm">
                 <Button
@@ -699,28 +759,28 @@ function AssistantSession({ householdId }: { householdId: string }) {
                   disabled={savingTask}
                   onClick={() => void confirmTaskChange()}
                 >
-                  Confirm task change
+                  {copy.confirm}
                 </Button>
                 <Button
                   variant="subtle"
                   disabled={savingTask}
                   onClick={() => {
                     setTaskAction(null)
-                    const content = 'Task change cancelled. Nothing was saved.'
+                    const content = jarvisCopy(languageRef.current).cancelled
                     addMessage({ role: 'assistant', content })
                     realtime.current?.addAppResult(content)
                   }}
                 >
-                  Cancel task change
+                  {copy.cancel}
                 </Button>
               </Group>
             </Alert>
           )}
           {draft && (
-            <Alert color="teal" title="Expense ready for review">
+            <Alert color="teal" title={copy.expense}>
               <Text size="sm">
-                {draft.currency} {draft.amount} · {draft.description} · {draft.date}. Review the
-                account and category, then Save to confirm.
+                {draft.currency} {draft.amount} · {draft.description} · {draft.date}.{' '}
+                {copy.expenseHelp}
               </Text>
               <Group mt="sm">
                 <Button
@@ -729,10 +789,10 @@ function AssistantSession({ householdId }: { householdId: string }) {
                     setReview(true)
                   }}
                 >
-                  Review expense
+                  {copy.review}
                 </Button>
                 <Button variant="subtle" onClick={() => setDraft(null)}>
-                  Discard
+                  {copy.discard}
                 </Button>
               </Group>
             </Alert>
@@ -742,7 +802,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
               controls
               src={playback}
               style={{ width: '100%' }}
-              aria-label="Latest Jarvis spoken answer"
+              aria-label={copy.audio}
               onPlay={(event) => {
                 // The visible player takes over from autoplay, so only one answer plays.
                 generation.current++
@@ -779,8 +839,8 @@ function AssistantSession({ householdId }: { householdId: string }) {
           >
             <Stack gap="xs">
               <Textarea
-                label="Ask Jarvis"
-                placeholder="Type a question or a voice command…"
+                label={copy.ask}
+                placeholder={copy.placeholder}
                 value={text}
                 onChange={(event) => setText(event.currentTarget.value)}
                 maxLength={4000}
@@ -792,7 +852,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
                 loading={busy}
                 disabled={savingTask || !text.trim() || (speaking && liveState === 'off')}
               >
-                Send question
+                {copy.send}
               </Button>
             </Stack>
           </form>
@@ -805,6 +865,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
               history.current = []
               setMessages([])
               setDraft(null)
+              setBriefing(null)
               setTaskAction(null)
               setError('')
             }}
@@ -819,6 +880,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
           onClose={() => {
             setReview(false)
             setDraft(null)
+            setBriefing(null)
             setTaskAction(null)
           }}
           initialDraft={draft}

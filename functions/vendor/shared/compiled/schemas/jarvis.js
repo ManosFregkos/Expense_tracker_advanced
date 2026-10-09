@@ -17,6 +17,7 @@ export const jarvisChatSchema = z.object({
         .max(20)
         .refine((messages) => messages.at(-1)?.role === 'user', 'End the conversation with your question.'),
     webSearch: z.boolean().default(false),
+    language: z.enum(['en-US', 'el-GR']).default('el-GR'),
 });
 export const jarvisExpenseDraftSchema = z
     .object({
@@ -36,6 +37,7 @@ export const jarvisAudioSchema = z.object({
         .max(4_000_000)
         .regex(/^[A-Za-z0-9+/]+={0,2}$/),
     mimeType: z.enum(['audio/webm', 'audio/mp4', 'audio/ogg', 'audio/wav']),
+    language: z.enum(['en-US', 'el-GR']).default('el-GR'),
 });
 export const jarvisSpeechSchema = z.object({
     householdId: documentId,

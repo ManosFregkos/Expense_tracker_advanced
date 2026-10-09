@@ -47,6 +47,19 @@ vi.mock('@mantine/core', async (importOriginal) => {
     Text: Box,
     Badge: Box,
     Alert: Box,
+    Anchor: ({
+      children,
+      href,
+      onClick,
+    }: {
+      children: ReactNode
+      href: string
+      onClick(): void
+    }) => (
+      <a href={href} onClick={onClick}>
+        {children}
+      </a>
+    ),
     Select: () => null,
     Checkbox: () => null,
     Textarea: () => null,
@@ -164,6 +177,7 @@ const synthesis = {
 }
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.setItem('jarvis-language', 'en-US')
   driver.householdId = 'h1'
   driver.realtime = false
   driver.liveReady = false
@@ -206,6 +220,101 @@ const taskReply: JarvisReply = {
   taskAction: { ...taskAction, task: { ...taskAction.task, tags: [] } },
 }
 describe('Jarvis conversation', () => {
+  it('passes Greek language through live app tools and confirms task changes in Greek', async () => {
+    localStorage.removeItem('jarvis-language')
+    driver.realtime = true
+    vi.mocked(api.jarvisChat).mockResolvedValue({
+      ...taskReply,
+      taskAction: {
+        ...taskAction,
+        task: { ...taskAction.task, tags: [], title: 'Αγορά γάλακτος' },
+      },
+    })
+    vi.mocked(api.createTask).mockResolvedValue({ taskId: 'jarvis_test' })
+    renderApp(<JarvisAssistant />)
+    fireEvent.click(screen.getByLabelText('Άνοιγμα βοηθού Τζάρβις'))
+    fireEvent.click(screen.getByText('Έναρξη ζωντανής συνομιλίας'))
+    await waitFor(() => expect(screen.getByText('Σας ακούω')).toBeInTheDocument())
+    expect(api.jarvisStartRealtime).toHaveBeenCalledWith(
+      expect.objectContaining({ language: 'el-GR' }),
+    )
+    await act(async () => {
+      await driver.liveTool('Δημιούργησε μια εργασία να αγοράσω γάλα αύριο')
+    })
+    expect(api.jarvisChat).toHaveBeenCalledWith(expect.objectContaining({ language: 'el-GR' }))
+    expect(api.createTask).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Επιβεβαίωση αλλαγής εργασίας' }))
+    await screen.findByText('Η εργασία δημιουργήθηκε: Αγορά γάλακτος.')
+    expect(driver.liveAppResult).toHaveBeenCalledWith('Η εργασία δημιουργήθηκε: Αγορά γάλακτος.')
+    expect(synthesis.speak).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Η εργασία δημιουργήθηκε: Αγορά γάλακτος.', lang: 'el-GR' }),
+    )
+    expect(driver.liveReady).toBe(true)
+  })
+  it('defaults to Greek commands, greetings, spoken confirmations and the morning briefing', async () => {
+    localStorage.removeItem('jarvis-language')
+    vi.mocked(api.jarvisChat).mockResolvedValue({
+      reply:
+        'Σήμερα έχετε μία εργασία. Δεν υπάρχουν εκπρόθεσμες εργασίες ή προσεχείς υποχρεώσεις. Τα έξοδα του μήνα είναι 25 ευρώ.',
+      draft: null,
+      sources: [],
+      briefing: {
+        date: '2026-10-10',
+        timeZone: 'Europe/Athens',
+        scope: 'household',
+        today: {
+          tasks: [{ id: 't1', title: 'Αγορά γάλακτος', dueDate: '2026-10-10', dueTime: null }],
+          truncated: false,
+        },
+        overdue: { tasks: [], truncated: false },
+        upcomingBills: {
+          tasks: [],
+          truncated: false,
+          throughDate: '2026-10-17',
+          listConfigured: true,
+          source: 'bill_tasks',
+        },
+        monthlySpending: {
+          month: '2026-10',
+          currency: 'EUR',
+          currencyMinorDigits: 2,
+          expenseMinor: 2500,
+          available: true,
+        },
+      },
+    })
+    renderApp(<JarvisAssistant />)
+    fireEvent.click(screen.getByLabelText('Άνοιγμα βοηθού Τζάρβις'))
+    fireEvent.click(screen.getByText('Ενεργοποίηση μικροφώνου'))
+    await screen.findByText('Περιμένω το «Γεια σου Τζάρβις»')
+    act(() => driver.transcript('Καλημέρα Τζάρβις'))
+    await screen.findByText('Γεια σας, κύριε')
+    await waitFor(() => expect(screen.getByText('Σας ακούω')).toBeInTheDocument())
+    expect(synthesis.speak).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'Γεια σας, κύριε', lang: 'el-GR' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Πρωινή ενημέρωση' }))
+    await screen.findByText('Σημερινές εργασίες')
+    expect(api.jarvisChat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        householdId: 'h1',
+        language: 'el-GR',
+        messages: expect.arrayContaining([
+          { role: 'user', content: 'Τζάρβις, δώσε μου την πρωινή ενημέρωση' },
+        ]),
+      }),
+    )
+    expect(screen.getByRole('link', { name: /Αγορά γάλακτος/ })).toHaveAttribute(
+      'href',
+      '/tasks/t1',
+    )
+    expect(screen.getByText('Έξοδα του μήνα · 2026-10')).toBeInTheDocument()
+    act(() => driver.transcript('Σταμάτα Τζάρβις'))
+    await screen.findByText('Αντίο, κύριε')
+    expect(screen.queryByText('Σημερινές εργασίες')).not.toBeInTheDocument()
+    expect(api.createTask).not.toHaveBeenCalled()
+  })
+
   it('reports a confirmed save finishing after stop without restarting speech', async () => {
     vi.mocked(api.jarvisChat).mockResolvedValue(taskReply)
     let resolve: ((result: { taskId: string }) => void) | undefined

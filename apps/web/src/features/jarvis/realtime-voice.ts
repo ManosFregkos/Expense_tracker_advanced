@@ -115,7 +115,9 @@ export class JarvisRealtimeVoice {
         if (
           parseJarvisCommand(message.content, false).type !== 'ignore' ||
           message.content === 'Hello Sir' ||
-          message.content === 'Goodbye sir'
+          message.content === 'Goodbye sir' ||
+          message.content === 'Γεια σας, κύριε' ||
+          message.content === 'Αντίο, κύριε'
         )
           continue
         this.send({

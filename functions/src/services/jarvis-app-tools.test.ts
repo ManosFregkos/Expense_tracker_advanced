@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Timestamp } from 'firebase-admin/firestore'
-import { taskDueAt, type Household } from '@family-expense-tracker/shared'
+import {
+  taskDueAt,
+  type Household,
+  type JarvisMorningBriefing,
+} from '@family-expense-tracker/shared'
 import { createAppToolExecutor } from './jarvis-app-tools.js'
 
 const store = vi.hoisted(() => ({
@@ -105,6 +109,72 @@ beforeEach(() => {
   store.paths = []
 })
 describe('authorized Jarvis app tools', () => {
+  it('builds all four morning briefing sections using the household date and recorded bills', async () => {
+    store.documents.set('households/h1/tasks/today', { ...task })
+    store.documents.set('households/h1/tasks/old', {
+      ...task,
+      dueDate: '2026-10-09',
+      dueAt: Timestamp.fromDate(taskDueAt('2026-10-09', null, household.timeZone)),
+    })
+    store.documents.set('households/h1/taskLists/task-list-bills-admin', { name: 'Bills & Admin' })
+    store.documents.set('households/h1/taskLists/greek', { name: 'Λογαριασμοί' })
+    store.documents.set('households/h1/taskLists/archived', { name: 'Bills', isArchived: true })
+    for (const [id, patch] of Object.entries({
+      electricity: { listId: 'task-list-bills-admin', dueDate: '2026-10-12' },
+      water: { listId: 'greek', dueDate: '2026-10-17' },
+      beyond: { listId: 'greek', dueDate: '2026-10-18' },
+      closed: { listId: 'greek', dueDate: '2026-10-12', status: 'DONE' },
+      deleted: { listId: 'greek', dueDate: '2026-10-12', isDeleted: true },
+      archived: { listId: 'archived', dueDate: '2026-10-12' },
+    }))
+      store.documents.set(`households/h1/tasks/${id}`, {
+        ...task,
+        ...patch,
+        dueAt: Timestamp.fromDate(taskDueAt(patch.dueDate, null, household.timeZone)),
+      })
+    store.documents.set('households/h1/monthlyAnalytics/2026-10', {
+      expenseMinor: 10500,
+      byMember: { u1: 2500, u2: 8000 },
+    })
+    store.documents.set('households/h2/tasks/secret', { ...task })
+    const app = createAppToolExecutor('h1', 'u1', household, now)
+    const result = (await app.execute('get_morning_briefing', {
+      scope: 'household',
+    })) as JarvisMorningBriefing
+    expect(result).toMatchObject({
+      date: '2026-10-10',
+      timeZone: 'Europe/Athens',
+      today: { tasks: [{ id: 'today' }], truncated: false },
+      overdue: { tasks: [{ id: 'old' }], truncated: false },
+      upcomingBills: {
+        tasks: [{ id: 'electricity' }, { id: 'water' }],
+        throughDate: '2026-10-17',
+        source: 'bill_tasks',
+        listConfigured: true,
+      },
+      monthlySpending: { month: '2026-10', expenseMinor: 10500, currency: 'EUR', available: true },
+    })
+    expect(app.briefing).toEqual(result)
+    expect(app.action).toBeNull()
+    expect(store.paths.every((path) => path.startsWith('households/h1/'))).toBe(true)
+    expect(store.documents.get('households/h1/tasks/today')?.status).toBe('TODO')
+    expect(await app.execute('get_morning_briefing', { scope: 'mine' })).toMatchObject({
+      monthlySpending: { expenseMinor: 2500 },
+    })
+  })
+  it('discloses missing briefing data and bounds task results without inventing bills or totals', async () => {
+    const app = createAppToolExecutor('h1', 'u1', household, now)
+    expect(await app.execute('get_morning_briefing', { scope: 'mine' })).toMatchObject({
+      upcomingBills: { tasks: [], listConfigured: false },
+      monthlySpending: { available: false, expenseMinor: null },
+    })
+    for (let i = 0; i < 202; i++) store.documents.set(`households/h1/tasks/t${i}`, { ...task })
+    expect(await app.execute('get_morning_briefing', { scope: 'household' })).toMatchObject({
+      today: { truncated: true },
+      upcomingBills: { truncated: true },
+    })
+    expect(await app.execute('get_morning_briefing', { scope: 'outsider' })).toHaveProperty('error')
+  })
   it('reads personal balances separately by currency and distinguishes bank reports', async () => {
     store.documents.set('households/h1/accounts/a1', {
       ownerUserId: 'u1',

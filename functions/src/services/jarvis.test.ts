@@ -24,6 +24,15 @@ vi.mock('../firebase.js', () => {
   return {
     db: {
       doc,
+      collection: () => {
+        const query = {
+          where: () => query,
+          orderBy: () => query,
+          limit: () => query,
+          get: async () => ({ docs: [] }),
+        }
+        return query
+      },
       runTransaction: async (callback: (transaction: unknown) => Promise<void>) =>
         callback({
           get: async (ref: ReturnType<typeof doc>) => ref.get(),
@@ -62,6 +71,41 @@ beforeEach(() => {
   })
 })
 describe('Jarvis callable boundaries', () => {
+  it('serves the Greek morning briefing through the authenticated chat tool without writes', async () => {
+    store.documents.set('households/h1/monthlyAnalytics/2026-10', { expenseMinor: 2500 })
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-10T09:00:00Z'))
+    try {
+      vi.mocked(runJarvis).mockImplementationOnce(
+        async (_key, _model, instructions, _input, tools, execute) => {
+          expect(instructions).toContain('Greek (Ελληνικά)')
+          expect(instructions).toContain('get_morning_briefing')
+          expect(tools).toContainEqual(expect.objectContaining({ name: 'get_morning_briefing' }))
+          expect(await execute('get_morning_briefing', '{"scope":"household"}')).toMatchObject({
+            date: '2026-10-10',
+            monthlySpending: { expenseMinor: 2500 },
+          })
+          return { reply: 'Τα έξοδα του μήνα είναι 25 ευρώ, κύριε.', sources: [] }
+        },
+      )
+      expect(
+        await jarvisChat.run(
+          request({
+            householdId: 'h1',
+            messages: [{ role: 'user', content: 'Δώσε μου την πρωινή ενημέρωση' }],
+          }),
+        ),
+      ).toMatchObject({
+        taskAction: null,
+        draft: null,
+        briefing: { date: '2026-10-10', monthlySpending: { expenseMinor: 2500 } },
+      })
+      expect(requireMember).toHaveBeenCalledWith('h1', 'u1')
+      expect(store.writes).toEqual(['privateJarvisUsage/u1'])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it('exposes the authorized read/proposal tools and returns a task preview without writes', async () => {
     vi.mocked(runJarvis).mockImplementationOnce(
       async (_key, _model, instructions, _input, tools, execute) => {

@@ -2,6 +2,29 @@ import { describe, expect, it } from 'vitest'
 import { parseJarvisCommand } from './commands'
 
 describe('Jarvis commands', () => {
+  it('accepts natural Greek wake and stop variants, with Greek follow-up questions', () => {
+    for (const phrase of [
+      'Γεια σου Τζάρβις',
+      'Γεια σας Τζάρβις',
+      'Καλημέρα Τζάρβις',
+      'Τζάρβις ξύπνα',
+      'Ξύπνα Τζάρβις',
+    ])
+      expect(parseJarvisCommand(phrase, false)).toEqual({ type: 'wake', question: '' })
+    expect(parseJarvisCommand('Καλημέρα, Τζάρβις! Δώσε μου την πρωινή ενημέρωση.', false)).toEqual({
+      type: 'wake',
+      question: 'Δώσε μου την πρωινή ενημέρωση',
+    })
+    for (const phrase of [
+      'Τζάρβις σταμάτα',
+      'Σταμάτα Τζάρβις',
+      'Τζάρβις σταμάτησε',
+      'Τζάρβις παύση',
+      'Τζάρβις τέλος',
+    ])
+      expect(parseJarvisCommand(phrase.normalize('NFD'), true)).toEqual({ type: 'stop' })
+    expect(parseJarvisCommand('Γεια σου Τζάρβισον', false)).toEqual({ type: 'ignore' })
+  })
   it('recognizes Greek transcription of English wake and stop phrases', () => {
     expect(parseJarvisCommand('Χέλο Τζάρβις', false)).toEqual({ type: 'wake', question: '' })
     expect(parseJarvisCommand('Γεια σου Τζάρβις τι μέρα είναι σήμερα;', false)).toEqual({

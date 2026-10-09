@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase-admin/firestore'
 import { z } from 'zod'
 import {
   currencyMinorDigits,
+  monthKey,
   dateKeyInTimeZone,
   isTaskOverdue,
   normalizeSearchText,
@@ -14,6 +15,8 @@ import {
   type FinancialAccount,
   type Transaction,
   type JarvisTaskAction,
+  type JarvisMorningBriefing,
+  type MonthlyAnalytics,
 } from '@family-expense-tracker/shared'
 import { db } from '../firebase.js'
 
@@ -38,6 +41,11 @@ export function functionTool(
 const nullableString = { type: ['string', 'null'] }
 const scopeProperty = { type: 'string', enum: ['mine', 'household'] }
 export const appTools = [
+  functionTool(
+    'get_morning_briefing',
+    'Read today’s tasks, overdue tasks, upcoming bill/admin tasks for the next 7 days and current monthly spending in one read-only briefing. Use for «Δώσε μου την πρωινή ενημέρωση», «Τι έχω σήμερα;» when a full briefing is requested, or morning briefing. Default household scope unless personal is explicit. Bills come only from recorded tasks in Bills & Admin or a named Bills/Λογαριασμοί list, not bank due dates/payment amounts. Disclose missing data and partial results.',
+    { scope: scopeProperty },
+  ),
   functionTool(
     'get_account_balances',
     'Read active account balances. Distinguish app-calculated from bank-reported balances and report their update times. Never add different currencies or treat card balances as available cash.',
@@ -118,6 +126,7 @@ export function createAppToolExecutor(
   now = new Date(),
 ) {
   let action: JarvisTaskAction | null = null
+  let briefing: JarvisMorningBriefing | null = null
   const root = `households/${householdId}`
   const today = dateKeyInTimeZone(now, household.timeZone)
   const taskSummary = (task: HouseholdTask, taskId: string) => ({
@@ -132,6 +141,52 @@ export function createAppToolExecutor(
     recurring: Boolean(task.recurrence),
     overdue: isTaskOverdue(task, now, household.timeZone),
   })
+  async function readTasks(value: {
+    filter: 'open' | 'today' | 'overdue'
+    scope: 'mine' | 'household'
+    search: string | null
+  }) {
+    let query = db
+      .collection(`${root}/tasks`)
+      .where('isDeleted', '==', false)
+      .where('status', 'in', ['TODO', 'IN_PROGRESS'])
+    if (value.filter === 'open') query = query.orderBy('updatedAt', 'desc')
+    else {
+      query = query.orderBy('dueAt')
+      if (value.scope === 'mine') query = query.where('assigneeUserId', '==', uid)
+      if (value.filter === 'today')
+        query = query
+          .where(
+            'dueAt',
+            '>=',
+            Timestamp.fromDate(zonedDateTimeToUtc(today, '00:00', household.timeZone)),
+          )
+          .where('dueAt', '<=', Timestamp.fromDate(taskDueAt(today, null, household.timeZone)))
+      else query = query.where('dueAt', '<', Timestamp.fromDate(now))
+    }
+    const snapshot = await query.limit(201).get()
+    const search = normalizeSearchText(value.search ?? '')
+    const matches = snapshot.docs
+      .slice(0, 200)
+      .map((doc) => ({ id: doc.id, value: doc.data() as HouseholdTask }))
+      .filter(
+        ({ value: t }) =>
+          !t.isDeleted &&
+          t.status !== 'DONE' &&
+          t.status !== 'CANCELLED' &&
+          (value.scope !== 'mine' || t.assigneeUserId === uid) &&
+          (!search || normalizeSearchText(`${t.title} ${t.description ?? ''}`).includes(search)) &&
+          (value.filter !== 'overdue' || isTaskOverdue(t, now, household.timeZone)),
+      )
+    return {
+      today,
+      timeZone: household.timeZone,
+      scope: value.scope,
+      filter: value.filter,
+      tasks: matches.slice(0, 30).map(({ id, value }) => taskSummary(value, id)),
+      truncated: snapshot.docs.length > 200 || matches.length > 30,
+    }
+  }
   const propose = (value: JarvisTaskAction) => {
     if (action)
       return {
@@ -146,10 +201,100 @@ export function createAppToolExecutor(
     }
   }
   return {
+    get briefing() {
+      return briefing
+    },
     get action() {
       return action
     },
     async execute(name: string, args: unknown): Promise<unknown> {
+      if (name === 'get_morning_briefing') {
+        const parsed = z.object({ scope }).safeParse(args)
+        if (!parsed.success) return { error: 'Choose mine or household scope.' }
+        const selectedScope = parsed.data.scope
+        const end = new Date(`${today}T12:00:00Z`)
+        end.setUTCDate(end.getUTCDate() + 7)
+        const throughDate = end.toISOString().slice(0, 10)
+        const month = monthKey(now, household.timeZone)
+        const upcomingQuery = db
+          .collection(`${root}/tasks`)
+          .where('isDeleted', '==', false)
+          .where('status', 'in', ['TODO', 'IN_PROGRESS'])
+          .orderBy('dueAt')
+          .where(
+            'dueAt',
+            '>=',
+            Timestamp.fromDate(zonedDateTimeToUtc(today, '00:00', household.timeZone)),
+          )
+          .where(
+            'dueAt',
+            '<=',
+            Timestamp.fromDate(taskDueAt(throughDate, null, household.timeZone)),
+          )
+        const [todayTasks, overdueTasks, upcoming, lists, monthly] = await Promise.all([
+          readTasks({ filter: 'today', scope: selectedScope, search: null }),
+          readTasks({ filter: 'overdue', scope: selectedScope, search: null }),
+          upcomingQuery.limit(201).get(),
+          db.collection(`${root}/taskLists`).get(),
+          db.doc(`${root}/monthlyAnalytics/${month}`).get(),
+        ])
+        const billNames = new Set([
+          'bills admin',
+          'bills',
+          'λογαριασμοι',
+          'λογαριασμοι και υποχρεωσεις',
+          'λογαριασμοι υποχρεωσεις',
+        ])
+        const billListIds = new Set(
+          lists.docs
+            .filter(
+              (doc) =>
+                !doc.get('isArchived') &&
+                (doc.id === 'task-list-bills-admin' ||
+                  billNames.has(normalizeSearchText(doc.get('name') as string))),
+            )
+            .map((doc) => doc.id),
+        )
+        const billTasks = upcoming.docs
+          .slice(0, 200)
+          .map((doc) => ({ id: doc.id, task: doc.data() as HouseholdTask }))
+          .filter(
+            ({ task }) =>
+              !task.isDeleted &&
+              task.status !== 'DONE' &&
+              task.status !== 'CANCELLED' &&
+              !isTaskOverdue(task, now, household.timeZone) &&
+              billListIds.has(task.listId ?? '') &&
+              (selectedScope !== 'mine' || task.assigneeUserId === uid),
+          )
+        const analytics = monthly.data() as MonthlyAnalytics | undefined
+        briefing = {
+          date: today,
+          timeZone: household.timeZone,
+          scope: selectedScope,
+          today: { tasks: todayTasks.tasks, truncated: todayTasks.truncated },
+          overdue: { tasks: overdueTasks.tasks, truncated: overdueTasks.truncated },
+          upcomingBills: {
+            tasks: billTasks.slice(0, 20).map(({ id, task }) => taskSummary(task, id)),
+            truncated: upcoming.docs.length > 200 || billTasks.length > 20,
+            throughDate,
+            listConfigured: billListIds.size > 0,
+            source: 'bill_tasks',
+          },
+          monthlySpending: {
+            month,
+            currency: household.defaultCurrency,
+            currencyMinorDigits: currencyMinorDigits(household.defaultCurrency),
+            available: monthly.exists,
+            expenseMinor: monthly.exists
+              ? selectedScope === 'mine'
+                ? (analytics?.byMember?.[uid] ?? 0)
+                : (analytics?.expenseMinor ?? 0)
+              : null,
+          },
+        }
+        return briefing
+      }
       if (name === 'get_account_balances') {
         const parsed = z.object({ scope }).safeParse(args)
         if (!parsed.success) return { error: 'Choose mine or household scope.' }
@@ -248,48 +393,7 @@ export function createAppToolExecutor(
           .object({ filter: z.enum(['open', 'today', 'overdue']), scope, search: searchText })
           .safeParse(args)
         if (!parsed.success) return { error: 'Choose open, today or overdue tasks and a scope.' }
-        const value = parsed.data
-        let query = db
-          .collection(`${root}/tasks`)
-          .where('isDeleted', '==', false)
-          .where('status', 'in', ['TODO', 'IN_PROGRESS'])
-        if (value.filter === 'open') query = query.orderBy('updatedAt', 'desc')
-        else {
-          query = query.orderBy('dueAt')
-          if (value.scope === 'mine') query = query.where('assigneeUserId', '==', uid)
-          if (value.filter === 'today')
-            query = query
-              .where(
-                'dueAt',
-                '>=',
-                Timestamp.fromDate(zonedDateTimeToUtc(today, '00:00', household.timeZone)),
-              )
-              .where('dueAt', '<=', Timestamp.fromDate(taskDueAt(today, null, household.timeZone)))
-          else query = query.where('dueAt', '<', Timestamp.fromDate(now))
-        }
-        const snapshot = await query.limit(201).get()
-        const search = normalizeSearchText(value.search ?? '')
-        const matches = snapshot.docs
-          .slice(0, 200)
-          .map((doc) => ({ id: doc.id, value: doc.data() as HouseholdTask }))
-          .filter(
-            ({ value: t }) =>
-              !t.isDeleted &&
-              t.status !== 'DONE' &&
-              t.status !== 'CANCELLED' &&
-              (value.scope !== 'mine' || t.assigneeUserId === uid) &&
-              (!search ||
-                normalizeSearchText(`${t.title} ${t.description ?? ''}`).includes(search)) &&
-              (value.filter !== 'overdue' || isTaskOverdue(t, now, household.timeZone)),
-          )
-        return {
-          today,
-          timeZone: household.timeZone,
-          scope: value.scope,
-          filter: value.filter,
-          tasks: matches.slice(0, 30).map(({ id, value }) => taskSummary(value, id)),
-          truncated: snapshot.docs.length > 200 || matches.length > 30,
-        }
+        return readTasks(parsed.data)
       }
       if (name === 'get_task_options') {
         const [lists, members] = await Promise.all([

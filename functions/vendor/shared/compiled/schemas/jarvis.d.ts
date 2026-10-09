@@ -17,6 +17,10 @@ export declare const jarvisChatSchema: z.ZodObject<{
         content: z.ZodString;
     }, z.core.$strip>>;
     webSearch: z.ZodDefault<z.ZodBoolean>;
+    language: z.ZodDefault<z.ZodEnum<{
+        "en-US": "en-US";
+        "el-GR": "el-GR";
+    }>>;
 }, z.core.$strip>;
 export declare const jarvisExpenseDraftSchema: z.ZodObject<{
     amount: z.ZodString;
@@ -35,6 +39,10 @@ export declare const jarvisAudioSchema: z.ZodObject<{
         "audio/ogg": "audio/ogg";
         "audio/wav": "audio/wav";
     }>;
+    language: z.ZodDefault<z.ZodEnum<{
+        "en-US": "en-US";
+        "el-GR": "el-GR";
+    }>>;
 }, z.core.$strip>;
 export declare const jarvisSpeechSchema: z.ZodObject<{
     householdId: z.ZodString;
@@ -67,6 +75,36 @@ export interface JarvisReply {
         url: string;
     }>;
     taskAction?: JarvisTaskAction | null;
+    briefing?: JarvisMorningBriefing | null;
+}
+export interface JarvisBriefingTask {
+    id: string;
+    title: string;
+    dueDate: string | null;
+    dueTime: string | null;
+}
+export interface JarvisBriefingTasks {
+    tasks: JarvisBriefingTask[];
+    truncated: boolean;
+}
+export interface JarvisMorningBriefing {
+    date: string;
+    timeZone: string;
+    scope: 'mine' | 'household';
+    today: JarvisBriefingTasks;
+    overdue: JarvisBriefingTasks;
+    upcomingBills: JarvisBriefingTasks & {
+        throughDate: string;
+        listConfigured: boolean;
+        source: 'bill_tasks';
+    };
+    monthlySpending: {
+        month: string;
+        currency: string;
+        currencyMinorDigits: number;
+        expenseMinor: number | null;
+        available: boolean;
+    };
 }
 export type JarvisTaskAction = {
     kind: 'create';

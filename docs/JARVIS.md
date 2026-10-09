@@ -1,15 +1,18 @@
 # Jarvis voice assistant
 
-Jarvis is available from the signed-in app header. Click **Start live conversation**
-and allow microphone access to talk immediately. Alternatively click **Enable
-microphone** once, allow access, then say **Hello Jarvis** to open the panel and wake
-Jarvis. The immediate browser greeting is **Hello Sir**. Supported browsers now use
-OpenAI Realtime over WebRTC for streaming audio, captions, follow-up questions and
-spoken interruptions. Live speech uses Cedar; typed/manual answers use the existing
-Onyx speech endpoint. Greek transcriptions of the English wake/stop phrases are
-recognized, including “Χέλο Τζάρβις” and “Τζάρβις στοπ”.
-Say **Jarvis stop** to hear **Goodbye sir** and return to wake listening. Use
-**Turn microphone off** to release the microphone completely.
+Jarvis is available from the signed-in app header. **Greek is the default** for
+voice input, replies, greetings and panel controls. Click **Έναρξη ζωντανής
+συνομιλίας** to talk immediately, or **Ενεργοποίηση μικροφώνου** once and allow
+microphone access, then say **Γεια σου Τζάρβις** or **Καλημέρα Τζάρβις** to wake it.
+The immediate greeting is **Γεια σας, κύριε**. Say **Τζάρβις σταμάτα** or
+**Σταμάτα Τζάρβις** to hear **Αντίο, κύριε** and return to wake listening.
+**Απενεργοποίηση μικροφώνου** releases the microphone completely.
+
+English remains selectable, with **Hello Jarvis**, **Hello Sir**, **Jarvis stop**
+and **Goodbye sir**. English wake/stop phrases and their Greek transcriptions
+remain recognized in either language. Supported browsers use OpenAI Realtime over
+WebRTC for streaming audio, captions, follow-up questions and interruptions. Live
+speech uses Cedar; typed/manual answers use the existing Onyx endpoint.
 
 The conversation is in memory and clears on sign-out, reload, household change, or
 **Clear conversation**. Backgrounding the page stops audio and listening; enable it
@@ -60,7 +63,8 @@ configuration or the secret. No new npm packages are required.
 ## Capabilities and confirmed changes
 
 - Everyday questions, recipes, explanations, learning, and planning; responses
-  follow the user's question language. English and Greek voice input are offered.
+  use the selected language unless the user explicitly requests another. Greek is
+  the default; English remains available.
 - Optional web search for live information with clickable source links; off by
   default. Household financial information must not be included in search queries.
 - “How much did I spend this month?” reads the signed-in member's expenses, based
@@ -108,10 +112,66 @@ No new Firestore indexes or packages are needed; queries reuse existing task and
 transaction indexes. Deploy **completeTask** with the Jarvis endpoints and Hosting
 so confirmed completions enforce their preview version. Do not deploy just Hosting.
 
-The next useful improvement is an on-demand morning briefing combining today’s
-and overdue tasks, upcoming bills and monthly spending, with links to each item.
-It can use these read tools; scheduled delivery would need separate preferences
-and scheduling work.
+## Πρωινή ενημέρωση και ελληνικές εντολές
+
+Τα **Ελληνικά** είναι πλέον η προεπιλογή για φωνή, απαντήσεις και το πάνελ του
+Τζάρβις. Η επιλογή γλώσσας διατηρείται στη συσκευή· μόνο αυτή η προτίμηση
+αποθηκεύεται τοπικά, όχι το ιστορικό συνομιλίας. Τα Αγγλικά παραμένουν διαθέσιμα.
+Στα ελληνικά η ενεργοποίηση απαντά **«Γεια σας, κύριε»** και η διακοπή
+**«Αντίο, κύριε»**. Η διακοπή επιστρέφει στην αναμονή ενεργοποίησης.
+
+| Λειτουργία            | Παράδειγμα ελληνικής εντολής                                        |
+| --------------------- | ------------------------------------------------------------------- |
+| Ενεργοποίηση          | «Γεια σου Τζάρβις» ή «Καλημέρα Τζάρβις»                             |
+| Διακοπή               | «Τζάρβις σταμάτα» ή «Σταμάτα Τζάρβις»                               |
+| Πρωινή ενημέρωση      | «Τζάρβις, δώσε μου την πρωινή ενημέρωση»                            |
+| Σημερινές εργασίες    | «Τι εργασίες έχω σήμερα;»                                           |
+| Εκπρόθεσμες εργασίες  | «Ποιες εργασίες έχουν καθυστερήσει;»                                |
+| Υπόλοιπα λογαριασμών  | «Ποια είναι τα υπόλοιπα των λογαριασμών μου;»                       |
+| Προσωπικά έξοδα       | «Πόσα ξόδεψα αυτόν τον μήνα;»                                       |
+| Έξοδα νοικοκυριού     | «Πόσα ξόδεψε το νοικοκυριό αυτόν τον μήνα;»                         |
+| Αναζήτηση συναλλαγών  | «Βρες τις συναλλαγές στο Lidl από την 1η έως τη 10η Οκτωβρίου»      |
+| Δημιουργία εργασίας   | «Δημιούργησε μια εργασία να αγοράσω γάλα αύριο»                     |
+| Ολοκλήρωση εργασίας   | «Ολοκλήρωσε την εργασία για το γάλα»                                |
+| Μεταφορά εργασίας     | «Μετάφερε την εργασία για το γάλα στην Παρασκευή στις δέκα το πρωί» |
+| Νέο έξοδο             | «Πρόσθεσε έξοδο 25 ευρώ για σούπερ μάρκετ»                          |
+| Καθημερινές ερωτήσεις | «Τι μπορώ να μαγειρέψω με αυγά και ρύζι;»                           |
+
+Αυτά είναι παραδείγματα, όχι υποχρεωτικές ακριβείς φράσεις για τις ερωτήσεις.
+Το πάνελ περιλαμβάνει όλα τα παραδείγματα· επιλέγοντας ένα συμπληρώνεται το πεδίο
+ερώτησης χωρίς να εκτελείται αυτόματα. Οι φράσεις ενεργοποίησης/διακοπής
+αναγνωρίζονται με παραλλαγές γραφής και τόνων. Η φράση ενεργοποίησης δέχεται
+ερώτηση στην ίδια πρόταση. Χρειάζεται πρώτα πάτημα και άδεια μικροφώνου.
+
+Η πρωινή ενημέρωση λειτουργεί με φωνή, κείμενο ή το κουμπί **Πρωινή ενημέρωση**.
+Το εργαλείο `get_morning_briefing` συλλέγει, μόνο για το εξουσιοδοτημένο νοικοκυριό:
+
+- Σημερινές και εκπρόθεσμες ανοικτές εργασίες, με βάση τη ζώνη ώρας του νοικοκυριού.
+- Μη εκπρόθεσμες υποχρεώσεις έως την ημερομηνία επτά ημέρες μετά τη σημερινή,
+  από την ενεργή λίστα **Bills & Admin**, **Bills** ή **Λογαριασμοί** / **Λογαριασμοί και υποχρεώσεις**.
+- Συνολικά έξοδα του τρέχοντος μήνα από τα υπάρχοντα μηνιαία στοιχεία.
+
+Η προεπιλεγμένη ενημέρωση αφορά το νοικοκυριό. Η φράση «δώσε μου» δεν αλλάζει το
+οικονομικό πεδίο σε προσωπικό. Για προσωπική ενημέρωση πείτε ρητά
+«Δώσε μου ενημέρωση για τις δικές μου εργασίες και τα δικά μου έξοδα αυτόν τον μήνα»
+μαζί με «πρωινή ενημέρωση». Στην προσωπική επιλογή, εργασίες/υποχρεώσεις σημαίνουν
+όσες έχουν ανατεθεί στον συνδεδεμένο χρήστη και έξοδα όσα πλήρωσε ο ίδιος.
+
+Η απάντηση είναι μία σύντομη φωνητική σύνοψη τεσσάρων έως έξι προτάσεων, μαζί
+με κάρτα δεδομένων και συνδέσμους προς τις εργασίες. Δεν πραγματοποιεί αλλαγές.
+Οι λογαριασμοί είναι καταγεγραμμένες εργασίες, όχι νέες τραπεζικές πληροφορίες,
+ποσά πληρωμών ή επιβεβαιώσεις εξόφλησης. Αν λείπει λίστα λογαριασμών ή μηνιαία
+στοιχεία, αναφέρεται η έλλειψη. Τα μερικά αποτελέσματα επισημαίνονται.
+Οι επαναλαμβανόμενες εργασίες περιλαμβάνουν μόνο τις ήδη δημιουργημένες εμφανίσεις.
+
+Οι αλλαγές εργασιών χρειάζονται **Επιβεβαίωση αλλαγής εργασίας**.
+Η **Ακύρωση αλλαγής εργασίας** δεν αποθηκεύει τίποτα. Ένα προφορικό «ναι»
+δεν αποθηκεύει αλλαγές. Τα έξοδα χρειάζονται έλεγχο στην υπάρχουσα φόρμα συναλλαγών.
+Δεν προστέθηκε αυτόματη προγραμματισμένη αποστολή της ενημέρωσης.
+
+Οι ίδιες τέσσερις λειτουργίες Jarvis και το Hosting χρειάζονται νέα ανάπτυξη.
+Δεν χρειάζονται νέα ευρετήρια Firestore ή πακέτα. Τα μοντέλα και τα κλειδιά
+παραμένουν στην υπάρχουσα διαμόρφωση του Functions.
 
 All four callable functions require a verified signed-in user and household
 membership. Document IDs and tool arguments are validated on the server. OpenAI

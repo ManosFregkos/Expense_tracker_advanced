@@ -15,10 +15,15 @@ export function parseJarvisCommand(text: string, awake: boolean): JarvisCommand 
   const name = '(?:jarvis|jervis|τζαρβις|τζερβις|τζαβις|τσαρβις|τζαρβισ)'
   const start = '(?<![\\p{L}\\p{N}])'
   const end = '(?![\\p{L}\\p{N}])'
-  if (new RegExp(`${start}${name}\\s+(?:stop|στοπ|σταματα)${end}`, 'iu').test(folded))
+  if (
+    new RegExp(
+      `${start}(?:${name}\\s+(?:stop|στοπ|σταματα|σταματησε|παυση|τελος)|(?:σταματα|σταματησε)\\s+${name})${end}`,
+      'iu',
+    ).test(folded)
+  )
     return { type: 'stop' }
   const wake = new RegExp(
-    `${start}(?:hello|χελο|χελλο|χαλο|γεια(?: σου)?)\\s+${name}${end}`,
+    `${start}(?:(?:hello|χελο|χελλο|χαλο|γεια(?: σου| σας)?|καλημερα|ξυπνα)\\s+${name}|${name}\\s+ξυπνα)${end}`,
     'iu',
   ).exec(folded)
   if (wake) return { type: 'wake', question: normalized.slice(wake.index + wake[0].length).trim() }
