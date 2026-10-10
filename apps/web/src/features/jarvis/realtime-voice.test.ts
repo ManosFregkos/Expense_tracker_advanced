@@ -166,7 +166,7 @@ describe('Realtime voice lifecycle', () => {
       item_id: 'stop',
       delta: 'στοπ',
     })
-    expect(callbacks.transcript).toHaveBeenCalledWith('Jarvis stop')
+    expect(callbacks.transcript).toHaveBeenCalledWith('Τζάρβις στοπ')
     live.setAwake(false)
     Peer.latest.channel.emit({
       type: 'conversation.item.input_audio_transcription.completed',

@@ -42,8 +42,9 @@ export class JarvisRealtimeVoice {
     return this.channel?.readyState === 'open'
   }
 
-  async start(history: JarvisMessage[] = []) {
+  async start(history: JarvisMessage[] = [], active = false) {
     this.stop()
+    this.active = active
     const token = this.generation
     this.callbacks.state('connecting')
     try {
@@ -94,7 +95,7 @@ export class JarvisRealtimeVoice {
       this.timer = setTimeout(() => {
         if (token === this.generation)
           this.fail('Live voice took too long to connect. Please try again.')
-      }, 60_000)
+      }, 20_000)
       const offer = await pc.createOffer()
       if (token !== this.generation) return
       await pc.setLocalDescription(offer)
@@ -234,7 +235,7 @@ export class JarvisRealtimeVoice {
         this.deltas.set(id, text)
         if (parseJarvisCommand(text, false).type === 'stop' && !this.handled.has(id)) {
           this.handled.add(id)
-          this.callbacks.transcript('Jarvis stop')
+          this.callbacks.transcript(text)
         }
         break
       }

@@ -27,8 +27,28 @@ test('register, onboard, and complete the core household finance workflow', asyn
     const bridge = window as Window & {
       jarvisVoiceEvent(event: Record<string, unknown>): void
       jarvisVoiceSent: Array<Record<string, unknown>>
+      jarvisWake(text: string): void
     }
     bridge.jarvisVoiceSent = []
+    Object.defineProperty(window, 'SpeechRecognition', {
+      configurable: true,
+      value: class {
+        onresult:
+          | ((event: {
+              resultIndex: number
+              results: Array<{ isFinal: boolean; 0: { transcript: string } }>
+            }) => void)
+          | null = null
+        start() {
+          bridge.jarvisWake = (text) =>
+            this.onresult?.({
+              resultIndex: 0,
+              results: [{ isFinal: true, 0: { transcript: text } }],
+            })
+        }
+        abort() {}
+      },
+    })
     const track = { enabled: true, stop: () => undefined }
     Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
       configurable: true,
@@ -118,7 +138,13 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('textbox', { name: 'Voice input language' }).click()
   await page.getByRole('option', { name: 'Greek' }).click()
-  await page.getByRole('button', { name: 'Έναρξη ζωντανής συνομιλίας' }).click()
+  await page.getByRole('button', { name: 'Ενεργοποίηση μικροφώνου', exact: true }).click()
+  await expect(page.getByText('Περιμένω το «Γεια σου Τζάρβις»', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Κλείσιμο Τζάρβις', exact: true }).click()
+  await page.evaluate(() =>
+    (window as Window & { jarvisWake(text: string): void }).jarvisWake('Hello Jarvis'),
+  )
+  await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.getByText('Σας ακούω', { exact: true })).toBeVisible()
   await page.evaluate(() => {
     const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
@@ -162,12 +188,8 @@ test('register, onboard, and complete the core household finance workflow', asyn
     page.getByRole('button', { name: 'Άνοιγμα βοηθού Τζάρβις, Περιμένω το «Γεια σου Τζάρβις»' }),
   ).toBeVisible()
   await page.evaluate(() => {
-    const bridge = window as Window & { jarvisVoiceEvent(event: Record<string, unknown>): void }
-    bridge.jarvisVoiceEvent({
-      type: 'conversation.item.input_audio_transcription.completed',
-      item_id: 'wake',
-      transcript: 'Γεια σου Τζάρβις',
-    })
+    const bridge = window as Window & { jarvisWake(text: string): void }
+    bridge.jarvisWake('Γεια σου Τζάρβις')
   })
   await expect(page.getByRole('dialog')).toBeVisible()
   await expect(page.getByText('Σας ακούω', { exact: true })).toBeVisible()

@@ -18,6 +18,7 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'pwa-icon.svg'],
       manifest: {
         name: 'Family Expense Tracker',

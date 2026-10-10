@@ -190,6 +190,7 @@ beforeEach(() => {
   })
 })
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
@@ -444,22 +445,84 @@ describe('Jarvis conversation', () => {
     expect(api.jarvisChat).not.toHaveBeenCalled()
     expect(api.jarvisSpeak).not.toHaveBeenCalled()
   })
-  it('opens the panel on a Greek wake phrase and keeps live wake listening after stop', async () => {
+  it('starts live voice from the wake phrase and returns to browser wake listening after stop', async () => {
     driver.realtime = true
     await openAndListen()
+    expect(api.jarvisStartRealtime).not.toHaveBeenCalled()
     fireEvent.click(screen.getByLabelText('Close Jarvis'))
     expect(screen.queryByText('Waiting for Hello Jarvis')).not.toBeInTheDocument()
-    act(() => driver.liveTranscript('Χέλο Τζάρβις'))
+    act(() => driver.transcript('Χέλο Τζάρβις'))
     await screen.findByText('Hello Sir')
+    await waitFor(() => expect(driver.liveReady).toBe(true))
     act(() => driver.liveTranscript('Τζάρβις στοπ'))
     await screen.findByText('Goodbye sir')
     await waitFor(() => expect(screen.getByText('Waiting for Hello Jarvis')).toBeInTheDocument())
-    expect(driver.liveReady).toBe(true)
-    act(() => driver.liveTranscript('Hello Jarvis'))
+    expect(driver.liveReady).toBe(false)
+    act(() => driver.transcript('Hello Jarvis'))
     await waitFor(() => expect(screen.getAllByText('Hello Sir')).toHaveLength(2))
+    await waitFor(() => expect(driver.liveReady).toBe(true))
     fireEvent.click(screen.getByText('Turn microphone off'))
     expect(driver.liveReady).toBe(false)
     await screen.findByText('Microphone off')
+  })
+  it('keeps voice questions and stop/wake commands working when live voice cannot connect', async () => {
+    driver.realtime = true
+    vi.mocked(api.jarvisStartRealtime).mockRejectedValue(new Error('WebRTC blocked'))
+    vi.mocked(api.jarvisChat).mockResolvedValue({
+      reply: 'Today is Saturday, Sir.',
+      sources: [],
+      draft: null,
+    })
+    await openAndListen()
+    act(() => driver.transcript('Hello Jarvis'))
+    await screen.findByText('Hello Sir')
+    await waitFor(() => expect(screen.getByText('Listening to you')).toBeInTheDocument())
+    expect(driver.liveReady).toBe(false)
+    act(() => driver.transcript('What day is it?'))
+    await screen.findByText('Today is Saturday, Sir.')
+    await waitFor(() => expect(screen.getByText('Listening to you')).toBeInTheDocument())
+    act(() => driver.transcript('Jarvis stop'))
+    await screen.findByText('Goodbye sir')
+    await waitFor(() => expect(screen.getByText('Waiting for Hello Jarvis')).toBeInTheDocument())
+    expect(api.jarvisChat).toHaveBeenCalledOnce()
+  })
+  it('preserves the first spoken question while live voice is connecting', async () => {
+    driver.realtime = true
+    let connected: ((session: { sdp: string; model: string }) => void) | undefined
+    vi.mocked(api.jarvisStartRealtime).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          connected = resolve
+        }),
+    )
+    await openAndListen()
+    act(() => driver.transcript('Hello Jarvis'))
+    await screen.findByText('Hello Sir')
+    await waitFor(() =>
+      expect(synthesis.speak).toHaveBeenCalledWith(expect.objectContaining({ text: 'Hello Sir' })),
+    )
+    await act(async () => {
+      await Promise.resolve()
+    })
+    act(() => driver.transcript('What can I cook?'))
+    expect(api.jarvisChat).not.toHaveBeenCalled()
+    await act(async () => {
+      connected?.({ sdp: 'v=0\r\nanswer', model: 'gpt-realtime-2.1-mini' })
+      await Promise.resolve()
+    })
+    await waitFor(() => expect(driver.liveRespond).toHaveBeenCalledWith('What can I cook?'))
+  })
+  it('releases greeting muting when the browser never finishes speech playback', async () => {
+    await openAndListen()
+    vi.useFakeTimers()
+    synthesis.speak.mockImplementationOnce(() => undefined)
+    act(() => driver.transcript('Hello Jarvis'))
+    expect(screen.getByText('Speaking')).toBeInTheDocument()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(screen.getByText('Listening to you')).toBeInTheDocument()
+    expect(synthesis.cancel).toHaveBeenCalled()
   })
   it('lets the visible audio controls take over autoplay and stops that player on the stop phrase', async () => {
     class MockAudio {

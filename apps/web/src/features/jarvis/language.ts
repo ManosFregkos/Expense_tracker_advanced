@@ -44,7 +44,7 @@ const english = {
     'AI-generated voice. Voice requires HTTPS, microphone permission, and this app in the foreground. Some TV browsers support text only. Closing this panel keeps listening enabled; use Turn microphone off to end listening.',
   privacy: 'Voice privacy',
   realtimePrivacy:
-    'Live voice streams microphone audio to OpenAI, including nearby speech while waiting for the wake phrase. Requested household data is sent only through authorized app tools.',
+    'Where available, browser speech recognition listens for the wake phrase and may send audio to its speech service. Active live voice streams microphone audio to OpenAI. Without browser recognition, wake listening uses OpenAI transcription. Requested household data uses authorized app tools.',
   recognitionPrivacy:
     'Browser speech recognition may send audio to your browser’s speech service. Questions and requested household data are sent to OpenAI.',
   recordingPrivacy:
@@ -58,6 +58,8 @@ const english = {
   web: 'Use web search for current information',
   liveHelp:
     'Live voice · speak naturally, pause for an answer, and interrupt to ask a follow-up. Say “Jarvis stop” to return to wake listening. Task changes require confirmation below.',
+  liveFallback:
+    'Continuous voice listening is still available. Try your question again; live voice can be retried with Start live conversation.',
   unavailable:
     'Microphone recording is unavailable in this browser. You can still type questions and play spoken answers.',
   log: 'Conversation with Jarvis',
@@ -125,7 +127,7 @@ const greek: Record<keyof typeof english, string> = {
     'Φωνή τεχνητής νοημοσύνης. Απαιτούνται HTTPS, άδεια μικροφώνου και η εφαρμογή στο προσκήνιο. Ορισμένοι περιηγητές τηλεόρασης υποστηρίζουν μόνο κείμενο. Το κλείσιμο του πάνελ διατηρεί την ακρόαση· για διακοπή απενεργοποιήστε το μικρόφωνο.',
   privacy: 'Απόρρητο φωνής',
   realtimePrivacy:
-    'Ο ήχος του μικροφώνου μεταδίδεται στο OpenAI, μαζί με κοντινή ομιλία όσο περιμένει την ενεργοποίηση. Τα δεδομένα του νοικοκυριού αποστέλλονται μέσω των εξουσιοδοτημένων λειτουργιών της εφαρμογής.',
+    'Όπου υποστηρίζεται, η αναγνώριση του περιηγητή ακούει τη φράση ενεργοποίησης και μπορεί να στέλνει ήχο στην υπηρεσία του. Η ενεργή συνομιλία μεταδίδει ήχο στο OpenAI. Χωρίς αναγνώριση περιηγητή, η αναμονή χρησιμοποιεί μεταγραφή OpenAI. Τα δεδομένα του νοικοκυριού χρησιμοποιούν εξουσιοδοτημένες λειτουργίες.',
   recognitionPrivacy:
     'Η αναγνώριση φωνής μπορεί να στέλνει ήχο στην υπηρεσία του περιηγητή. Οι ερωτήσεις και τα ζητούμενα δεδομένα του νοικοκυριού αποστέλλονται στο OpenAI.',
   recordingPrivacy:
@@ -139,6 +141,8 @@ const greek: Record<keyof typeof english, string> = {
   web: 'Αναζήτηση στο διαδίκτυο για πρόσφατες πληροφορίες',
   liveHelp:
     'Μιλήστε φυσικά και κάντε παύση για την απάντηση. Μπορείτε να διακόψετε με νέα ερώτηση. Πείτε «Τζάρβις σταμάτα» για επιστροφή στην αναμονή. Οι αλλαγές εργασιών χρειάζονται επιβεβαίωση παρακάτω.',
+  liveFallback:
+    'Η συνεχής ακρόαση παραμένει διαθέσιμη. Επαναλάβετε την ερώτηση ή πατήστε «Έναρξη ζωντανής συνομιλίας» για νέα προσπάθεια.',
   unavailable:
     'Η ηχογράφηση δεν υποστηρίζεται σε αυτόν τον περιηγητή. Μπορείτε να γράφετε ερωτήσεις και να ακούτε τις απαντήσεις.',
   log: 'Συνομιλία με τον Τζάρβις',

@@ -71,14 +71,14 @@ export class JarvisVoiceInput {
     },
   ) {}
 
-  async start(language: string, manual = false) {
+  async start(language: string, manual = false, forceRecording = false) {
     this.stop()
     this.enabled = true
     this.manual = manual
     this.muted = false
     const generation = this.generation
     const Constructor = recognitionConstructor()
-    if (Constructor && !manual) {
+    if (Constructor && !manual && !forceRecording) {
       const recognition = new Constructor()
       this.recognition = recognition
       recognition.lang = language
@@ -93,28 +93,37 @@ export class JarvisVoiceInput {
           if (result?.isFinal && (!this.muted || command.type === 'stop'))
             this.callbacks.transcript(result[0].transcript)
           // Interrupt as soon as the stop phrase is recognized, without waiting for a final result.
-          else if (command.type === 'stop') this.callbacks.transcript('Jarvis stop')
+          else if (command.type === 'stop' && result)
+            this.callbacks.transcript(result[0].transcript)
+          // Only activate on a complete wake phrase; partial questions must not execute commands.
+          else if (command.type === 'wake' && !command.question && !this.muted && result)
+            this.callbacks.transcript(result[0].transcript)
         }
       }
       recognition.onerror = (event) => {
         if (!this.enabled || generation !== this.generation) return
         if (event.error === 'aborted' || event.error === 'no-speech') return
-        if (
-          event.error === 'not-allowed' ||
-          event.error === 'service-not-allowed' ||
-          event.error === 'audio-capture'
-        ) {
+        if (event.error === 'not-allowed' || event.error === 'audio-capture') {
           this.stop()
           this.callbacks.error(
             'Microphone access was denied or is unavailable. Allow microphone access and try again, or type your question.',
           )
         } else {
           this.failures++
-          if (this.failures >= 3) {
-            this.stop()
-            this.callbacks.error(
-              'Browser speech recognition is unavailable. Try Record question or use text.',
-            )
+          if (
+            this.failures >= 3 ||
+            event.error === 'service-not-allowed' ||
+            event.error === 'language-not-supported'
+          ) {
+            // Vendor recognition may fail even though the microphone works.
+            // Continue hands-free recording/transcription instead of silently stopping.
+            if (voiceCapabilities().recording) void this.start(language, false, true)
+            else {
+              this.stop()
+              this.callbacks.error(
+                'Browser speech recognition is unavailable. Try Record question or use text.',
+              )
+            }
           }
         }
       }

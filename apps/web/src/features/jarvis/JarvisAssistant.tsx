@@ -85,6 +85,11 @@ function AssistantSession({ householdId }: { householdId: string }) {
   const [playbackBlocked, setPlaybackBlocked] = useState(false)
   const liveSources = useRef<JarvisReply['sources']>([])
   const generation = useRef(0)
+  const microphoneArmed = useRef(false)
+  const microphoneEpoch = useRef(0)
+  const connectingLive = useRef(false)
+  const liveConnection = useRef<Promise<void> | null>(null)
+  const voiceRunning = useRef(false)
   const alive = useRef(true)
   const speechComplete = useRef<(() => void) | null>(null)
   const consumeRef = useRef<(value: string, liveInput?: boolean) => void>(() => undefined)
@@ -114,7 +119,12 @@ function AssistantSession({ householdId }: { householdId: string }) {
     voice.current?.muteRecording(false)
     realtime.current?.mute(false)
   }
-  async function speak(value: string, instant = false, token = generation.current) {
+  async function speak(
+    value: string,
+    instant = false,
+    token = generation.current,
+    speechLanguage = languageRef.current,
+  ) {
     cancelSpeech()
     if (token !== generation.current || !alive.current) return
     speakingRef.current = true
@@ -153,10 +163,17 @@ function AssistantSession({ householdId }: { householdId: string }) {
       if (window.speechSynthesis) {
         await new Promise<void>((resolve) => {
           const utterance = new SpeechSynthesisUtterance(value)
-          utterance.lang = languageRef.current
+          utterance.lang = speechLanguage
           const voices = window.speechSynthesis.getVoices()
           utterance.voice = voices.find((item) => item.lang === utterance.lang) ?? null
-          const timeout = setTimeout(resolve, 60_000)
+          // A blocked/missing system voice must not mute the microphone for a minute.
+          const timeout = setTimeout(
+            () => {
+              window.speechSynthesis.cancel()
+              resolve()
+            },
+            instant ? 5000 : 60_000,
+          )
           const done = () => {
             clearTimeout(timeout)
             resolve()
@@ -178,24 +195,80 @@ function AssistantSession({ householdId }: { householdId: string }) {
       }
     }
   }
-  function stopConversation() {
+  function stopConversation(command = '') {
     // Invalidate in-flight chat/TTS. The microphone stays enabled for the next wake phrase.
     const token = ++generation.current
     cancelSpeech()
     setWorking(false)
     setActive(false)
+    if (caps.recognition && microphoneArmed.current) {
+      // Release live media, but retain foreground wake listening for the next command.
+      microphoneEpoch.current++
+      connectingLive.current = false
+      realtime.current?.stop()
+      startWakeListening()
+    }
     setDraft(null)
     setBriefing(null)
     setTaskAction(null)
     setReview(false)
     setPlayback(null)
     liveSources.current = []
-    const goodbye = jarvisCopy(languageRef.current).goodbye
+    const greetingLanguage = /\bstop\b/i.test(command) ? 'en-US' : languageRef.current
+    const goodbye = jarvisCopy(greetingLanguage).goodbye
     addMessage({ role: 'assistant', content: goodbye })
-    void speak(goodbye, true, token)
+    void speak(goodbye, true, token, greetingLanguage)
+  }
+  function startWakeListening() {
+    if (!microphoneArmed.current || !alive.current || voiceRunning.current) return
+    void voice.current?.start(languageRef.current).catch((reason: unknown) => {
+      if (alive.current) setError(friendlyError(reason))
+    })
+  }
+  async function connectLive() {
+    if (
+      !microphoneArmed.current ||
+      !caps.realtime ||
+      connectingLive.current ||
+      realtime.current?.ready
+    )
+      return
+    const epoch = microphoneEpoch.current
+    connectingLive.current = true
+    try {
+      await realtime.current?.start(history.current, awakeRef.current)
+      if (!alive.current || !microphoneArmed.current || epoch !== microphoneEpoch.current) return
+      if (realtime.current?.ready) {
+        // Keep the wake listener until the data channel opens; a failed handshake must
+        // not leave the user without a microphone or drop the first question.
+        voice.current?.stop()
+        realtime.current.setAwake(awakeRef.current)
+      } else startWakeListening()
+    } catch (reason) {
+      if (alive.current && epoch === microphoneEpoch.current) {
+        realtime.current?.stop()
+        setError(`${friendlyError(reason)} ${jarvisCopy(languageRef.current).liveFallback}`)
+        startWakeListening()
+      }
+    } finally {
+      if (epoch === microphoneEpoch.current) connectingLive.current = false
+    }
   }
   async function ask(question: string, liveInput = false) {
     if (savingTaskRef.current) return
+    if (connectingLive.current && !realtime.current?.ready) {
+      const token = generation.current
+      // Bridge the first spoken question into the live session. If WebRTC is
+      // blocked, answer through continuous voice instead of waiting for its timeout.
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, 3000)
+        void liveConnection.current?.then(() => {
+          clearTimeout(timer)
+          resolve()
+        })
+      })
+      if (token !== generation.current || !alive.current || !awakeRef.current) return
+    }
     if ((busyRef.current || speakingRef.current) && !realtime.current?.ready) return
     if (realtime.current?.ready) {
       generation.current++
@@ -239,7 +312,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
     const command = parseJarvisCommand(value, typed || awakeRef.current)
     if (command.type === 'stop') {
       // A repeated interim/final stop result should not speak goodbye twice.
-      if (awakeRef.current || busyRef.current) stopConversation()
+      if (awakeRef.current || busyRef.current) stopConversation(value)
       return
     }
     if (savingTaskRef.current) return
@@ -263,10 +336,13 @@ function AssistantSession({ householdId }: { householdId: string }) {
       }
       setActive(true)
       setOpened(true)
-      const greeting = jarvisCopy(languageRef.current).greeting
+      // Saying the wake phrase starts live voice; it does not require the Live button.
+      liveConnection.current = connectLive()
+      const greetingLanguage = /\bhello\b/i.test(value) ? 'en-US' : languageRef.current
+      const greeting = jarvisCopy(greetingLanguage).greeting
       addMessage({ role: 'assistant', content: greeting })
       const token = generation.current
-      await speak(greeting, true, token)
+      await speak(greeting, true, token, greetingLanguage)
       if (token === generation.current && command.question) await ask(command.question)
     } else if (command.type === 'question') {
       setActive(true)
@@ -280,6 +356,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
   useEffect(() => {
     alive.current = true
     const sessionGeneration = generation
+    const sessionMicrophoneEpoch = microphoneEpoch
     const input = new JarvisVoiceInput({
       transcript: (value) => consumeRef.current(value),
       audio: async (blob) => {
@@ -296,6 +373,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
         ).text
       },
       state: (state, currentEngine) => {
+        voiceRunning.current = state !== 'off'
         if (alive.current) {
           setMic(state)
           if (currentEngine) setEngine(currentEngine)
@@ -349,7 +427,11 @@ function AssistantSession({ householdId }: { householdId: string }) {
         }
       },
       error: (message) => {
-        if (alive.current) setError(message)
+        if (alive.current) {
+          setError(`${message} ${jarvisCopy(languageRef.current).liveFallback}`)
+          setWorking(false)
+          startWakeListening()
+        }
       },
       playbackBlocked: (blocked) => {
         if (alive.current) setPlaybackBlocked(blocked)
@@ -367,6 +449,9 @@ function AssistantSession({ householdId }: { householdId: string }) {
     const hide = () => {
       if (document.visibilityState !== 'hidden') return
       sessionGeneration.current++
+      microphoneArmed.current = false
+      sessionMicrophoneEpoch.current++
+      connectingLive.current = false
       input.stop()
       live.stop()
       window.speechSynthesis?.cancel()
@@ -387,6 +472,9 @@ function AssistantSession({ householdId }: { householdId: string }) {
     document.addEventListener('visibilitychange', hide)
     return () => {
       alive.current = false
+      microphoneArmed.current = false
+      sessionMicrophoneEpoch.current++
+      connectingLive.current = false
       sessionGeneration.current++
       input.stop()
       live.stop()
@@ -398,6 +486,9 @@ function AssistantSession({ householdId }: { householdId: string }) {
   }, [householdId])
 
   function disable() {
+    microphoneArmed.current = false
+    microphoneEpoch.current++
+    connectingLive.current = false
     generation.current++
     cancelSpeech()
     voice.current?.stop()
@@ -472,24 +563,29 @@ function AssistantSession({ householdId }: { householdId: string }) {
   }
   async function enable(manual: boolean, startNow = false) {
     setError('')
+    microphoneArmed.current = true
     // Unlock mobile audio on the initial user gesture.
     if (window.speechSynthesis) {
       const unlock = new SpeechSynthesisUtterance('')
       window.speechSynthesis.speak(unlock)
     }
-    if (!manual && caps.realtime) {
-      if (!realtime.current?.ready) {
-        setActive(false)
-        voice.current?.stop()
-        await realtime.current?.start(history.current)
-      }
-      if (startNow && realtime.current?.ready)
-        await consume(jarvisCopy(languageRef.current).wake, true)
+    if (manual) {
+      microphoneEpoch.current++
+      connectingLive.current = false
+      realtime.current?.stop()
+      setActive(true)
+      await voice.current?.start(languageRef.current, true)
       return
     }
-    realtime.current?.stop()
-    if (manual) setActive(true)
-    await voice.current?.start(language, manual)
+    if (caps.recognition || !caps.realtime) {
+      // Chrome/Safari can recognize the wake phrase without an OpenAI session.
+      startWakeListening()
+    } else {
+      // Browsers without speech recognition use Realtime transcription, with
+      // continuous recording/transcription as a fallback when WebRTC is blocked.
+      liveConnection.current = connectLive()
+      await liveConnection.current
+    }
     if (startNow) await consume(jarvisCopy(languageRef.current).wake, true)
   }
   const microphoneEnabled = mic !== 'off' || liveState !== 'off'
@@ -630,7 +726,7 @@ function AssistantSession({ householdId }: { householdId: string }) {
             <Button
               variant="light"
               leftSection={<IconPlayerStop size={18} />}
-              onClick={stopConversation}
+              onClick={() => stopConversation()}
               disabled={!awake && !busy && !speaking}
             >
               {copy.stop}

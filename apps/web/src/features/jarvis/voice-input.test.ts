@@ -26,6 +26,58 @@ afterEach(() => {
   delete (window as Window & { SpeechRecognition?: unknown }).SpeechRecognition
 })
 describe('Jarvis voice lifecycle', () => {
+  it('recognizes the wake phrase from interim speech before waiting for an utterance to end', async () => {
+    Object.assign(window, { SpeechRecognition: MockRecognition })
+    const callbacks = { transcript: vi.fn(), audio: vi.fn(), state: vi.fn(), error: vi.fn() }
+    const input = new JarvisVoiceInput(callbacks)
+    await input.start('el-GR')
+    MockRecognition.latest.onresult?.({
+      resultIndex: 0,
+      results: [{ isFinal: false, 0: { transcript: 'Hello Jarvis' } }],
+    })
+    expect(callbacks.transcript).toHaveBeenCalledWith('Hello Jarvis')
+    input.stop()
+  })
+  it('falls back to recording when the browser speech service is unavailable, without another recognition loop', async () => {
+    Object.assign(window, { SpeechRecognition: MockRecognition })
+    const getUserMedia = vi.fn(() => new Promise<MediaStream>(() => undefined))
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia } })
+    vi.stubGlobal('MediaRecorder', class {})
+    vi.stubGlobal('AudioContext', class {})
+    const input = new JarvisVoiceInput({
+      transcript: vi.fn(),
+      audio: vi.fn(),
+      state: vi.fn(),
+      error: vi.fn(),
+    })
+    await input.start('el-GR')
+    const recognition = MockRecognition.latest
+    recognition.onerror?.({ error: 'service-not-allowed' })
+    expect(recognition.abort).toHaveBeenCalledOnce()
+    expect(getUserMedia).toHaveBeenCalledOnce()
+    expect(recognition.onend).toBeNull()
+    input.stop()
+  })
+  it('waits for the complete question and preserves Greek stop commands during playback', async () => {
+    Object.assign(window, { SpeechRecognition: MockRecognition })
+    const callbacks = { transcript: vi.fn(), audio: vi.fn(), state: vi.fn(), error: vi.fn() }
+    const input = new JarvisVoiceInput(callbacks)
+    await input.start('el-GR')
+    const result = { isFinal: false, 0: { transcript: 'Hello Jarvis add a' } }
+    MockRecognition.latest.onresult?.({ resultIndex: 0, results: [result] })
+    expect(callbacks.transcript).not.toHaveBeenCalled()
+    result.isFinal = true
+    result[0].transcript = 'Hello Jarvis add a task for tomorrow'
+    MockRecognition.latest.onresult?.({ resultIndex: 0, results: [result] })
+    expect(callbacks.transcript).toHaveBeenCalledWith('Hello Jarvis add a task for tomorrow')
+    input.muteRecording(true)
+    MockRecognition.latest.onresult?.({
+      resultIndex: 0,
+      results: [{ isFinal: false, 0: { transcript: 'Τζάρβις στοπ' } }],
+    })
+    expect(callbacks.transcript).toHaveBeenLastCalledWith('Τζάρβις στοπ')
+    input.stop()
+  })
   it('discards silence and ordinary playback echo, but accepts stop through cloud transcription', async () => {
     vi.useFakeTimers()
     let loud = false

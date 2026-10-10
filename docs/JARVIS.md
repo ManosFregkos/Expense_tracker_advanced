@@ -9,8 +9,9 @@ The immediate greeting is **Γεια σας, κύριε**. Say **Τζάρβις 
 **Απενεργοποίηση μικροφώνου** releases the microphone completely.
 
 English remains selectable, with **Hello Jarvis**, **Hello Sir**, **Jarvis stop**
-and **Goodbye sir**. English wake/stop phrases and their Greek transcriptions
-remain recognized in either language. Supported browsers use OpenAI Realtime over
+and **Goodbye sir**. Literal English wake/stop commands use these English greetings
+even with Greek selected for questions and replies. English wake/stop phrases and
+their Greek transcriptions remain recognized in either language. Supported browsers use OpenAI Realtime over
 WebRTC for streaming audio, captions, follow-up questions and interruptions. Live
 speech uses Cedar; typed/manual answers use the existing Onyx endpoint.
 
@@ -188,15 +189,27 @@ Serve the app over HTTPS (localhost works for development). Browser security
 requires a first click and microphone permission: wake listening cannot start
 automatically on first page load.
 
-Where microphone access and RTCPeerConnection are available, live WebRTC audio is
-sent to OpenAI, including ambient speech while waiting for a wake phrase. The model
-does not generate answers while asleep: server VAD has automatic responses disabled,
-and the app creates responses only after activation. Wake/stop and ignored speech
-items are removed from the session conversation. Closing the panel keeps the
-connection open while foregrounded. Turning the microphone off, signing out,
-changing household, leaving the app foreground, or losing the connection closes
-WebRTC, stops all microphone tracks and discards pending lookups/replies. A failed
-connection displays a retry message; Record question and text remain available.
+Where browser SpeechRecognition is available, enabling the microphone starts that
+foreground wake listener without opening an OpenAI connection. **Hello Jarvis** or
+the Greek wake phrase opens the panel, speaks the greeting and starts Realtime
+automatically. **Jarvis stop** cancels the answer, closes live media and resumes
+the browser wake listener, so another wake phrase starts a fresh live conversation.
+No second Live button click is required. The wake listener stays available until
+the live data channel opens. A first question received during connection waits up
+to three seconds for live voice, then uses continuous voice chat if needed.
+
+Without browser recognition, WebRTC also handles wake transcription and sends
+ambient speech to OpenAI while waiting. Server VAD has automatic responses disabled;
+the app creates responses only after activation. Wake/stop and ignored speech
+items are removed from the session conversation. A failed/disconnected live session
+falls back to continuous browser recognition or recording/transcription. Browser
+speech-service failure also falls back to recording when supported; microphone
+permission denial stops listening without repeated permission requests.
+Closing the panel keeps foreground listening enabled. Turning the microphone off, signing out,
+changing household, or leaving the app foreground closes WebRTC, stops all
+microphone tracks and discards pending lookups/replies. A failed live connection
+displays a fallback message and resumes continuous voice input when available;
+Record question and text remain available.
 Some networks block WebRTC; test on the actual production networks/devices.
 
 On browsers without WebRTC, browser SpeechRecognition handles wake commands and questions.
@@ -211,6 +224,12 @@ During playback, both voice engines accept the stop phrase while suppressing
 ordinary speech to prevent echo from becoming a new question. Cloud transcription
 can include speaker audio and adds latency; the visible **Jarvis stop** button
 interrupts immediately. Headphones improve wake detection and acoustic isolation.
+
+The shared worker is registered from `/sw.js` with `updateViaCache: none`. A
+JavaScript compatibility worker exists at `/firebase-messaging-sw.js` for older
+registrations. Worker scripts are not cached, navigation HTML is revalidated, and
+missing script URLs return 404 instead of SPA HTML. Existing controlled tabs reload
+once on worker update to avoid requesting removed lazy chunks from an old build.
 
 Safari/iPhone and Android support depends on permissions and available browser
 APIs; continuous browser recognition may end or need restarting. Smart TV browsers

@@ -11,6 +11,9 @@ import App from './App'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { AuthProvider } from './features/auth/AuthProvider'
 import { theme } from './theme/theme'
+import { registerAppWorker } from './lib/service-worker'
+
+registerAppWorker()
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 2 }, mutations: { retry: 0 } },
