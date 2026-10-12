@@ -1,5 +1,10 @@
 # Jarvis voice assistant
 
+For a proposed Python companion that works with the browser closed, including
+local wake/stop detection and confirmed expense recording, see the
+[Jarvis desktop implementation guide](JARVIS_DESKTOP_GUIDE.md). That companion and
+its new backend endpoints still need to be implemented.
+
 Jarvis is available from the signed-in app header. **Greek is the default** for
 voice input, replies, greetings and panel controls. Click **Έναρξη ζωντανής
 συνομιλίας** to talk immediately, or **Ενεργοποίηση μικροφώνου** once and allow

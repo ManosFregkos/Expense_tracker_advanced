@@ -24,7 +24,7 @@ import { openaiRequest, runJarvis } from './jarvis-provider.js'
 import { appTools, createAppToolExecutor, functionTool } from './jarvis-app-tools.js'
 
 const apiKey = defineSecret('OPENAI_API_KEY')
-const chatModel = defineString('JARVIS_CHAT_MODEL', { default: 'gpt-4.1-mini' })
+const chatModel = defineString('JARVIS_CHAT_MODEL', { default: 'gpt-5.4-mini' })
 const transcriptionModel = defineString('JARVIS_TRANSCRIPTION_MODEL', {
   default: 'gpt-4o-mini-transcribe',
 })
