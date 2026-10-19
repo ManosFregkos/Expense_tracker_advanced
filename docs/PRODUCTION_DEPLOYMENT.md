@@ -211,6 +211,7 @@ npm run typecheck
 npm run lint
 npm test
 npm run test:rules
+npm run test:jarvis-actions
 npm run test:e2e
 npm run build
 ```
@@ -341,3 +342,15 @@ creates a child profile or starts a session. Both initialization paths are idemp
 - [Scheduled Functions](https://firebase.google.com/docs/functions/schedule-functions)
 - [Functions environment and Secret Manager](https://firebase.google.com/docs/functions/config-env)
 - [Firebase App Check for web](https://firebase.google.com/docs/app-check/web/recaptcha-provider)
+
+## Jarvis confirmed actions
+
+The additive backend foundation exports `jarvisPrepareAction`,
+`jarvisConfirmAction`, `jarvisCancelAction` and `jarvisActionStatus` in
+`europe-west1`, under the existing Auth/verified-email/App Check policy.
+[Protocol, manual QA and rollback instructions](JARVIS_ACTIONS.md) describe private
+collections and financial/task atomicity. Do not enable TTL on proposal expiry
+fields: committed receipts preserve idempotency. The frontend still uses its
+existing review protections. Desktop authentication/App Check enrollment and
+voice confirmation integration are not included. No production deployment was
+performed while implementing this backend phase.

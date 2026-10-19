@@ -5,6 +5,8 @@ macOS. The intended result is: say **Hello Jarvis**, have a continuous spoken
 conversation, record an expense with spoken confirmation, then say **Jarvis stop**
 to return to wake listening. The browser can be closed while the companion runs.
 
+The shared backend action APIs are now implemented; use [Jarvis confirmed actions](JARVIS_ACTIONS.md) as the authoritative prepare/confirm/cancel/status contract. Desktop-specific enrollment, audio, Realtime WebSocket and voice confirmation remain future work. Endpoint proposals below must be adapted to this shared protocol.
+
 **Status:** this is an implementation guide, not an installed feature. The Python
 program, new desktop endpoints, and voice-save flow described below still need to
 be built. New file names, API names, and CLI commands are proposed contracts.
@@ -379,68 +381,38 @@ the generation. Stop detection must work during connection, tool work, and speec
 **Checkpoint:** stop Jarvis while it is answering, then wake it again. No old
 reply or proposal appears in the new conversation.
 
-## 11. Add expense proposals and atomic confirmed saves
+## 11. Use the shared action confirmation backend
 
-Do this before enabling spoken saving. The current `createTransaction` allocates
-a new document on each call: retrying it after a lost response could duplicate an
-expense. The proposed voice path needs durable server-side proposals and an
-idempotent commit.
+The backend foundation is implemented. Use the contracts and lifecycle in
+[Jarvis confirmed actions](JARVIS_ACTIONS.md), rather than adding separate expense
+confirmation endpoints. The four callables are `jarvisPrepareAction`,
+`jarvisConfirmAction`, `jarvisCancelAction` and `jarvisActionStatus`.
 
-Add these proposed callables:
+Preparation takes a UUID session ID, a UUID idempotency key, the authorized
+household ID and a typed action. Expense payloads require integer minor units,
+actual account/category IDs, currency and an ISO timestamp. Do not send payer,
+actor, source or write-authority fields; the backend resolves the account owner.
+Use the shared money conventions when converting speech amounts. A date-only
+utterance still needs an explicit household-time-zone conversion to the confirmed
+ISO instant in the future client integration; never silently use the Mac's date
+or time zone. Ask for missing account/category choices.
 
-| Callable               | Input                                            | Result                                                        |
-| ---------------------- | ------------------------------------------------ | ------------------------------------------------------------- |
-| `jarvisPrepareExpense` | Household ID, client request ID, validated draft | Proposal ID, expiry, canonical readback fields                |
-| `jarvisConfirmExpense` | Household ID, proposal ID                        | Saved transaction ID; repeat calls return the same ID         |
-| `jarvisCancelExpense`  | Household ID, proposal ID                        | Cancelled, or already committed with its transaction ID       |
-| `jarvisExpenseStatus`  | Household ID, proposal ID                        | Pending, cancelled, expired, or committed with transaction ID |
+Read back the returned canonical proposal. Confirmation accepts only its proposal
+ID, household ID and session ID. The backend validates the two-minute deadline,
+caller, membership, relations and mutable preview details, then atomically commits
+the existing financial/task mutation and receipt. Identical retries return the
+original result; cancelled, expired or stale proposals cannot execute. Never call
+ordinary createTransaction to recover from a confirmation network failure.
 
-Store proposals in a backend-only collection such as `privateJarvisExpenseProposals`.
-Add an explicit client-deny Firestore rule, inspect existing catch-all rules, and
-test that normal clients cannot read/write proposals. Bind each proposal to the
-requesting UID, household, and client request ID. Make preparation retries return
-the same proposal for the same actor/request; reject the same request ID with
-different content.
+The server-owned `privateJarvisActions` and `privateJarvisActionLimits` collections
+are denied to clients. Keep receipts for idempotency; do not configure TTL deletion
+on expiresAt. A stop command must cancel pending work, then reconcile status if a
+confirmation was already in flight. Cancellation cannot undo a committed expense.
 
-During preparation, validate amount, currency, account, category, and date. Derive
-the payer from the selected account's stored owner. Do not assume it is the
-speaker: existing transactions require `ownerUserId` to match account ownership.
-Ask for missing or ambiguous account/category choices instead of guessing. Begin
-with the default currency, matching current Jarvis draft restrictions.
-
-Use the shared `parseMoneyToMinor` helper on the server: €25 becomes `2500`, never
-a floating-point calculation. A draft has a `YYYY-MM-DD` date, while transaction
-input needs an ISO datetime. Convert the confirmed date to local noon in the
-household's IANA time zone, then to UTC; preserve the confirmed calendar day and
-test daylight-saving boundaries. The current browser form uses device-local noon,
-so extract a server helper rather than importing a browser module.
-
-Read back the server's canonical fields: amount, currency, expense description,
-account and payer, category, and full date. Give the proposal a short expiry,
-such as two minutes. An edit creates a new preview and invalidates the old one.
-
-For commit, extract an internal transaction-creation helper from
-`transactions.ts` that accepts a trusted actor and participates in the same
-Firestore transaction as proposal consumption. Reuse financial validation,
-balance effects, analytics, search fields, and audit writing. Do not call a
-separate create callable and mark the proposal committed afterward.
-
-The atomic commit must:
-
-1. Read the proposal and check actor/household binding.
-2. Return the existing transaction ID if it was already committed by this actor.
-3. Otherwise require an unexpired, uncancelled pending proposal.
-4. Recheck membership and financial relationships before the write.
-5. Create exactly one transaction, apply its financial effects and audit writes,
-   and mark the proposal committed in the same Firestore transaction.
-
-Concurrent cancellation and confirmation must resolve to one consistent result.
-If stop arrives after a save request was sent, it cannot undo a committed expense.
-Reconcile status and show the result even if voice has returned to sleep.
-
-**Checkpoint:** two confirmation requests, a concurrent retry, or a lost-response
-retry yield one expense and one balance change. Expired/cancelled proposals and
-cross-user access are rejected.
+**Backend checkpoint implemented:** emulator tests cover duplicate/concurrent
+confirmation, cancellation races, retries, expiry, authorization, task recurrence,
+staleness, balances, analytics and audits. Desktop voice integration and physical
+microphone acceptance remain unimplemented.
 
 ## 12. Add the spoken confirmation controller
 
@@ -452,7 +424,7 @@ separate from confirmation; a general “yes” elsewhere must not save anything
 
 If the readback is interrupted, require a fresh full readback before accepting
 confirmation. Deduplicate transcript/item IDs, allow one save at a time, and
-never expose `jarvisConfirmExpense` as a freely selectable AI tool. The model can
+never expose `jarvisConfirmAction` as a freely selectable AI tool. The model can
 propose; the local confirmation controller invokes the write after the user's
 explicit confirmation.
 
@@ -533,7 +505,7 @@ resource use on your Mac. Mocked tests cannot establish acoustic reliability.
 
 ## 14. Deploy and arrange startup
 
-After implementation and the checkpoints pass, use production Firebase settings
+After implementation, explicit deployment authorization and the checkpoints pass, use production Firebase settings
 in the companion and keep `JARVIS_USE_EMULATORS=false`. Complete desktop App Check
 support when enforcement is enabled.
 
@@ -548,7 +520,7 @@ deployment command is only valid after those new exports exist:**
 
 ```bash
 npm run build
-firebase deploy --project <YOUR_PROJECT_ID> --only functions:jarvisChat,functions:jarvisDesktopContext,functions:jarvisCreateDesktopSession,functions:jarvisPrepareExpense,functions:jarvisConfirmExpense,functions:jarvisCancelExpense,functions:jarvisExpenseStatus,firestore:rules
+firebase deploy --project <YOUR_PROJECT_ID> --only functions:jarvisChat,functions:jarvisDesktopContext,functions:jarvisCreateDesktopSession,functions:jarvisPrepareAction,functions:jarvisConfirmAction,functions:jarvisCancelAction,functions:jarvisActionStatus,firestore:rules
 ```
 
 Include custom App Check enrollment/token-exchange functions in deployment if
