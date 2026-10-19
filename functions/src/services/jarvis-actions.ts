@@ -106,7 +106,10 @@ async function context(transaction: Transaction, householdId: string, actor: Act
   ])
   if (!member.exists) throw new HttpsError('permission-denied', 'Household access denied.')
   if (!household.exists) throw new HttpsError('not-found', 'Household not found.')
-  return { timeZone: String(household.get('timeZone')) }
+  return {
+    timeZone: String(household.get('timeZone')),
+    reportingCurrency: String(household.get('defaultCurrency')),
+  }
 }
 
 interface ActionPlan {
@@ -125,10 +128,15 @@ async function planAction(
   action: JarvisAction,
   proposalId: string,
   timeZone: string,
+  reportingCurrency: string,
 ): Promise<ActionPlan> {
   const entityId = `jarvis_${proposalId}`
   if (action.type === 'CREATE_EXPENSE') {
     const payload = action.payload
+    // Accounts, the existing form and Jarvis drafts use the household reporting
+    // currency. Do not introduce mixed-currency aggregation through this new API.
+    if (payload.currency !== reportingCurrency)
+      throw new HttpsError('failed-precondition', 'Use the household reporting currency.')
     const [account, category, existing] = await Promise.all([
       transaction.get(db.doc(`households/${householdId}/accounts/${payload.accountId}`)),
       transaction.get(db.doc(`households/${householdId}/categories/${payload.categoryId}`)),
@@ -161,7 +169,14 @@ async function planAction(
     }).format(new Date(payload.transactionDate))
     return {
       summary: `Create expense ${formatMoney(payload.amountMinor, payload.currency)}: ${payload.description}; account ${accountName}; category ${categoryName}; date ${localDate} (${timeZone}).`,
-      payloadFingerprint: fingerprint({ action, ownerUserId, accountName, categoryName, timeZone }),
+      payloadFingerprint: fingerprint({
+        action,
+        ownerUserId,
+        accountName,
+        categoryName,
+        timeZone,
+        reportingCurrency,
+      }),
       result: { entityId },
       commit: plan.commit,
     }
@@ -249,7 +264,7 @@ export const jarvisPrepareAction = secureCallable(
     const ref = db.doc(`privateJarvisActions/${proposalId}`)
     const requestFingerprint = fingerprint(input)
     return db.runTransaction(async (transaction) => {
-      const { timeZone } = await context(transaction, input.householdId, actor)
+      const { timeZone, reportingCurrency } = await context(transaction, input.householdId, actor)
       const existing = await transaction.get(ref)
       if (existing.exists) {
         const proposal = existing.data() as StoredProposal
@@ -273,6 +288,7 @@ export const jarvisPrepareAction = secureCallable(
         action,
         proposalId,
         timeZone,
+        reportingCurrency,
       )
       const proposal: StoredProposal = {
         ...input,
@@ -320,7 +336,7 @@ async function resolveAction(
       proposal.sessionId !== input.sessionId
     )
       throw new HttpsError('permission-denied', 'Proposal access denied.')
-    const { timeZone } = await context(transaction, proposal.householdId, actor)
+    const { timeZone, reportingCurrency } = await context(transaction, proposal.householdId, actor)
     proposal = expire(transaction, ref, proposal)
     if (proposal.status !== 'PENDING' || operation === 'STATUS')
       return view(input.proposalId, proposal)
@@ -334,6 +350,7 @@ async function resolveAction(
         proposal.action,
         input.proposalId,
         timeZone,
+        reportingCurrency,
       )
       if (plan.payloadFingerprint !== proposal.payloadFingerprint)
         throw new HttpsError(

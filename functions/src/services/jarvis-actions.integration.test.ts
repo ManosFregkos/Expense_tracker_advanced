@@ -360,6 +360,18 @@ suite('Jarvis action protocol against Firestore emulator', { timeout: 30_000 }, 
     expect((await domainSnapshot()).transactions).toHaveLength(0)
   })
 
+  it('preserves the reporting-currency restriction even if an account has another currency', async () => {
+    const proposal = await prepare()
+    await db.doc(`${base}/accounts/alpha`).update({ currency: 'USD' })
+    await expect(
+      prepare({ ...expense, payload: { ...expense.payload, currency: 'USD' } }),
+    ).rejects.toMatchObject({ code: 'failed-precondition' })
+    await db.doc(`${base}/accounts/alpha`).update({ currency: 'EUR' })
+    await db.doc(base).update({ defaultCurrency: 'USD' })
+    await expect(confirm(proposal)).rejects.toMatchObject({ code: 'failed-precondition' })
+    expect((await domainSnapshot()).transactions).toHaveLength(0)
+  })
+
   it('requires a fresh preview when mutable displayed details change', async () => {
     const proposal = await prepare()
     await db.doc(`${base}/accounts/alpha`).update({ name: 'Renamed account' })
