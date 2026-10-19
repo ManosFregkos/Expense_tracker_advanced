@@ -21,6 +21,7 @@ import {
   updateTaskListSchema,
   updateTaskSchema,
   type CreateTaskInput,
+  type UpdateTaskInput,
   type Household,
   type HouseholdTask,
   type TaskActivityAction,
@@ -265,237 +266,281 @@ export const initializeTaskModule = secureCallable(
   },
 )
 
-export const createTask = secureCallable(createTaskSchema, async (input, actor) => {
+export async function planTaskCreation(
+  transaction: Transaction,
+  input: CreateTaskInput,
+  actor: Actor,
+) {
   const ref = input.clientRequestId
     ? db.doc(`households/${input.householdId}/tasks/${input.clientRequestId}`)
     : db.collection(`households/${input.householdId}/tasks`).doc()
-  await db.runTransaction(async (transaction) => {
-    const [household, settings, existing] = await Promise.all([
-      readHousehold(transaction, input.householdId),
-      transaction.get(
-        db.doc(
-          `users/${input.assigneeUserId ?? actor.uid}/taskNotificationSettings/${input.householdId}`,
-        ),
+  const [household, settings, existing] = await Promise.all([
+    readHousehold(transaction, input.householdId),
+    transaction.get(
+      db.doc(
+        `users/${input.assigneeUserId ?? actor.uid}/taskNotificationSettings/${input.householdId}`,
       ),
-      transaction.get(ref),
-      requireActorMember(transaction, input.householdId, actor),
-    ])
-    if (existing.exists) return
-    const names = await validateRelations(transaction, input.householdId, input)
-    const task = makeTask(input, ref.id, actor, household, names)
-    transaction.set(ref, task)
-    taskActivity(transaction, actor, input.householdId, ref.id, 'CREATED')
-    assignmentNotification(
-      transaction,
-      task,
-      actor,
-      settings.get('assignmentNotifications') === true,
-    )
-    writeAudit(db, transaction, {
-      householdId: input.householdId,
-      userId: actor.uid,
-      action: 'TASK_CREATED',
-      entityType: 'TASK',
-      entityId: ref.id,
-      after: taskAuditSnapshot(task),
-    })
-    if (task.recurrence)
-      writeAudit(db, transaction, {
-        householdId: input.householdId,
-        userId: actor.uid,
-        action: 'TASK_RECURRENCE_CREATED',
-        entityType: 'TASK',
-        entityId: ref.id,
-        after: { frequency: task.recurrence.frequency, interval: task.recurrence.interval },
-      })
-  })
-  return { taskId: ref.id }
-})
-
-export const updateTask = secureCallable(updateTaskSchema, async (input, actor) => {
-  const ref = taskRef(input.householdId, input.taskId)
-  await db.runTransaction(async (transaction) => {
-    const [snapshot, household, settings] = await Promise.all([
-      transaction.get(ref),
-      readHousehold(transaction, input.householdId),
-      transaction.get(
-        db.doc(
-          `users/${input.task.assigneeUserId ?? actor.uid}/taskNotificationSettings/${input.householdId}`,
-        ),
-      ),
-      requireActorMember(transaction, input.householdId, actor),
-    ])
-    if (!snapshot.exists) throw new HttpsError('not-found', 'Task not found.')
-    const before = snapshot.data() as HouseholdTask
-    if (before.isDeleted) throw new HttpsError('not-found', 'Task not found.')
-    if (before.status === 'DONE' || before.status === 'CANCELLED')
-      throw new HttpsError('failed-precondition', 'Reopen this task before editing it.')
-    if (before.version !== input.expectedVersion)
-      throw new HttpsError(
-        'aborted',
-        'This task changed in another session. Refresh and try again.',
-      )
-    if (input.task.status === 'DONE' || input.task.status === 'CANCELLED')
-      throw new HttpsError(
-        'failed-precondition',
-        'Use the complete or cancel action to close a task.',
-      )
-    const names = await validateRelations(transaction, input.householdId, input.task, before.listId)
-    const replacement = makeTask(
-      { ...input.task, householdId: input.householdId },
-      before.id,
-      actor,
-      household,
-      names,
-    )
-    const after: HouseholdTask = {
-      ...replacement,
-      createdAt: before.createdAt,
-      createdBy: before.createdBy,
-      version: before.version + 1,
-      seriesId: before.seriesId ?? replacement.seriesId ?? null,
-      occurrenceNumber: before.occurrenceNumber ?? replacement.occurrenceNumber ?? null,
-      previousOccurrenceId: before.previousOccurrenceId ?? null,
-      nextOccurrenceId: before.nextOccurrenceId ?? null,
-      ...(before.completedAt ? { completedAt: before.completedAt } : {}),
-      ...(before.completedBy ? { completedBy: before.completedBy } : {}),
-      ...(before.cancelledAt ? { cancelledAt: before.cancelledAt } : {}),
-      ...(before.cancelledBy ? { cancelledBy: before.cancelledBy } : {}),
-    }
-    transaction.set(ref, after)
-    taskActivity(transaction, actor, input.householdId, ref.id, 'UPDATED')
-    if (before.assigneeUserId !== after.assigneeUserId) {
-      taskActivity(transaction, actor, input.householdId, ref.id, 'ASSIGNED', {
-        assigneeUserId: after.assigneeUserId ?? null,
-      })
+    ),
+    transaction.get(ref),
+    requireActorMember(transaction, input.householdId, actor),
+  ])
+  if (existing.exists) return { taskId: ref.id, commit: () => undefined }
+  const names = await validateRelations(transaction, input.householdId, input)
+  const task = makeTask(input, ref.id, actor, household, names)
+  return {
+    taskId: ref.id,
+    commit: () => {
+      transaction.set(ref, task)
+      taskActivity(transaction, actor, input.householdId, ref.id, 'CREATED')
       assignmentNotification(
         transaction,
-        after,
+        task,
         actor,
         settings.get('assignmentNotifications') === true,
       )
-    }
-    if (before.dueDate !== after.dueDate || before.dueTime !== after.dueTime)
-      taskActivity(transaction, actor, input.householdId, ref.id, 'DUE_DATE_CHANGED', {
-        dueDate: after.dueDate ?? null,
-        dueTime: after.dueTime ?? null,
+      writeAudit(db, transaction, {
+        householdId: input.householdId,
+        userId: actor.uid,
+        action: 'TASK_CREATED',
+        entityType: 'TASK',
+        entityId: ref.id,
+        after: taskAuditSnapshot(task),
       })
-    writeAudit(db, transaction, {
-      householdId: input.householdId,
-      userId: actor.uid,
-      action: before.assigneeUserId !== after.assigneeUserId ? 'TASK_ASSIGNED' : 'TASK_UPDATED',
-      entityType: 'TASK',
-      entityId: ref.id,
-      before: taskAuditSnapshot(before),
-      after: taskAuditSnapshot(after),
-    })
+      if (task.recurrence)
+        writeAudit(db, transaction, {
+          householdId: input.householdId,
+          userId: actor.uid,
+          action: 'TASK_RECURRENCE_CREATED',
+          entityType: 'TASK',
+          entityId: ref.id,
+          after: { frequency: task.recurrence.frequency, interval: task.recurrence.interval },
+        })
+    },
+  }
+}
+
+export const createTask = secureCallable(createTaskSchema, async (input, actor) => {
+  return db.runTransaction(async (transaction) => {
+    const plan = await planTaskCreation(transaction, input, actor)
+    plan.commit()
+    return { taskId: plan.taskId }
   })
-  return { taskId: ref.id }
 })
 
-export const completeTask = secureCallable(completeTaskSchema, async (input, actor) => {
+export async function planTaskUpdate(
+  transaction: Transaction,
+  input: UpdateTaskInput,
+  actor: Actor,
+) {
+  const ref = taskRef(input.householdId, input.taskId)
+  const [snapshot, household, settings] = await Promise.all([
+    transaction.get(ref),
+    readHousehold(transaction, input.householdId),
+    transaction.get(
+      db.doc(
+        `users/${input.task.assigneeUserId ?? actor.uid}/taskNotificationSettings/${input.householdId}`,
+      ),
+    ),
+    requireActorMember(transaction, input.householdId, actor),
+  ])
+  if (!snapshot.exists) throw new HttpsError('not-found', 'Task not found.')
+  const before = snapshot.data() as HouseholdTask
+  if (before.isDeleted) throw new HttpsError('not-found', 'Task not found.')
+  if (before.status === 'DONE' || before.status === 'CANCELLED')
+    throw new HttpsError('failed-precondition', 'Reopen this task before editing it.')
+  if (before.version !== input.expectedVersion)
+    throw new HttpsError('aborted', 'This task changed in another session. Refresh and try again.')
+  if (input.task.status === 'DONE' || input.task.status === 'CANCELLED')
+    throw new HttpsError(
+      'failed-precondition',
+      'Use the complete or cancel action to close a task.',
+    )
+  const names = await validateRelations(transaction, input.householdId, input.task, before.listId)
+  const replacement = makeTask(
+    { ...input.task, householdId: input.householdId },
+    before.id,
+    actor,
+    household,
+    names,
+  )
+  const after: HouseholdTask = {
+    ...replacement,
+    createdAt: before.createdAt,
+    createdBy: before.createdBy,
+    version: before.version + 1,
+    seriesId: before.seriesId ?? replacement.seriesId ?? null,
+    occurrenceNumber: before.occurrenceNumber ?? replacement.occurrenceNumber ?? null,
+    previousOccurrenceId: before.previousOccurrenceId ?? null,
+    nextOccurrenceId: before.nextOccurrenceId ?? null,
+    ...(before.completedAt ? { completedAt: before.completedAt } : {}),
+    ...(before.completedBy ? { completedBy: before.completedBy } : {}),
+    ...(before.cancelledAt ? { cancelledAt: before.cancelledAt } : {}),
+    ...(before.cancelledBy ? { cancelledBy: before.cancelledBy } : {}),
+  }
+  return {
+    taskId: ref.id,
+    commit: () => {
+      transaction.set(ref, after)
+      taskActivity(transaction, actor, input.householdId, ref.id, 'UPDATED')
+      if (before.assigneeUserId !== after.assigneeUserId) {
+        taskActivity(transaction, actor, input.householdId, ref.id, 'ASSIGNED', {
+          assigneeUserId: after.assigneeUserId ?? null,
+        })
+        assignmentNotification(
+          transaction,
+          after,
+          actor,
+          settings.get('assignmentNotifications') === true,
+        )
+      }
+      if (before.dueDate !== after.dueDate || before.dueTime !== after.dueTime)
+        taskActivity(transaction, actor, input.householdId, ref.id, 'DUE_DATE_CHANGED', {
+          dueDate: after.dueDate ?? null,
+          dueTime: after.dueTime ?? null,
+        })
+      writeAudit(db, transaction, {
+        householdId: input.householdId,
+        userId: actor.uid,
+        action: before.assigneeUserId !== after.assigneeUserId ? 'TASK_ASSIGNED' : 'TASK_UPDATED',
+        entityType: 'TASK',
+        entityId: ref.id,
+        before: taskAuditSnapshot(before),
+        after: taskAuditSnapshot(after),
+      })
+    },
+  }
+}
+
+export const updateTask = secureCallable(updateTaskSchema, async (input, actor) => {
+  return db.runTransaction(async (transaction) => {
+    const plan = await planTaskUpdate(transaction, input, actor)
+    plan.commit()
+    return { taskId: plan.taskId }
+  })
+})
+
+export async function planTaskCompletion(
+  transaction: Transaction,
+  input: { householdId: string; taskId: string; expectedVersion?: number | undefined },
+  actor: Actor,
+) {
   const ref = taskRef(input.householdId, input.taskId)
   let nextTaskId: string | null = null
-  await db.runTransaction(async (transaction) => {
-    const [snapshot, household] = await Promise.all([
-      transaction.get(ref),
-      readHousehold(transaction, input.householdId),
-      requireActorMember(transaction, input.householdId, actor),
-    ])
-    if (!snapshot.exists) throw new HttpsError('not-found', 'Task not found.')
-    const before = snapshot.data() as HouseholdTask
-    if (before.isDeleted) throw new HttpsError('not-found', 'Task not found.')
-    if (before.status === 'CANCELLED')
-      throw new HttpsError('failed-precondition', 'Reopen this task before completing it.')
-    if (before.status === 'DONE') {
-      nextTaskId = before.nextOccurrenceId ?? null
-      return
-    }
-    if (input.expectedVersion !== undefined && before.version !== input.expectedVersion)
-      throw new HttpsError(
-        'aborted',
-        'This task changed. Ask Jarvis for a fresh preview before confirming.',
-      )
-    const nextNumber = (before.occurrenceNumber ?? 1) + 1
-    const nextDate =
-      before.recurrence && before.dueDate
-        ? nextTaskRecurrenceDate(before.dueDate, before.recurrence, nextNumber)
-        : null
-    const seriesId = before.seriesId ?? before.id
-    const nextRef = nextDate
-      ? taskRef(input.householdId, `${seriesId}__occurrence_${nextNumber}`)
+  const [snapshot, household] = await Promise.all([
+    transaction.get(ref),
+    readHousehold(transaction, input.householdId),
+    requireActorMember(transaction, input.householdId, actor),
+  ])
+  if (!snapshot.exists) throw new HttpsError('not-found', 'Task not found.')
+  const before = snapshot.data() as HouseholdTask
+  if (before.isDeleted) throw new HttpsError('not-found', 'Task not found.')
+  if (before.status === 'CANCELLED')
+    throw new HttpsError('failed-precondition', 'Reopen this task before completing it.')
+  if (before.status === 'DONE') {
+    nextTaskId = before.nextOccurrenceId ?? null
+    return { taskId: ref.id, nextTaskId, commit: () => undefined }
+  }
+  if (input.expectedVersion !== undefined && before.version !== input.expectedVersion)
+    throw new HttpsError(
+      'aborted',
+      'This task changed. Ask Jarvis for a fresh preview before confirming.',
+    )
+  const nextNumber = (before.occurrenceNumber ?? 1) + 1
+  const nextDate =
+    before.recurrence && before.dueDate
+      ? nextTaskRecurrenceDate(before.dueDate, before.recurrence, nextNumber)
       : null
-    const [nextSnapshot, currentAssignee] = await Promise.all([
-      nextRef ? transaction.get(nextRef) : null,
-      before.assigneeUserId
-        ? transaction.get(
-            db.doc(`households/${input.householdId}/members/${before.assigneeUserId}`),
-          )
-        : null,
-    ])
-    const now = Timestamp.now()
-    nextTaskId = nextRef?.id ?? null
-    const after: HouseholdTask = {
-      ...before,
-      status: 'DONE',
-      completedAt: now,
-      completedBy: actor.uid,
-      cancelledAt: null,
-      cancelledBy: null,
-      reminderState: before.reminderAt ? 'CANCELLED' : (before.reminderState ?? null),
-      overdueReminderState: before.dueAt ? 'CANCELLED' : (before.overdueReminderState ?? null),
-      nextOccurrenceId: nextTaskId,
-      version: before.version + 1,
-      updatedAt: now,
-    }
-    transaction.set(ref, after)
-    if (nextRef && (!nextSnapshot?.exists || nextSnapshot.get('isDeleted') === true) && nextDate) {
-      const nextDue = Timestamp.fromDate(taskDueAt(nextDate, before.dueTime, household.timeZone))
-      const nextReminder = taskReminderAt(nextDue.toDate(), before.reminderOffsetMinutes)
-      const nextTask: HouseholdTask = {
-        ...before,
-        id: nextRef.id,
-        status: 'TODO',
-        assigneeUserId: currentAssignee?.exists ? (before.assigneeUserId ?? null) : null,
-        assigneeDisplayName: currentAssignee?.exists ? (before.assigneeDisplayName ?? null) : null,
-        dueDate: nextDate,
-        dueAt: nextDue,
-        reminderAt: nextReminder ? Timestamp.fromDate(nextReminder) : null,
-        reminderState: nextReminder ? 'PENDING' : null,
-        overdueReminderState: 'PENDING',
-        version: 1,
-        seriesId,
-        occurrenceNumber: nextNumber,
-        previousOccurrenceId: before.id,
-        nextOccurrenceId: null,
-        createdAt: now,
-        updatedAt: now,
-        completedAt: null,
-        completedBy: null,
-        cancelledAt: null,
-        cancelledBy: null,
-        isDeleted: false,
-        deletedAt: null,
-        deletedBy: null,
+  const seriesId = before.seriesId ?? before.id
+  const nextRef = nextDate
+    ? taskRef(input.householdId, `${seriesId}__occurrence_${nextNumber}`)
+    : null
+  const [nextSnapshot, currentAssignee] = await Promise.all([
+    nextRef ? transaction.get(nextRef) : null,
+    before.assigneeUserId
+      ? transaction.get(db.doc(`households/${input.householdId}/members/${before.assigneeUserId}`))
+      : null,
+  ])
+  const now = Timestamp.now()
+  nextTaskId = nextRef?.id ?? null
+  const after: HouseholdTask = {
+    ...before,
+    status: 'DONE',
+    completedAt: now,
+    completedBy: actor.uid,
+    cancelledAt: null,
+    cancelledBy: null,
+    reminderState: before.reminderAt ? 'CANCELLED' : (before.reminderState ?? null),
+    overdueReminderState: before.dueAt ? 'CANCELLED' : (before.overdueReminderState ?? null),
+    nextOccurrenceId: nextTaskId,
+    version: before.version + 1,
+    updatedAt: now,
+  }
+  return {
+    taskId: ref.id,
+    nextTaskId,
+    commit: () => {
+      transaction.set(ref, after)
+      if (
+        nextRef &&
+        (!nextSnapshot?.exists || nextSnapshot.get('isDeleted') === true) &&
+        nextDate
+      ) {
+        const nextDue = Timestamp.fromDate(taskDueAt(nextDate, before.dueTime, household.timeZone))
+        const nextReminder = taskReminderAt(nextDue.toDate(), before.reminderOffsetMinutes)
+        const nextTask: HouseholdTask = {
+          ...before,
+          id: nextRef.id,
+          status: 'TODO',
+          assigneeUserId: currentAssignee?.exists ? (before.assigneeUserId ?? null) : null,
+          assigneeDisplayName: currentAssignee?.exists
+            ? (before.assigneeDisplayName ?? null)
+            : null,
+          dueDate: nextDate,
+          dueAt: nextDue,
+          reminderAt: nextReminder ? Timestamp.fromDate(nextReminder) : null,
+          reminderState: nextReminder ? 'PENDING' : null,
+          overdueReminderState: 'PENDING',
+          version: 1,
+          seriesId,
+          occurrenceNumber: nextNumber,
+          previousOccurrenceId: before.id,
+          nextOccurrenceId: null,
+          createdAt: now,
+          updatedAt: now,
+          completedAt: null,
+          completedBy: null,
+          cancelledAt: null,
+          cancelledBy: null,
+          isDeleted: false,
+          deletedAt: null,
+          deletedBy: null,
+        }
+        transaction.set(nextRef, nextTask)
+        taskActivity(transaction, actor, input.householdId, nextRef.id, 'CREATED', {
+          recurring: true,
+          previousOccurrenceId: before.id,
+        })
       }
-      transaction.set(nextRef, nextTask)
-      taskActivity(transaction, actor, input.householdId, nextRef.id, 'CREATED', {
-        recurring: true,
-        previousOccurrenceId: before.id,
+      taskActivity(transaction, actor, input.householdId, ref.id, 'COMPLETED')
+      writeAudit(db, transaction, {
+        householdId: input.householdId,
+        userId: actor.uid,
+        action: 'TASK_COMPLETED',
+        entityType: 'TASK',
+        entityId: ref.id,
+        before: taskAuditSnapshot(before),
+        after: taskAuditSnapshot(after),
       })
-    }
-    taskActivity(transaction, actor, input.householdId, ref.id, 'COMPLETED')
-    writeAudit(db, transaction, {
-      householdId: input.householdId,
-      userId: actor.uid,
-      action: 'TASK_COMPLETED',
-      entityType: 'TASK',
-      entityId: ref.id,
-      before: taskAuditSnapshot(before),
-      after: taskAuditSnapshot(after),
-    })
+    },
+  }
+}
+
+export const completeTask = secureCallable(completeTaskSchema, async (input, actor) => {
+  return db.runTransaction(async (transaction) => {
+    const plan = await planTaskCompletion(transaction, input, actor)
+    plan.commit()
+    return { taskId: plan.taskId, nextTaskId: plan.nextTaskId }
   })
-  return { taskId: ref.id, nextTaskId }
 })
 
 async function changeTaskState(

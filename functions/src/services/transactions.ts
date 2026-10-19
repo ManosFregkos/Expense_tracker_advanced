@@ -194,12 +194,12 @@ function combineAccountEffects(
   return combined
 }
 
-async function applyFinancialMutation(
+async function planFinancialMutation(
   firestoreTransaction: FirestoreTransaction,
   household: Household,
   before: Transaction | undefined,
   after: Transaction | undefined,
-): Promise<void> {
+): Promise<() => void> {
   const affectedIds = [
     ...new Set([
       ...(before ? involvedAccountIds(before) : []),
@@ -251,63 +251,99 @@ async function applyFinancialMutation(
     analyticsRefs.map((ref) => firestoreTransaction.get(ref)),
   )
 
-  accountSnapshots.forEach((snapshot, index) => {
-    const ref = accountRefs[index]
-    if (!ref || !snapshot.exists)
-      throw new HttpsError('failed-precondition', 'A referenced account no longer exists.')
-    const delta = accountDeltas[ref.id] ?? 0
-    const existingAppBalance = snapshot.get('appCalculatedBalanceMinor') as number | undefined
-    firestoreTransaction.update(ref, {
-      currentBalanceMinor: FieldValue.increment(delta),
-      appCalculatedBalanceMinor:
-        existingAppBalance === undefined
-          ? Number(snapshot.get('currentBalanceMinor') ?? 0) + delta
-          : FieldValue.increment(delta),
-      updatedAt: Timestamp.now(),
+  return () => {
+    accountSnapshots.forEach((snapshot, index) => {
+      const ref = accountRefs[index]
+      if (!ref || !snapshot.exists)
+        throw new HttpsError('failed-precondition', 'A referenced account no longer exists.')
+      const delta = accountDeltas[ref.id] ?? 0
+      const existingAppBalance = snapshot.get('appCalculatedBalanceMinor') as number | undefined
+      firestoreTransaction.update(ref, {
+        currentBalanceMinor: FieldValue.increment(delta),
+        appCalculatedBalanceMinor:
+          existingAppBalance === undefined
+            ? Number(snapshot.get('currentBalanceMinor') ?? 0) + delta
+            : FieldValue.increment(delta),
+        updatedAt: Timestamp.now(),
+      })
     })
-  })
-  analyticsSnapshots.forEach((snapshot, index) => {
-    const ref = analyticsRefs[index]
-    const delta = ref ? monthDeltas.get(ref.id) : undefined
-    if (ref && delta)
-      firestoreTransaction.set(
-        ref,
-        applyDelta(snapshot.data(), ref.id, household.defaultCurrency, delta),
-      )
-  })
+    analyticsSnapshots.forEach((snapshot, index) => {
+      const ref = analyticsRefs[index]
+      const delta = ref ? monthDeltas.get(ref.id) : undefined
+      if (ref && delta)
+        firestoreTransaction.set(
+          ref,
+          applyDelta(snapshot.data(), ref.id, household.defaultCurrency, delta),
+        )
+    })
+  }
+}
+
+async function applyFinancialMutation(
+  transaction: FirestoreTransaction,
+  household: Household,
+  before: Transaction | undefined,
+  after: Transaction | undefined,
+): Promise<void> {
+  const commit = await planFinancialMutation(transaction, household, before, after)
+  commit()
+}
+
+// Read and validate first; callers commit this plan inside the same Firestore transaction.
+// Preparing a Jarvis proposal deliberately never calls commit().
+export async function planTransactionCreation(
+  transaction: FirestoreTransaction,
+  input: TransactionInput,
+  actor: Actor,
+  entityId: string,
+) {
+  const ref = db.doc(`households/${input.householdId}/transactions/${entityId}`)
+  const financialTransaction = inputToTransaction(input, ref.id, actor)
+  const household = await loadHousehold(transaction, input.householdId)
+  await validateTransactionRelations(transaction, financialTransaction)
+  const commitFinancials = await planFinancialMutation(
+    transaction,
+    household,
+    undefined,
+    financialTransaction,
+  )
+  return {
+    transactionId: ref.id,
+    commit: () => {
+      commitFinancials()
+      transaction.set(ref, financialTransaction)
+      writeAudit(db, transaction, {
+        householdId: input.householdId,
+        userId: actor.uid,
+        action: 'CREATE_TRANSACTION',
+        entityType: 'TRANSACTION',
+        entityId: ref.id,
+        after: safeFinancialSnapshot(financialTransaction as unknown as Record<string, unknown>),
+      })
+      if (financialTransaction.type === 'EXPENSE' && financialTransaction.splits?.length)
+        writeAudit(db, transaction, {
+          householdId: input.householdId,
+          userId: actor.uid,
+          action: 'TRANSACTION_SPLIT_CREATED',
+          entityType: 'TRANSACTION',
+          entityId: ref.id,
+          after: {
+            splitCount: financialTransaction.splits.length,
+            amountMinor: financialTransaction.amountMinor,
+          },
+        })
+    },
+  }
 }
 
 export const createTransaction = secureCallable(transactionInputSchema, async (input, actor) => {
   await requireMember(input.householdId, actor.uid)
   const ref = db.collection(`households/${input.householdId}/transactions`).doc()
-  const financialTransaction = inputToTransaction(input, ref.id, actor)
-  await db.runTransaction(async (transaction) => {
-    const household = await loadHousehold(transaction, input.householdId)
-    await validateTransactionRelations(transaction, financialTransaction)
-    await applyFinancialMutation(transaction, household, undefined, financialTransaction)
-    transaction.set(ref, financialTransaction)
-    writeAudit(db, transaction, {
-      householdId: input.householdId,
-      userId: actor.uid,
-      action: 'CREATE_TRANSACTION',
-      entityType: 'TRANSACTION',
-      entityId: ref.id,
-      after: safeFinancialSnapshot(financialTransaction as unknown as Record<string, unknown>),
-    })
-    if (financialTransaction.type === 'EXPENSE' && financialTransaction.splits?.length)
-      writeAudit(db, transaction, {
-        householdId: input.householdId,
-        userId: actor.uid,
-        action: 'TRANSACTION_SPLIT_CREATED',
-        entityType: 'TRANSACTION',
-        entityId: ref.id,
-        after: {
-          splitCount: financialTransaction.splits.length,
-          amountMinor: financialTransaction.amountMinor,
-        },
-      })
+  return db.runTransaction(async (transaction) => {
+    const plan = await planTransactionCreation(transaction, input, actor, ref.id)
+    plan.commit()
+    return { transactionId: plan.transactionId }
   })
-  return { transactionId: ref.id }
 })
 
 export const updateTransaction = secureCallable(updateTransactionSchema, async (input, actor) => {
