@@ -1,7 +1,9 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID, createHash } from 'node:crypto'
+import { execFile } from 'node:child_process'
+import { resolve } from 'node:path'
+import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
-import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import type { JarvisActionProposal } from '@family-expense-tracker/shared'
 
@@ -18,23 +20,34 @@ test('authenticated Jarvis callable protocol commits an expense once and rejects
     { projectId: 'demo-family-expense-tracker' },
     `jarvis-e2e-${randomUUID()}`,
   )
-  const auth = getAuth(app)
   const database = getFirestore(app)
-  const users: string[] = []
+  const users: Array<{ uid: string; token: string }> = []
   let householdId: string | undefined
   try {
     const signIn = async (verified: boolean) => {
       const email = `jarvis-${randomUUID()}@example.test`
       const password = 'TestOnlyPassword123!'
-      const user = await auth.createUser({ email, password, emailVerified: verified })
-      users.push(user.uid)
+      const registration = await request.post(
+        'http://127.0.0.1:9199/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake-api-key',
+        { data: { email, password, returnSecureToken: true } },
+      )
+      expect(registration.ok()).toBe(true)
+      const user = (await registration.json()) as { localId: string; idToken: string }
+      users.push({ uid: user.localId, token: user.idToken })
+      if (verified) {
+        // Native ESM helper avoids Playwright's Node 22 CJS/ESM Auth-loader conflict.
+        await promisify(execFile)(process.execPath, [
+          resolve('tests/e2e/helpers/verify-user.mjs'),
+          email,
+        ])
+      }
       const response = await request.post(
         'http://127.0.0.1:9199/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-api-key',
         { data: { email, password, returnSecureToken: true } },
       )
       expect(response.ok()).toBe(true)
       const { idToken } = (await response.json()) as { idToken: string }
-      return { uid: user.uid, token: idToken }
+      return { uid: user.localId, token: idToken }
     }
     const actor = await signIn(true)
     const stranger = await signIn(true)
@@ -130,16 +143,24 @@ test('authenticated Jarvis callable protocol commits an expense once and rejects
     expect((await database.collection(`${base}/transactions`).get()).size).toBe(1)
   } finally {
     if (householdId) await database.recursiveDelete(database.doc(`households/${householdId}`))
-    for (const uid of users) {
+    for (const { uid, token } of users) {
       const proposals = await database
         .collection('privateJarvisActions')
         .where('uid', '==', uid)
         .get()
       const batch = database.batch()
       proposals.docs.forEach((doc) => batch.delete(doc.ref))
+      batch.delete(
+        database.doc(
+          `privateJarvisActionLimits/${createHash('sha256').update(JSON.stringify(uid)).digest('hex')}`,
+        ),
+      )
       await batch.commit()
       await database.recursiveDelete(database.doc(`users/${uid}`))
-      await auth.deleteUser(uid)
+      await request.post(
+        'http://127.0.0.1:9199/identitytoolkit.googleapis.com/v1/accounts:delete?key=fake-api-key',
+        { data: { idToken: token } },
+      )
     }
     await deleteApp(app)
   }
