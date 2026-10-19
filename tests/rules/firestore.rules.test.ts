@@ -6,7 +6,17 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  where,
+} from 'firebase/firestore'
 
 const describeWithEmulator = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip
 
@@ -190,6 +200,30 @@ describeWithEmulator('Firestore household isolation', () => {
     await assertSucceeds(getDoc(doc(alice, 'households/h1/taskActivity/activity1')))
     await assertFails(getDoc(doc(alice, 'households/h2/tasks/task2')))
     await assertFails(getDoc(doc(alice, 'households/h1/tasks/deleted-task')))
+  })
+
+  it('denies direct proposal and quota reads, queries, creates, updates and deletes', async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'privateJarvisActions/proposal'), {
+        uid: 'alice',
+        status: 'PENDING',
+      })
+      await setDoc(doc(context.firestore(), 'privateJarvisActionLimits/alice'), { count: 1 })
+    })
+    for (const client of [
+      environment.authenticatedContext('alice').firestore(),
+      environment.authenticatedContext('bob').firestore(),
+      environment.unauthenticatedContext().firestore(),
+    ]) {
+      for (const name of ['privateJarvisActions', 'privateJarvisActionLimits']) {
+        const ref = doc(client, `${name}/${name === 'privateJarvisActions' ? 'proposal' : 'alice'}`)
+        await assertFails(getDoc(ref))
+        await assertFails(getDocs(collection(client, name)))
+        await assertFails(setDoc(doc(client, `${name}/new`), { uid: 'alice' }))
+        await assertFails(updateDoc(ref, { status: 'COMMITTED' }))
+        await assertFails(deleteDoc(ref))
+      }
+    }
   })
 
   it('denies all direct task-domain writes', async () => {

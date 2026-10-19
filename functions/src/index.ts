@@ -49,3 +49,10 @@ export {
   jarvisSpeak,
   jarvisStartRealtime,
 } from './services/jarvis.js'
+
+export {
+  jarvisPrepareAction,
+  jarvisConfirmAction,
+  jarvisCancelAction,
+  jarvisActionStatus,
+} from './services/jarvis-actions.js'
