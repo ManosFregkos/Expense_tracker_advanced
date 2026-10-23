@@ -14,6 +14,11 @@ const DashboardPage = lazy(() =>
     default: module.DashboardPage,
   })),
 )
+const CategoryExpensesPage = lazy(() =>
+  import('./features/analytics/CategoryExpensesPage').then((module) => ({
+    default: module.CategoryExpensesPage,
+  })),
+)
 const NotesPage = lazy(() =>
   import('./features/notes/NotesPage').then((module) => ({ default: module.NotesPage })),
 )
@@ -135,6 +140,7 @@ export default function App() {
               <Route path="/transactions/:transactionId" element={<TransactionDetailPage />} />
               <Route path="/accounts" element={<AccountsPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/expense-categories" element={<CategoryExpensesPage />} />
               <Route path="/categories" element={<CategoriesPage />} />
               <Route path="/members" element={<MembersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
