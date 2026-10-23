@@ -13,6 +13,7 @@ import {
 import { useDisclosure } from '@mantine/hooks'
 import {
   IconChartBar,
+  IconChartPie,
   IconCreditCard,
   IconHome,
   IconLogout,
@@ -39,6 +40,7 @@ const nav = [
   ['/transactions', 'Transactions', IconReceipt],
   ['/accounts', 'Accounts', IconCreditCard],
   ['/analytics', 'Analytics', IconChartBar],
+  ['/expense-categories', 'Expense categories', IconChartPie],
   ['/members', 'Members', IconUsers],
   ['/tasks', 'Tasks', IconChecklist],
   ['/kids', 'Kids', IconMoodKid],

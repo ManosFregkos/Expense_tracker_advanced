@@ -1,4 +1,5 @@
 import {
+  Anchor,
   Badge,
   Card,
   Grid,
@@ -12,7 +13,7 @@ import {
   Text,
   Title,
 } from '@mantine/core'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Area,
   AreaChart,
@@ -165,7 +166,16 @@ export function DashboardPage() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, lg: 4 }}>
           <Paper withBorder p="lg" h="100%">
-            <Title order={3}>Expenses by category</Title>
+            <Group justify="space-between">
+              <Title order={3}>Expenses by category</Title>
+              <Anchor
+                component={Link}
+                to={`/expense-categories?month=${selectedMonth.value}`}
+                size="sm"
+              >
+                All categories
+              </Anchor>
+            </Group>
             <div className="chart-wrap">
               {categoryData.length ? (
                 <ResponsiveContainer>
