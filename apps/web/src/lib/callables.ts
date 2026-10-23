@@ -25,12 +25,6 @@ import type {
   UpdateKidsSettingsInput,
   SaveKidsCustomContentInput,
   ArchiveKidsCustomContentInput,
-  JarvisChatInput,
-  JarvisReply,
-  JarvisAudioInput,
-  JarvisSpeechInput,
-  JarvisRealtimeInput,
-  JarvisRealtimeSession,
 } from '@family-expense-tracker/shared'
 import { functions } from './firebase'
 
@@ -40,10 +34,6 @@ async function call<TInput, TOutput>(name: string, input: TInput): Promise<TOutp
 }
 
 export const api = {
-  jarvisStartRealtime: (input: JarvisRealtimeInput) => call<typeof input, JarvisRealtimeSession>('jarvisStartRealtime', input),
-  jarvisChat: (input: JarvisChatInput) => call<typeof input, JarvisReply>('jarvisChat', input),
-  jarvisTranscribe: (input: JarvisAudioInput) => call<typeof input, { text: string }>('jarvisTranscribe', input),
-  jarvisSpeak: (input: JarvisSpeechInput) => call<typeof input, { audio: string; mimeType: string }>('jarvisSpeak', input),
   createHousehold: (input: CreateHouseholdInput) => call<typeof input, { householdId: string }>('createHousehold', input),
   createAccount: (input: CreateAccountInput) => call<typeof input, { accountId: string }>('createAccount', input),
   updateAccount: (input: UpdateAccountInput) => call<typeof input, { accountId: string }>('updateAccount', input),

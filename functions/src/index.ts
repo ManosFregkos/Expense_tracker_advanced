@@ -43,16 +43,3 @@ export {
   completeKidsSession,
 } from './services/kids.js'
 export { saveKidsCustomContent, archiveKidsCustomContent } from './services/kids-content.js'
-export {
-  jarvisChat,
-  jarvisTranscribe,
-  jarvisSpeak,
-  jarvisStartRealtime,
-} from './services/jarvis.js'
-
-export {
-  jarvisPrepareAction,
-  jarvisConfirmAction,
-  jarvisCancelAction,
-  jarvisActionStatus,
-} from './services/jarvis-actions.js'

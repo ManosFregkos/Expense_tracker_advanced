@@ -17,13 +17,3 @@ activity writes, notification delivery claims, and device tokens are denied to c
 Task audit snapshots exclude descriptions and reminder/device data. User-facing task activity is a
 separate member-readable collection. Device tokens and delivery state are backend-only; token
 ownership is reassigned atomically when the same browser token registers for a different user.
-
-Jarvis proposals and per-user preparation rate buckets are server-owned in
-`privateJarvisActions` and `privateJarvisActionLimits`; direct client reads and
-writes are denied. All four action callables require verified authentication and
-transactional household-membership checks. Confirmation is bound to the proposal
-creator, household and session and cannot accept a replacement action payload.
-The domain mutation, existing audit events and committed result receipt are one
-Firestore transaction. Cancelled/expired proposals cannot execute; committed
-receipts remain for retry safety. No action confirmation endpoint is exposed as
-a model tool. See [the protocol and retention limitations](JARVIS_ACTIONS.md).

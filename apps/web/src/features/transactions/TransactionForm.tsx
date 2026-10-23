@@ -18,7 +18,6 @@ import {
   parseMoneyToMinor,
   transactionCoreSchema,
   type Transaction,
-  type JarvisExpenseDraft,
 } from '@family-expense-tracker/shared'
 import { useAccounts, useCategories, useMembers } from '../../hooks/useHouseholdData'
 import { api } from '../../lib/callables'
@@ -84,19 +83,7 @@ function loadSuggestions(): ManualSuggestion[] {
   }
 }
 
-function defaults(transaction?: Transaction, draft?: JarvisExpenseDraft): Values {
-  if (!transaction && draft)
-    return {
-      type: 'EXPENSE',
-      amount: draft.amount,
-      description: draft.description,
-      date: draft.date,
-      accountId: draft.accountId ?? undefined,
-      categoryId: draft.categoryId ?? undefined,
-      merchant: '',
-      notes: '',
-      tags: '',
-    }
+function defaults(transaction?: Transaction): Values {
   const base = {
     amount: transaction ? String(transaction.amountMinor / 100) : '',
     description: transaction?.description ?? '',
@@ -134,10 +121,8 @@ function defaults(transaction?: Transaction, draft?: JarvisExpenseDraft): Values
 export function TransactionForm({
   transaction,
   onSaved,
-  initialDraft,
 }: {
   transaction?: Transaction
-  initialDraft?: JarvisExpenseDraft
   onSaved(): void
 }) {
   const { household } = useHousehold()
@@ -156,7 +141,7 @@ export function TransactionForm({
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(formSchema),
-    defaultValues: defaults(transaction, initialDraft),
+    defaultValues: defaults(transaction),
   })
   const type = watch('type')
   const selectedAccountId = watch('accountId')
@@ -189,8 +174,6 @@ export function TransactionForm({
   const mutation = useMutation({
     mutationFn: async (values: Values) => {
       if (!household) throw new Error('No household selected')
-      if (initialDraft && initialDraft.currency !== household.defaultCurrency)
-        throw new Error('The household currency changed. Ask Jarvis to prepare the expense again.')
       const common = {
         householdId: household.id,
         amountMinor: parseMoneyToMinor(values.amount, household.defaultCurrency),

@@ -90,11 +90,15 @@ describe('confirmed task writes', () => {
     ).rejects.toMatchObject({ code: 'permission-denied' })
     expect(store.writes).toEqual([])
   })
-  it('reuses the preview request ID so a create retry cannot make duplicate tasks', async () => {
-    const input = request({ householdId: 'h1', clientRequestId: 'jarvis_test', title: 'Buy bread' })
-    expect(await createTask.run(input)).toEqual({ taskId: 'jarvis_test' })
+  it('reuses the client request ID so a create retry cannot make duplicate tasks', async () => {
+    const input = request({
+      householdId: 'h1',
+      clientRequestId: 'task_retry_test',
+      title: 'Buy bread',
+    })
+    expect(await createTask.run(input)).toEqual({ taskId: 'task_retry_test' })
     const writes = [...store.writes]
-    expect(await createTask.run(input)).toEqual({ taskId: 'jarvis_test' })
+    expect(await createTask.run(input)).toEqual({ taskId: 'task_retry_test' })
     expect(store.writes).toEqual(writes)
   })
 })

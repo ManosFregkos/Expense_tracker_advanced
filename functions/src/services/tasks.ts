@@ -266,11 +266,7 @@ export const initializeTaskModule = secureCallable(
   },
 )
 
-export async function planTaskCreation(
-  transaction: Transaction,
-  input: CreateTaskInput,
-  actor: Actor,
-) {
+async function planTaskCreation(transaction: Transaction, input: CreateTaskInput, actor: Actor) {
   const ref = input.clientRequestId
     ? db.doc(`households/${input.householdId}/tasks/${input.clientRequestId}`)
     : db.collection(`households/${input.householdId}/tasks`).doc()
@@ -327,11 +323,7 @@ export const createTask = secureCallable(createTaskSchema, async (input, actor) 
   })
 })
 
-export async function planTaskUpdate(
-  transaction: Transaction,
-  input: UpdateTaskInput,
-  actor: Actor,
-) {
+async function planTaskUpdate(transaction: Transaction, input: UpdateTaskInput, actor: Actor) {
   const ref = taskRef(input.householdId, input.taskId)
   const [snapshot, household, settings] = await Promise.all([
     transaction.get(ref),
@@ -419,7 +411,7 @@ export const updateTask = secureCallable(updateTaskSchema, async (input, actor) 
   })
 })
 
-export async function planTaskCompletion(
+async function planTaskCompletion(
   transaction: Transaction,
   input: { householdId: string; taskId: string; expectedVersion?: number | undefined },
   actor: Actor,
@@ -441,10 +433,7 @@ export async function planTaskCompletion(
     return { taskId: ref.id, nextTaskId, commit: () => undefined }
   }
   if (input.expectedVersion !== undefined && before.version !== input.expectedVersion)
-    throw new HttpsError(
-      'aborted',
-      'This task changed. Ask Jarvis for a fresh preview before confirming.',
-    )
+    throw new HttpsError('aborted', 'This task changed in another session. Refresh and try again.')
   const nextNumber = (before.occurrenceNumber ?? 1) + 1
   const nextDate =
     before.recurrence && before.dueDate

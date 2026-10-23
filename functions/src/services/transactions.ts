@@ -290,8 +290,7 @@ async function applyFinancialMutation(
 }
 
 // Read and validate first; callers commit this plan inside the same Firestore transaction.
-// Preparing a Jarvis proposal deliberately never calls commit().
-export async function planTransactionCreation(
+async function planTransactionCreation(
   transaction: FirestoreTransaction,
   input: TransactionInput,
   actor: Actor,
