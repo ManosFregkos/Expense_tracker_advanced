@@ -260,8 +260,10 @@ test('register, onboard, and complete the core household finance workflow', asyn
 
   // Provider calls are mocked; exercise the real assistant UI without spending API quota.
   let confirmations = 0
+  const jarvisMessages: string[] = []
   await page.route('**/europe-west1/jarvisChat', async (route) => {
     const body = route.request().postDataJSON() as { data: { requestId: string; message: string } }
+    jarvisMessages.push(body.data.message)
     const deletion = body.data.message.toLowerCase().includes('delete')
     await route.fulfill({
       json: {
@@ -291,14 +293,84 @@ test('register, onboard, and complete the core household finance workflow', asyn
       },
     })
   })
+  // Exercise the browser recognition lifecycle, including an immediate start event.
+  await page.evaluate(() => {
+    class SpeechProbe {
+      lang = ''
+      continuous = false
+      interimResults = false
+      onstart: (() => void) | null = null
+      onend: (() => void) | null = null
+      onresult:
+        | ((event: {
+            resultIndex: number
+            results: { isFinal: boolean; 0: { transcript: string } }[]
+          }) => void)
+        | null = null
+      index = 0
+      receive = (event: Event) => {
+        const { text, final } = (event as CustomEvent<{ text: string; final: boolean }>).detail
+        this.onresult?.({
+          resultIndex: this.index,
+          results: Array.from({ length: this.index + 1 }, (_, index) => ({
+            isFinal: final,
+            0: { transcript: index === this.index ? text : '' },
+          })),
+        })
+        if (final) this.index += 1
+      }
+      constructor() {
+        window.addEventListener('jarvis-test-transcript', this.receive)
+      }
+      start() {
+        this.index = 0
+        this.onstart?.()
+      }
+      stop() {
+        this.onend?.()
+      }
+      abort() {
+        window.removeEventListener('jarvis-test-transcript', this.receive)
+      }
+    }
+    Object.defineProperty(window, 'SpeechRecognition', { configurable: true, value: SpeechProbe })
+  })
+  const say = async (text: string, final = true) => {
+    await page.evaluate(
+      ({ text, final }) =>
+        window.dispatchEvent(
+          new CustomEvent('jarvis-test-transcript', { detail: { text, final } }),
+        ),
+      { text, final },
+    )
+  }
+  await page.setViewportSize({ width: 320, height: 719 })
   await page.getByLabel('Open Jarvis').click()
+  await page.getByText('Voice settings', { exact: true }).click()
   await page.getByLabel('Read replies aloud').uncheck()
+  await page.getByText('Voice settings', { exact: true }).click()
+  await expect(page.getByLabel('Message Jarvis')).toBeInViewport()
+  await expect(page.getByRole('button', { name: 'Send', exact: true })).toBeInViewport()
+  await page.getByRole('button', { name: 'Enable voice', exact: true }).click()
+  await say("hey Debbie's")
+  await expect(page.getByText(/If you meant Jarvis/)).toBeVisible()
+  expect(jarvisMessages).toHaveLength(0)
+  await say('Hey Jarvis', false)
+  await expect(page.getByText('Hearing: Hey Jarvis', { exact: true })).toBeVisible()
+  expect(jarvisMessages).toHaveLength(0)
+  await say('Hey Jarivs')
+  await expect(page.getByText('I’m here. What would you like to do?')).toBeVisible()
+  expect(jarvisMessages).toHaveLength(0)
   await page.getByLabel('Message Jarvis').fill('Why is the sky blue?')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByText('Air scatters blue sunlight more than red sunlight.')).toBeVisible()
-  await page.getByLabel('Message Jarvis').fill('Delete my 30 euro supermarket transaction')
-  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await say('Hey Jarvis delete my 30 euro supermarket transaction')
+  await expect(
+    page.getByText('Heard: Hey Jarvis delete my 30 euro supermarket transaction', { exact: true }),
+  ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Confirm deletion' })).toBeVisible()
+  expect(jarvisMessages).toHaveLength(2)
+  await expect(page.getByLabel('Message Jarvis')).toBeInViewport()
   expect(confirmations).toBe(0)
   await page.screenshot({ path: testInfo.outputPath('mobile-320-jarvis-confirmation.png') })
   await page.getByRole('button', { name: 'Confirm deletion' }).click()
@@ -307,6 +379,9 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
     .toBeLessThanOrEqual(1)
-  await page.keyboard.press('Escape')
+  await say('Jarvis stop')
   await expect(page.getByLabel('Message Jarvis')).toHaveCount(0)
+  await say('Hey Jarvis')
+  await expect(page.getByLabel('Message Jarvis')).toBeVisible()
+  await page.getByRole('button', { name: 'Turn microphone off', exact: true }).click()
 })

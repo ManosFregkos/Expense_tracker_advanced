@@ -119,7 +119,52 @@ describe('Jarvis provider boundary', () => {
       'fetch',
       vi.fn(async () => new Response('sensitive provider detail', { status: 401 })),
     )
-    await expect(runJarvisAgent(options())).rejects.toMatchObject({ code: 'unavailable' })
+    await expect(runJarvisAgent(options())).rejects.toMatchObject({
+      code: 'failed-precondition',
+      message: expect.stringContaining('(401)'),
+    })
+  })
+  it('identifies inaccessible models without exposing provider messages or untrusted codes', async () => {
+    const logger = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: { code: 'model_not_found', message: 'secret-token must never escape' },
+            }),
+            { status: 404, headers: { 'x-request-id': 'req_safe123' } },
+          ),
+      ),
+    )
+    const error: unknown = await runJarvisAgent({ ...options(), model: 'gpt-6-luna' }).catch(
+      (cause: unknown) => cause,
+    )
+    expect(error).toMatchObject({
+      code: 'failed-precondition',
+      message: expect.stringContaining('gpt-6-luna'),
+      details: { status: 404, code: 'model_not_found', requestId: 'req_safe123' },
+    })
+    expect(JSON.stringify(error)).not.toContain('secret-token')
+    expect(JSON.stringify(logger.mock.calls)).not.toContain('secret-token')
+    logger.mockRestore()
+  })
+  it.each([
+    [403, null, 'failed-precondition', '(403)'],
+    [400, 'invalid_json_schema', 'failed-precondition', '(400)'],
+    [429, 'credit_balance_exhausted', 'resource-exhausted', 'credits'],
+    [429, 'rate_limit_exceeded', 'resource-exhausted', 'rate-limited'],
+    [503, 'server_is_overloaded', 'unavailable', '(503)'],
+  ])('classifies provider status %s and code %s', async (status, code, expected, message) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(JSON.stringify({ error: { code } }), { status })),
+    )
+    await expect(runJarvisAgent(options())).rejects.toMatchObject({
+      code: expected,
+      message: expect.stringContaining(message),
+    })
   })
   it('rejects multiple simultaneous action calls', async () => {
     const first = call('prepare_transaction', transaction)

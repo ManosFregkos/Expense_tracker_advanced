@@ -133,6 +133,83 @@ const functionCallSchema = z.object({
   arguments: z.string(),
 })
 
+async function providerFailure(response: Response, model: string): Promise<never> {
+  const body: unknown = await response.json().catch(() => null)
+  const parsed = z
+    .object({ error: z.object({ code: z.string().nullable().optional() }) })
+    .safeParse(body)
+  const knownCodes = new Set([
+    'model_not_found',
+    'invalid_api_key',
+    'insufficient_quota',
+    'credit_balance_exhausted',
+    'organization_spend_limit_exceeded',
+    'project_spend_limit_exceeded',
+    'organization_usage_limit_exceeded',
+    'rate_limit_exceeded',
+    'slow_down',
+    'invalid_json_schema',
+    'unsupported_parameter',
+    'invalid_value',
+    'server_is_overloaded',
+  ])
+  const rawCode = parsed.success ? parsed.data.error.code : null
+  const code = rawCode && knownCodes.has(rawCode) ? rawCode : null
+  const safeModel = /^[a-z0-9][a-z0-9._-]{0,99}$/i.test(model) ? model : '(configured model)'
+  const header = response.headers.get('x-request-id')
+  const requestId = header && /^[\w-]{1,128}$/.test(header) ? header : null
+  // Provider messages can contain credentials or user text. Only log/return allowlisted metadata.
+  const details = { provider: 'openai', status: response.status, code, model: safeModel, requestId }
+  console.warn('Jarvis provider request failed', details)
+  if (response.status === 401)
+    throw new HttpsError(
+      'failed-precondition',
+      'OpenAI rejected the server API key (401). Update the OPENAI_API_KEY Firebase secret and redeploy jarvisChat.',
+      details,
+    )
+  if (response.status === 404 || code === 'model_not_found')
+    throw new HttpsError(
+      'failed-precondition',
+      `OpenAI could not access model "${safeModel}" (404). Check JARVIS_MODEL and your OpenAI project’s model access, then redeploy jarvisChat.`,
+      details,
+    )
+  if (response.status === 403)
+    throw new HttpsError(
+      'failed-precondition',
+      'OpenAI denied this request (403). Check the server key’s project permissions, model access, and account restrictions.',
+      details,
+    )
+  if (response.status === 429) {
+    const quota =
+      code &&
+      [
+        'insufficient_quota',
+        'credit_balance_exhausted',
+        'organization_spend_limit_exceeded',
+        'project_spend_limit_exceeded',
+        'organization_usage_limit_exceeded',
+      ].includes(code)
+    throw new HttpsError(
+      'resource-exhausted',
+      quota
+        ? 'OpenAI credits or a spending/usage limit blocked this request. Check billing and limits for the API key’s project.'
+        : 'OpenAI rate-limited this request (429). Wait briefly before trying again.',
+      details,
+    )
+  }
+  if (response.status === 400)
+    throw new HttpsError(
+      'failed-precondition',
+      `OpenAI rejected Jarvis’s request configuration for "${safeModel}" (400). Check model compatibility and the server request settings.`,
+      details,
+    )
+  throw new HttpsError(
+    'unavailable',
+    `OpenAI could not complete the request (${response.status}). Please try again later.`,
+    details,
+  )
+}
+
 export async function runJarvisAgent(options: {
   apiKey: string
   model: string
@@ -168,14 +245,7 @@ export async function runJarvisAgent(options: {
       throw new HttpsError('unavailable', 'Jarvis could not reach OpenAI. Please try again.')
     }
     if (!response.ok) {
-      // Never log response bodies: they may contain prompts or provider details.
-      console.warn('Jarvis provider request failed', { status: response.status })
-      throw new HttpsError(
-        response.status === 429 ? 'resource-exhausted' : 'unavailable',
-        response.status === 429
-          ? 'OpenAI is busy or its quota is exhausted. Try again later.'
-          : 'OpenAI is unavailable. Check the server key and model configuration.',
-      )
+      await providerFailure(response, options.model)
     }
     const result = responseSchema.parse(await response.json())
     if (result.status !== 'completed')

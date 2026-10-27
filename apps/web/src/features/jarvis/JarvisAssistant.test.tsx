@@ -102,6 +102,19 @@ beforeEach(() => {
   })
 })
 describe('Jarvis panel workflow', () => {
+  it('explains a misheard standalone greeting locally without submitting it to GPT', () => {
+    renderAssistant()
+    fireEvent.click(screen.getByLabelText('Open Jarvis'))
+    act(() => voice.handler("hey Debbie's"))
+    expect(screen.getByText(/If you meant Jarvis/)).toBeInTheDocument()
+    expect(api.jarvisChat).not.toHaveBeenCalled()
+  })
+  it('acknowledges the wake phrase alone without making an unnecessary GPT call', async () => {
+    renderAssistant()
+    act(() => voice.handler('Hey Jarvis'))
+    expect(await screen.findByText('I’m here. What would you like to do?')).toBeInTheDocument()
+    expect(api.jarvisChat).not.toHaveBeenCalled()
+  })
   it('opens on wake, handles an everyday answer, and closes on the stop phrase', async () => {
     vi.mocked(api.jarvisChat).mockResolvedValue({ reply: 'Hello there', action: null })
     renderAssistant()

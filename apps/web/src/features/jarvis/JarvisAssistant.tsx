@@ -54,6 +54,7 @@ export function JarvisAssistant() {
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [voiceFeedback, setVoiceFeedback] = useState('')
   const [pending, setPending] = useState<PendingAction | null>(null)
   const [language, setLanguage] = useState(() =>
     localStorage.getItem('jarvis.language') === 'el-GR' ? 'el-GR' : 'en-US',
@@ -151,6 +152,7 @@ export function JarvisAssistant() {
   const close = () => {
     active.current = false
     setOpened(false)
+    setVoiceFeedback('')
     silence()
     epoch.current += 1
     const action = pendingRef.current
@@ -250,11 +252,28 @@ export function JarvisAssistant() {
       close()
       return
     }
+    if (command.type === 'uncertain-wake') {
+      setVoiceFeedback(
+        `I heard “${text}”. If you meant Jarvis, say “Hey Jarvis” again, or ask your question directly while this panel is open.`,
+      )
+      return
+    }
     if (command.type === 'wake') {
       active.current = true
       setOpened(true)
-      if (command.message) void submit(command.message)
-    } else if (command.type === 'message') void submit(command.message)
+      if (command.message) {
+        setVoiceFeedback('')
+        void submit(command.message)
+      } else if (!busyRef.current) {
+        const reply =
+          language === 'el-GR' ? 'Είμαι εδώ. Τι θα ήθελες;' : 'I’m here. What would you like to do?'
+        setVoiceFeedback(reply)
+        speak(reply)
+      }
+    } else if (command.type === 'message') {
+      setVoiceFeedback('')
+      void submit(command.message)
+    }
   })
 
   useEffect(() => {
@@ -287,6 +306,14 @@ export function JarvisAssistant() {
         onClose={close}
         position="right"
         size="md"
+        styles={{
+          body: {
+            height: 'calc(100dvh - 76px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
+        }}
         title={
           <Group gap="xs">
             <IconSparkles />
@@ -303,11 +330,8 @@ export function JarvisAssistant() {
           </Group>
         }
       >
-        <Stack gap="md">
-          <Text size="sm" c="dimmed">
-            Your everyday assistant for questions, transactions, and todos.
-          </Text>
-          <Paper withBorder p="sm" radius="md">
+        <Stack gap="sm" h="100%" style={{ minHeight: 0 }}>
+          <Paper withBorder p="sm" radius="md" style={{ flexShrink: 0 }}>
             <Stack gap="xs">
               <Group justify="space-between">
                 <Text size="sm" fw={600}>
@@ -326,14 +350,12 @@ export function JarvisAssistant() {
                 </Button>
               </Group>
               <Text size="xs" c="dimmed">
-                Enable once, then say “Hey Jarvis” to open and “Jarvis stop” to close. The
-                microphone stays on for the next wake phrase until you turn it off or leave this
-                page.
+                Say “Hey Jarvis” to wake, or ask directly while this panel is open. Say “Jarvis
+                stop” to close.
               </Text>
               <Text size="xs" c="dimmed">
-                Speech may be processed by your browser’s speech provider. Requests and the relevant
-                account/category details are sent to OpenAI. Voice needs an active page and
-                internet.
+                Your browser may process speech online. Submitted requests and relevant household
+                details go to OpenAI.
               </Text>
               {!voice.supported && (
                 <Text size="xs" c="orange">
@@ -343,61 +365,97 @@ export function JarvisAssistant() {
             </Stack>
           </Paper>
           {(error || voice.error) && (
-            <Alert color="red" role="alert">
+            <Alert
+              color="red"
+              role="alert"
+              style={{ flexShrink: 0, maxHeight: '25dvh', overflowY: 'auto' }}
+            >
               {error || voice.error}
             </Alert>
           )}
-          <Group grow align="start">
-            <Select
-              label="Voice language"
-              value={language}
-              allowDeselect={false}
-              data={[
-                { value: 'en-US', label: 'English' },
-                { value: 'el-GR', label: 'Ελληνικά' },
-              ]}
-              onChange={(value) => {
-                if (value) {
-                  voice.stop()
+          {(voice.interimTranscript || voice.lastTranscript || voice.notice || voiceFeedback) && (
+            <Paper
+              p="xs"
+              bg="teal.0"
+              radius="md"
+              style={{ flexShrink: 0, maxHeight: '16dvh', overflowY: 'auto' }}
+              aria-label="Voice feedback"
+            >
+              {voice.interimTranscript ? (
+                <Text size="sm">Hearing: {voice.interimTranscript}</Text>
+              ) : voice.lastTranscript ? (
+                <Text size="sm">Heard: {voice.lastTranscript}</Text>
+              ) : null}
+              {voiceFeedback && (
+                <Text size="sm" role="status">
+                  {voiceFeedback}
+                </Text>
+              )}
+              {voice.notice && (
+                <Text size="xs" role="status">
+                  {voice.notice}
+                </Text>
+              )}
+            </Paper>
+          )}
+          <details style={{ flexShrink: 0, maxHeight: '35dvh', overflowY: 'auto' }}>
+            <summary style={{ cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
+              Voice settings
+            </summary>
+            <Stack gap="sm" pt="sm">
+              <Group grow align="start">
+                <Select
+                  label="Voice language"
+                  value={language}
+                  allowDeselect={false}
+                  data={[
+                    { value: 'en-US', label: 'English' },
+                    { value: 'el-GR', label: 'Ελληνικά' },
+                  ]}
+                  onChange={(value) => {
+                    if (value) {
+                      voice.stop()
+                      silence()
+                      setLanguage(value)
+                      localStorage.setItem('jarvis.language', value)
+                    }
+                  }}
+                />
+                <Select
+                  label="Default account"
+                  placeholder="Ask me each time"
+                  clearable
+                  value={selectedAccount}
+                  data={availableAccounts.map((account) => ({
+                    value: account.id,
+                    label: `${account.name} (${account.currency})`,
+                  }))}
+                  onChange={(value) => {
+                    setDefaultAccountId(value)
+                    const key = `jarvis.account.${household!.id}`
+                    if (value) localStorage.setItem(key, value)
+                    else localStorage.removeItem(key)
+                  }}
+                />
+              </Group>
+              <Switch
+                label="Read replies aloud"
+                checked={speakReplies}
+                onChange={(event) => {
+                  setSpeakReplies(event.currentTarget.checked)
                   silence()
-                  setLanguage(value)
-                  localStorage.setItem('jarvis.language', value)
-                }
-              }}
-            />
-            <Select
-              label="Default account"
-              placeholder="Ask me each time"
-              clearable
-              value={selectedAccount}
-              data={availableAccounts.map((account) => ({
-                value: account.id,
-                label: `${account.name} (${account.currency})`,
-              }))}
-              onChange={(value) => {
-                setDefaultAccountId(value)
-                const key = `jarvis.account.${household!.id}`
-                if (value) localStorage.setItem(key, value)
-                else localStorage.removeItem(key)
-              }}
-            />
-          </Group>
-          <Switch
-            label="Read replies aloud"
-            checked={speakReplies}
-            onChange={(event) => {
-              setSpeakReplies(event.currentTarget.checked)
-              silence()
-            }}
-          />
-          <Switch
-            label="Confirm additions before saving"
-            description="Transaction deletions always need confirmation."
-            checked={confirmAdditions}
-            onChange={(event) => setConfirmAdditions(event.currentTarget.checked)}
-          />
+                }}
+              />
+              <Switch
+                label="Confirm additions before saving"
+                description="Transaction deletions always need confirmation."
+                checked={confirmAdditions}
+                onChange={(event) => setConfirmAdditions(event.currentTarget.checked)}
+              />
+            </Stack>
+          </details>
           <ScrollArea
-            h="max(180px, calc(100dvh - 570px))"
+            style={{ flex: '1 1 0', minHeight: 0 }}
             viewportRef={viewport}
             type="auto"
             aria-label="Jarvis conversation"
@@ -436,7 +494,12 @@ export function JarvisAssistant() {
             </Stack>
           </ScrollArea>
           {pending && (
-            <Paper withBorder p="md" radius="md">
+            <Paper
+              withBorder
+              p="sm"
+              radius="md"
+              style={{ flexShrink: 0, maxHeight: '30dvh', overflowY: 'auto' }}
+            >
               <Stack gap="xs">
                 <Text fw={600} size="sm">
                   {pending.kind === 'DELETE_TRANSACTION'
@@ -469,6 +532,7 @@ export function JarvisAssistant() {
             </Paper>
           )}
           <form
+            style={{ flexShrink: 0 }}
             onSubmit={(event) => {
               event.preventDefault()
               void submit(draft)
@@ -479,8 +543,8 @@ export function JarvisAssistant() {
                 aria-label="Message Jarvis"
                 placeholder="Ask Jarvis…"
                 autosize
-                minRows={2}
-                maxRows={5}
+                minRows={1}
+                maxRows={3}
                 maxLength={2000}
                 value={draft}
                 onChange={(event) => setDraft(event.currentTarget.value)}

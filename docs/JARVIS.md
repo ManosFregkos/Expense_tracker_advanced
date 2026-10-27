@@ -69,6 +69,38 @@ configuration enabled as appropriate for the project.
 4. Say **Jarvis stop** to close the panel, cancel speech, discard unsent work, and return to listening
    for the next wake phrase. **Turn microphone off** ends recognition completely.
 
+**Hey Jarvis** by itself now displays and speaks an acknowledgement; it does not call OpenAI.
+Ask a question or give a command afterward, or include it in the same utterance. Open **Voice settings**
+for language, account, spoken-reply, and confirmation preferences. The text box stays visible while
+conversation history scrolls separately.
+
+The voice feedback area shows **Hearing:** for provisional recognition and **Heard:** for final
+recognition. Only final speech can submit a request. If no words arrive, the panel explains how to
+check the microphone/language or test by typing. Speech-end events ask the browser to finalize the
+utterance before listening resumes.
+
+To diagnose a production problem, type “What is 2 plus 2?” and press **Send**. Filter browser Network
+requests for `jarvis`: expect a `jarvisChat` POST. If typing works but voice produces no **Heard:** text,
+check browser/OS microphone permission, the selected input device, and the voice language. If words
+appear but no request is sent, wait for any spoken reply to finish, then repeat the command.
+An addition with confirmation enabled or a deletion produces a preview first; `jarvisAction` is sent
+when you confirm or cancel. Browser recognition traffic itself need not appear as an app fetch call.
+
+The browser is asked for up to three transcript alternatives. Supported browsers also receive
+contextual hints for “Jarvis”; providers that reject hints fall back to ordinary recognition.
+Common name variants such as “Jervis” and “Jarivs” can wake the panel. Alternate hypotheses are used
+only for a standalone wake phrase, never to replace a spoken amount, command, or confirmation.
+An unrelated standalone greeting such as “hey Debbie's” shows a local correction prompt rather than
+calling GPT. Clicking the header's **Jarvis** button also activates conversation, so you can ask a
+question directly without the wake phrase.
+
+OpenAI failures report a specific HTTP category (authentication, missing/inaccessible model,
+permissions, request configuration, quota, rate limits, or temporary outage). Logs contain only
+HTTP status, the configured model ID, allowlisted provider error codes, and a provider request ID.
+Raw provider messages and response bodies are never logged or returned. A model error requires
+correcting the server's `JARVIS_MODEL`/project access and redeploying `jarvisChat`; microphone settings
+cannot fix it.
+
 Examples:
 
 - “Hey Jarvis, why is the sky blue?”
