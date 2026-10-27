@@ -24,6 +24,8 @@ import { friendlyError } from '../../lib/errors'
 import { accountKeys, analyticsKeys, taskKeys, transactionKeys } from '../../lib/query-keys'
 import { parseVoiceCommand } from './voice'
 import { useJarvisVoice } from './useJarvisVoice'
+import { audioToBase64, useCommandRecording } from './useCommandRecording'
+import { visibleTransactionIds } from './visible-transactions'
 
 function jarvisError(error: unknown): string {
   if (
@@ -150,6 +152,7 @@ export function JarvisAssistant() {
     }
   }
   const close = () => {
+    recording.cancel()
     active.current = false
     setOpened(false)
     setVoiceFeedback('')
@@ -171,7 +174,7 @@ export function JarvisAssistant() {
   }
   const submit = async (text: string) => {
     const message = text.trim()
-    if (!message || busyRef.current || !household) return
+    if (!message || busyRef.current || recording.busy || !household) return
     if (pendingRef.current && confirmation.test(message)) {
       await decide('CONFIRM')
       return
@@ -202,6 +205,7 @@ export function JarvisAssistant() {
         setError('Jarvis needs an internet connection.')
         return
       }
+      const visibleIds = visibleTransactionIds(queryClient, household.id)
       const result = await api.jarvisChat({
         householdId: household.id,
         sessionId: sessionId.current,
@@ -209,6 +213,7 @@ export function JarvisAssistant() {
         message,
         language: language === 'el-GR' ? 'el-GR' : 'en-US',
         defaultAccountId: selectedAccount,
+        ...(visibleIds ? { visibleTransactionIds: visibleIds } : {}),
       })
       if (epoch.current !== version) {
         if (result.action)
@@ -242,7 +247,39 @@ export function JarvisAssistant() {
       setBusy(false)
     }
   }
+  const recording = useCommandRecording(
+    async (audio, isCurrent) => {
+      const version = epoch.current
+      if (!['audio/webm', 'audio/mp4', 'audio/wav'].includes(audio.type))
+        throw new Error(
+          'This recording format is unsupported. Try another browser or type your command.',
+        )
+      const audioBase64 = await audioToBase64(audio)
+      if (version !== epoch.current || !isCurrent()) return
+      const result = await api.jarvisTranscribe({
+        householdId: household!.id,
+        language: language === 'el-GR' ? 'el-GR' : 'en-US',
+        mimeType: audio.type as 'audio/webm' | 'audio/mp4' | 'audio/wav',
+        audioBase64,
+      })
+      if (version !== epoch.current || !isCurrent()) return
+      const command = parseVoiceCommand(result.text, false)
+      setDraft(command.type === 'wake' && command.message ? command.message : result.text)
+      setVoiceFeedback(
+        'Recording transcribed. Review the words, amount, and currency below, then press Send.',
+      )
+    },
+    (cause) =>
+      setError(
+        cause instanceof FirebaseError
+          ? jarvisError(cause)
+          : cause instanceof Error
+            ? cause.message
+            : 'Could not transcribe the recording.',
+      ),
+  )
   const voice = useJarvisVoice(language, (text) => {
+    if (recording.busy) return
     const command = parseVoiceCommand(
       text,
       active.current,
@@ -319,18 +356,22 @@ export function JarvisAssistant() {
             <IconSparkles />
             <Text fw={700}>Jarvis</Text>
             <Badge variant="light" color={voice.enabled ? 'teal' : 'gray'}>
-              {busy
-                ? 'Thinking'
-                : voice.listening
-                  ? 'Listening'
-                  : voice.enabled
-                    ? 'Connecting'
-                    : 'Text mode'}
+              {recording.stage === 'recording'
+                ? 'Recording'
+                : recording.stage === 'transcribing'
+                  ? 'Transcribing'
+                  : busy
+                    ? 'Thinking'
+                    : voice.listening
+                      ? 'Listening'
+                      : voice.enabled
+                        ? 'Connecting'
+                        : 'Text mode'}
             </Badge>
           </Group>
         }
       >
-        <Stack gap="sm" h="100%" style={{ minHeight: 0 }}>
+        <Stack gap="xs" h="100%" style={{ minHeight: 0 }}>
           <Paper withBorder p="sm" radius="md" style={{ flexShrink: 0 }}>
             <Stack gap="xs">
               <Group justify="space-between">
@@ -340,7 +381,7 @@ export function JarvisAssistant() {
                 <Button
                   size="xs"
                   variant="light"
-                  disabled={!voice.supported}
+                  disabled={!voice.supported || recording.busy}
                   leftSection={
                     voice.enabled ? <IconMicrophoneOff size={15} /> : <IconMicrophone size={15} />
                   }
@@ -354,8 +395,8 @@ export function JarvisAssistant() {
                 stop” to close.
               </Text>
               <Text size="xs" c="dimmed">
-                Your browser may process speech online. Submitted requests and relevant household
-                details go to OpenAI.
+                Browser speech runs online. Record command sends audio to OpenAI (30s max); review
+                the draft before Send.
               </Text>
               {!voice.supported && (
                 <Text size="xs" c="orange">
@@ -498,7 +539,7 @@ export function JarvisAssistant() {
               withBorder
               p="sm"
               radius="md"
-              style={{ flexShrink: 0, maxHeight: '30dvh', overflowY: 'auto' }}
+              style={{ flexShrink: 0, maxHeight: '28dvh', overflowY: 'auto' }}
             >
               <Stack gap="xs">
                 <Text fw={600} size="sm">
@@ -539,6 +580,41 @@ export function JarvisAssistant() {
             }}
           >
             <Stack gap="xs">
+              <Group gap="xs">
+                <Button
+                  size="compact-xs"
+                  variant="light"
+                  disabled={
+                    busy ||
+                    !recording.supported ||
+                    recording.stage === 'requesting' ||
+                    recording.stage === 'transcribing'
+                  }
+                  onClick={() => {
+                    if (recording.stage === 'recording') recording.finish()
+                    else {
+                      voice.stop()
+                      silence()
+                      setError('')
+                      setVoiceFeedback('')
+                      void recording.start()
+                    }
+                  }}
+                >
+                  {recording.stage === 'recording'
+                    ? 'Stop recording'
+                    : recording.stage === 'transcribing'
+                      ? 'Transcribing…'
+                      : recording.stage === 'requesting'
+                        ? 'Waiting for microphone…'
+                        : 'Record command'}
+                </Button>
+                {recording.busy && (
+                  <Button size="compact-xs" variant="subtle" onClick={recording.cancel}>
+                    Cancel recording
+                  </Button>
+                )}
+              </Group>
               <Textarea
                 aria-label="Message Jarvis"
                 placeholder="Ask Jarvis…"
@@ -559,7 +635,7 @@ export function JarvisAssistant() {
                 <Button
                   size="xs"
                   variant="subtle"
-                  disabled={busy}
+                  disabled={busy || recording.busy}
                   onClick={() => {
                     silence()
                     const action = pendingRef.current
@@ -580,7 +656,12 @@ export function JarvisAssistant() {
                 >
                   New conversation
                 </Button>
-                <Button type="submit" size="sm" loading={busy} disabled={!draft.trim()}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  loading={busy}
+                  disabled={!draft.trim() || recording.busy}
+                >
                   Send
                 </Button>
               </Group>

@@ -30,15 +30,46 @@ vi.mock('../firebase.js', () => {
     id: path.split('/').at(-1)!,
     get: async () => snapshot(path),
   })
-  const collection = (path: string, maximum = 1000) => ({
+  const comparable = (value: unknown): number | string =>
+    value instanceof Timestamp
+      ? value.toMillis()
+      : typeof value === 'number'
+        ? value
+        : typeof value === 'string' || typeof value === 'boolean'
+          ? String(value)
+          : ''
+  const collection = (
+    path: string,
+    maximum = 1000,
+    conditions: { field: string; op: string; value: unknown }[] = [],
+    order?: { field: string; direction: string },
+  ) => ({
     doc: () => ref(`${path}/generated-${++store.nextId}`),
-    limit: (size: number) => collection(path, size),
-    orderBy: () => collection(path, maximum),
-    // Date filtering is not exercised here; candidate ambiguity and scope are.
-    where: () => collection(path, maximum),
+    limit: (size: number) => collection(path, size, conditions, order),
+    orderBy: (field: string, direction: string) =>
+      collection(path, maximum, conditions, { field, direction }),
+    where: (field: string, op: string, value: unknown) =>
+      collection(path, maximum, [...conditions, { field, op, value }], order),
     get: async () => {
       const docs = [...store.documents.keys()]
         .filter((key) => key.startsWith(`${path}/`) && !key.slice(path.length + 1).includes('/'))
+        .filter((key) =>
+          conditions.every(({ field, op, value }) => {
+            const actual = store.documents.get(key)?.[field]
+            return op === '=='
+              ? actual === value
+              : op === '>='
+                ? comparable(actual) >= comparable(value)
+                : comparable(actual) < comparable(value)
+          }),
+        )
+        .sort((left, right) => {
+          if (!order) return 0
+          const a = comparable(store.documents.get(left)?.[order.field])
+          const b = comparable(store.documents.get(right)?.[order.field])
+          const difference = a < b ? -1 : a > b ? 1 : left.localeCompare(right)
+          return order.direction === 'asc' ? difference : -difference
+        })
         .slice(0, maximum)
         .map(snapshot)
       return { docs, size: docs.length }
@@ -173,6 +204,100 @@ async function previewDeletion() {
   return jarvisChat.run(request(input))
 }
 describe('Jarvis server actions', () => {
+  it('uses explicit euros even if the model proposes dollars', async () => {
+    input.message = 'add 30 euros expense'
+    vi.mocked(runJarvisAgent).mockImplementation(async (options) => {
+      expect(options.transactionCurrency).toBe('EUR')
+      const wrongCurrency = { ...proposal, data: { ...proposal.data, currency: 'USD' } }
+      await options.validate(wrongCurrency)
+      return { reply: '', proposal: wrongCurrency }
+    })
+    const response = await jarvisChat.run(request(input))
+    expect(response.action?.summary).toContain('€30.00')
+    const result = await jarvisAction.run(request(actionInput()))
+    expect(store.documents.get(`households/h1/transactions/${result.entityId}`)).toMatchObject({
+      amountMinor: 3000,
+      currency: 'EUR',
+    })
+  })
+  it('does not silently convert an explicitly requested foreign currency into euros', async () => {
+    input.message = 'add 30 dollars supermarket'
+    await expect(jarvisChat.run(request(input))).rejects.toMatchObject({
+      code: 'failed-precondition',
+    })
+    expect(store.writes.every((path) => !path.startsWith('households/'))).toBe(true)
+  })
+  it.each(['OLDEST', 'NEWEST', 'VISIBLE'] as const)(
+    'selects a transaction by %s order without amount/category filters',
+    async (order) => {
+      const old = Timestamp.fromDate(new Date('2020-01-01T12:00:00Z'))
+      const recent = Timestamp.fromDate(new Date('2026-10-27T12:00:00Z'))
+      const base = {
+        householdId: 'h1',
+        type: 'EXPENSE',
+        amountMinor: 700,
+        currency: 'EUR',
+        description: 'Anything',
+        accountId: 'a1',
+        ownerUserId: 'u1',
+        categoryId: 'groceries',
+        updatedAt: Timestamp.now(),
+        isDeleted: false,
+      }
+      store.documents.set('households/h1/transactions/old', {
+        ...base,
+        id: 'old',
+        transactionDate: old,
+      })
+      store.documents.set('households/h1/transactions/new', {
+        ...base,
+        id: 'new',
+        transactionDate: recent,
+      })
+      store.documents.set('households/h1/transactions/other-owner', {
+        ...base,
+        id: 'other-owner',
+        ownerUserId: 'u2',
+        transactionDate: Timestamp.now(),
+      })
+      store.documents.set('households/h1/transactions/deleted', {
+        ...base,
+        id: 'deleted',
+        isDeleted: true,
+        transactionDate: old,
+      })
+      input.message = 'delete my first transaction'
+      if (order === 'VISIBLE') input.visibleTransactionIds = ['old', 'new']
+      const expected = order === 'NEWEST' ? 'new' : 'old'
+      vi.mocked(runJarvisAgent).mockImplementation(async (options) => {
+        const selection = (await options.select!({ order, position: 1, mineOnly: true })) as {
+          matches: { id: string }[]
+        }
+        expect(selection.matches[0]?.id).toBe(expected)
+        const deletion = { kind: 'DELETE_TRANSACTION', data: { transactionId: expected } } as const
+        await options.validate(deletion)
+        return { reply: '', proposal: deletion }
+      })
+      const response = await jarvisChat.run(request(input))
+      expect(response.action?.summary).toContain('Anything')
+      expect(store.documents.get(`households/h1/transactions/${expected}`)?.isDeleted).toBe(false)
+      await jarvisAction.run(request(actionInput()))
+      expect(store.documents.get(`households/h1/transactions/${expected}`)?.isDeleted).toBe(true)
+    },
+  )
+  it('does not fall back to another transaction when the visible list is empty', async () => {
+    input.visibleTransactionIds = []
+    vi.mocked(runJarvisAgent).mockImplementation(async (options) => {
+      const selection = (await options.select!({
+        order: 'VISIBLE',
+        position: 1,
+        mineOnly: true,
+      })) as { matches: unknown[] }
+      expect(selection.matches).toEqual([])
+      return { reply: 'There are no visible transactions.', proposal: null }
+    })
+    expect((await jarvisChat.run(request(input))).action).toBeNull()
+  })
   it('converts salary income to minor units and increases the normal income analytics', async () => {
     const income = {
       ...proposal,

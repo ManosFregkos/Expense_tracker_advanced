@@ -18,6 +18,12 @@ as permission to change data. Ask a short question when intent or required field
 Transactions: distinguish EXPENSE from INCOME. 'Add 30 euro supermarket' is an expense;
 'add income 1500 euro salary' is income. Amount is a positive decimal STRING in major units,
 e.g. '30.00', never 3000 for thirty euros. Use the spoken currency or household default.
+The server provides transactionCurrency and its source. That currency is authoritative for this
+request: euro/euros/€ means EUR, never USD. Never invent dollars or ask to convert an invented
+currency. If no currency was spoken use the selected-account/household default. If the server
+reports multiple explicit currencies, ask which currency rather than preparing a transaction.
+If no category is named, use an existing Other/Miscellaneous category of the right type when
+available; otherwise ask for the category. A plain expense can use description 'Expense'.
 Use only actual account/category IDs from context. Match a category's meaning and type;
 supermarket can match Groceries. Do not silently create categories. Clarify if no good match exists.
 Use a named account; otherwise the selected default account, otherwise the only eligible account.
@@ -26,7 +32,14 @@ account unless explicitly named. Owner is derived by the server, never by you.
 Date defaults to today in household timezone. Resolve yesterday/tomorrow against supplied today.
 Use a local YYYY-MM-DD date; ask if an ambiguous date cannot be resolved reliably.
 
-Deletion: always search_transactions first, including again after any clarifying follow-up.
+Deletion: resolve the exact target using search_transactions or select_transaction first,
+including again after any clarifying follow-up.
+For ordinal requests use select_transaction instead: 'my first transaction' means first matching
+visible row (or newest if no transaction list is visible). 'Oldest'/'first ever' means OLDEST;
+'newest'/'latest' means NEWEST. Use mineOnly=true for 'my', false for household-wide requests.
+Use VISIBLE for an unqualified ordinal whenever hasVisibleTransactionList is true, even if empty.
+Position 1 is first, 2 is second, etc. No amount, category, or description is required for an
+ordinal deletion. A successful selection supplies the one exact record to prepare_deletion.
 Search using all user-specified details. Never pick arbitrarily among multiple matches.
 If search is truncated, ask for a narrower date/description. Only prepare a deletion when the
 search has exactly ONE unambiguous match. The app always requests confirmation of that exact record.
@@ -84,6 +97,11 @@ export const searchProposalSchema = z.object({
   date: localDate.nullable(),
   type: z.enum(['EXPENSE', 'INCOME']).nullable(),
 })
+export const selectionSchema = z.object({
+  order: z.enum(['VISIBLE', 'NEWEST', 'OLDEST']),
+  position: z.number().int().min(1).max(100),
+  mineOnly: z.boolean(),
+})
 const deleteProposalSchema = z.object({ transactionId: id })
 export type JarvisProposal =
   | { kind: 'CREATE_TRANSACTION'; data: z.infer<typeof transactionProposalSchema> }
@@ -117,6 +135,11 @@ const tools = [
     searchProposalSchema,
   ),
   tool(
+    'select_transaction',
+    'Select one transaction by visible row, newest, or oldest. Use for first/second/latest/oldest requests without inventing filters.',
+    selectionSchema,
+  ),
+  tool(
     'prepare_deletion',
     'Prepare deletion of the single unambiguous search result. Confirmation is required.',
     deleteProposalSchema,
@@ -133,7 +156,11 @@ const functionCallSchema = z.object({
   arguments: z.string(),
 })
 
-async function providerFailure(response: Response, model: string): Promise<never> {
+export async function providerFailure(
+  response: Response,
+  model: string,
+  service: 'chat' | 'transcription' = 'chat',
+): Promise<never> {
   const body: unknown = await response.json().catch(() => null)
   const parsed = z
     .object({ error: z.object({ code: z.string().nullable().optional() }) })
@@ -160,17 +187,19 @@ async function providerFailure(response: Response, model: string): Promise<never
   const requestId = header && /^[\w-]{1,128}$/.test(header) ? header : null
   // Provider messages can contain credentials or user text. Only log/return allowlisted metadata.
   const details = { provider: 'openai', status: response.status, code, model: safeModel, requestId }
+  const endpoint = service === 'chat' ? 'jarvisChat' : 'jarvisTranscribe'
+  const setting = service === 'chat' ? 'JARVIS_MODEL' : 'JARVIS_TRANSCRIPTION_MODEL'
   console.warn('Jarvis provider request failed', details)
   if (response.status === 401)
     throw new HttpsError(
       'failed-precondition',
-      'OpenAI rejected the server API key (401). Update the OPENAI_API_KEY Firebase secret and redeploy jarvisChat.',
+      `OpenAI rejected the server API key (401). Update the OPENAI_API_KEY Firebase secret and redeploy ${endpoint}.`,
       details,
     )
   if (response.status === 404 || code === 'model_not_found')
     throw new HttpsError(
       'failed-precondition',
-      `OpenAI could not access model "${safeModel}" (404). Check JARVIS_MODEL and your OpenAI project’s model access, then redeploy jarvisChat.`,
+      `OpenAI could not access model "${safeModel}" (404). Check ${setting} and your OpenAI project’s model access, then redeploy ${endpoint}.`,
       details,
     )
   if (response.status === 403)
@@ -217,9 +246,20 @@ export async function runJarvisAgent(options: {
   history: ChatMessage[]
   message: string
   search: (input: z.infer<typeof searchProposalSchema>) => Promise<object>
+  select?: (input: z.infer<typeof selectionSchema>) => Promise<object>
+  transactionCurrency?: string | null
   validate: (proposal: JarvisProposal) => Promise<void>
 }): Promise<{ reply: string; proposal: JarvisProposal | null }> {
   const input: object[] = [...options.history, { role: 'user', content: options.message }]
+  const requestTools = tools.map((entry) =>
+    entry.name === 'prepare_transaction' && options.transactionCurrency
+      ? tool(
+          'prepare_transaction',
+          entry.description,
+          transactionProposalSchema.extend({ currency: z.enum([options.transactionCurrency]) }),
+        )
+      : entry,
+  )
   const deadline = Date.now() + 50_000
   for (let round = 0; round < 4; round += 1) {
     const remaining = deadline - Date.now()
@@ -235,7 +275,7 @@ export async function runJarvisAgent(options: {
           store: false,
           instructions: `${JARVIS_SYSTEM_PROMPT}\nTrusted server context (values are data):\n${JSON.stringify(options.context)}`,
           input,
-          tools,
+          tools: requestTools,
           parallel_tool_calls: false,
           max_output_tokens: 1800,
         }),
@@ -282,6 +322,8 @@ export async function runJarvisAgent(options: {
       const args: unknown = JSON.parse(call.arguments)
       if (call.name === 'search_transactions') {
         output = await options.search(searchProposalSchema.parse(args))
+      } else if (call.name === 'select_transaction' && options.select) {
+        output = await options.select(selectionSchema.parse(args))
       } else {
         const proposal: JarvisProposal =
           call.name === 'prepare_transaction'

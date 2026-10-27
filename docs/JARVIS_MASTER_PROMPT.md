@@ -33,6 +33,10 @@ and household switches. Ignore partial recognition results and reduce speaker ec
 Never promise activation with the browser closed, locked-screen listening, or unrestricted
 background microphone access. If those are requirements, scope a native companion separately.
 Offer a text fallback, English/Greek language switch, and browser spoken replies.
+Offer short opt-in command recording through the authenticated server to gpt-transcribe, separate
+from the conversation model. Pause browser recognition, cap audio size/duration, release microphone
+tracks on every exit, and return an editable draft that requires Send. Discard cancelled/late results.
+Never use experimental phrase hints unsupported by the browser's speech provider.
 
 CONVERSATION
 Use the OpenAI Responses API from the backend, with a configurable model and a server-side secret.
@@ -48,6 +52,9 @@ SUPPORTED ACTIONS
    existing expense category by meaning. Use a named/default account, or the only eligible account.
 2. 'Add income 1500 euro salary': prepare a 150000-minor-unit INCOME with a matching income category.
 3. Delete a transaction: search real records first. Clarify ambiguity and truncated searches.
+   For first/second requests use the displayed list order, falling back to newest on other pages.
+   'My' means owned by the actor; 'oldest'/'first ever' uses ascending transaction date. Resolve
+   ordinals without requiring amount/category/description, including records older than recent search.
    Preview the exact amount, description, account, and date; require a separate confirmation.
    Recheck that the record has not changed, then call the normal soft-deletion domain service.
 4. Add a todo: use the existing task domain, optionally resolve an existing named list, date/time,
@@ -60,6 +67,9 @@ when required information is missing; never guess among multiple financial accou
 Process one mutation per request. Do not act on examples, hypothetical/negated instructions, or
 capability questions. Never invent IDs, categories, task lists, amounts, currencies, or dates.
 Parse decimal major-unit amounts into positive integer minor units with the shared money utility.
+Resolve explicit currency independently of model output: euro/euros/€ is always EUR. Otherwise use
+the selected-account/household default, preserving user currency during clarifications. Reject
+conflicting currencies and account mismatches; never invent USD or silently perform conversion.
 Derive account ownership from trusted documents. Use household timezone for today/yesterday and
 task dates. Avoid floating-point monetary arithmetic and UTC-only assumptions.
 

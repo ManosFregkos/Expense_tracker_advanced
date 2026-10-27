@@ -11,6 +11,7 @@ export { createCategory, updateCategory } from './services/categories.js'
 export { rebuildMonthlyAnalytics } from './services/rebuild-analytics.js'
 export { getTransactionTotals } from './services/transaction-totals.js'
 export { jarvisChat, jarvisAction } from './services/jarvis.js'
+export { jarvisTranscribe } from './services/jarvis-transcription.js'
 export {
   initializeTaskModule,
   createTask,

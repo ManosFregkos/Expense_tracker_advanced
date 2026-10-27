@@ -56,6 +56,23 @@ function renderAssistant() {
 }
 
 const voice = vi.hoisted(() => ({ handler: (_text: string) => undefined as void }))
+const clip = vi.hoisted(() => ({
+  handler: (_audio: Blob, _isCurrent: () => boolean): Promise<void> => Promise.resolve(),
+}))
+vi.mock('./useCommandRecording', () => ({
+  audioToBase64: vi.fn(async () => 'dGVzdA=='),
+  useCommandRecording: (handler: typeof clip.handler) => {
+    clip.handler = handler
+    return {
+      stage: 'idle',
+      busy: false,
+      supported: true,
+      start: vi.fn(),
+      finish: vi.fn(),
+      cancel: vi.fn(),
+    }
+  },
+}))
 vi.mock('./useJarvisVoice', () => ({
   useJarvisVoice: (_language: string, handler: (text: string) => void) => {
     voice.handler = handler
@@ -77,7 +94,9 @@ vi.mock('../households/HouseholdProvider', () => ({
 vi.mock('../../hooks/useHouseholdData', () => ({
   useAccounts: () => ({ data: [{ id: 'a1', name: 'Cash', currency: 'EUR', isArchived: false }] }),
 }))
-vi.mock('../../lib/callables', () => ({ api: { jarvisChat: vi.fn(), jarvisAction: vi.fn() } }))
+vi.mock('../../lib/callables', () => ({
+  api: { jarvisChat: vi.fn(), jarvisAction: vi.fn(), jarvisTranscribe: vi.fn() },
+}))
 const pending = (kind: NonNullable<JarvisReply['action']>['kind']): JarvisReply => ({
   reply: 'Ready to save: €30 Supermarket',
   action: {
@@ -102,6 +121,21 @@ beforeEach(() => {
   })
 })
 describe('Jarvis panel workflow', () => {
+  it('puts a recorded transcript in the editable draft without automatically creating a transaction', async () => {
+    vi.mocked(api.jarvisTranscribe).mockResolvedValue({ text: 'Add 30 euros supermarket' })
+    vi.mocked(api.jarvisChat).mockResolvedValue({ reply: 'Which account?', action: null })
+    renderAssistant()
+    fireEvent.click(screen.getByLabelText('Open Jarvis'))
+    await act(async () => clip.handler(new Blob(['audio'], { type: 'audio/webm' }), () => true))
+    expect(screen.getByLabelText('Message Jarvis')).toHaveValue('Add 30 euros supermarket')
+    expect(api.jarvisChat).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Send'))
+    await waitFor(() =>
+      expect(api.jarvisChat).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'Add 30 euros supermarket' }),
+      ),
+    )
+  })
   it('explains a misheard standalone greeting locally without submitting it to GPT', () => {
     renderAssistant()
     fireEvent.click(screen.getByLabelText('Open Jarvis'))

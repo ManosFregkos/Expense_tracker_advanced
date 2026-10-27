@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { Timestamp } from 'firebase-admin/firestore'
-import { defineSecret, defineString } from 'firebase-functions/params'
+import { defineString } from 'firebase-functions/params'
 import { HttpsError } from 'firebase-functions/v2/https'
 import {
   createTaskSchema,
@@ -27,8 +27,9 @@ import { requireMember } from './permissions.js'
 import { planTaskCreation } from './tasks.js'
 import { planTransactionCreation, planTransactionDeletion } from './transactions.js'
 import { runJarvisAgent, type ChatMessage, type JarvisProposal } from './jarvis-agent.js'
+import { resolveJarvisCurrency } from './jarvis-currency.js'
+import { jarvisOpenaiKey as openaiKey } from './jarvis-config.js'
 
-const openaiKey = defineSecret('OPENAI_API_KEY')
 const jarvisModel = defineString('JARVIS_MODEL', { default: 'gpt-6-luna' })
 const hash = (value: string) => createHash('sha256').update(value).digest('hex')
 const requestRef = (uid: string, householdId: string, requestId: string) =>
@@ -138,6 +139,12 @@ export const jarvisChat = secureCallable(
         .map((doc) => ({ ...doc.data(), id: doc.id }) as TaskList)
         .filter((item) => !item.isArchived)
       const today = dateKeyInTimeZone(new Date(), household.timeZone)
+      const currency = resolveJarvisCurrency(
+        input.message,
+        accounts.find((account) => account.id === input.defaultAccountId)?.currency ??
+          household.defaultCurrency,
+        claim.history,
+      )
       let action: PreparedAction | null = null
       let deletionCandidate: { id: string; updatedAt: Timestamp; summary: string } | null = null
       const greek = input.language === 'el-GR'
@@ -146,10 +153,15 @@ export const jarvisChat = secureCallable(
         model: jarvisModel.value(),
         history: claim.history.slice(-12),
         message: input.message,
+        transactionCurrency: currency.currency,
         context: {
           today,
           timeZone: household.timeZone,
           currency: household.defaultCurrency,
+          transactionCurrency: currency.currency,
+          transactionCurrencySource: currency.source,
+          hasVisibleTransactionList: input.visibleTransactionIds !== undefined,
+          visibleTransactionCount: input.visibleTransactionIds?.length ?? 0,
           language: input.language,
           defaultAccountId: accounts.some((item) => item.id === input.defaultAccountId)
             ? input.defaultAccountId
@@ -228,9 +240,65 @@ export const jarvisChat = secureCallable(
             scope: filter.date ?? 'Most recent 100 records. Older records require an exact date.',
           }
         },
+        select: async (selection) => {
+          deletionCandidate = null
+          const visible = [...new Set(input.visibleTransactionIds ?? [])]
+          let matches
+          let scope: string
+          if (selection.order === 'VISIBLE' && input.visibleTransactionIds !== undefined) {
+            const documents = await Promise.all(
+              visible.map((id) => db.doc(`${base}/transactions/${id}`).get()),
+            )
+            matches = documents.filter(
+              (doc) =>
+                doc.exists &&
+                !doc.get('isDeleted') &&
+                !doc.get('deletedAt') &&
+                (!selection.mineOnly || doc.get('ownerUserId') === actor.uid),
+            )
+            scope = `${selection.mineOnly ? 'Your matching' : 'Household'} rows in the visible transaction list`
+          } else {
+            let query = db.collection(`${base}/transactions`).where('isDeleted', '==', false)
+            if (selection.mineOnly) query = query.where('ownerUserId', '==', actor.uid)
+            const snapshot = await query
+              .orderBy('transactionDate', selection.order === 'OLDEST' ? 'asc' : 'desc')
+              .limit(selection.position)
+              .get()
+            matches = snapshot.docs
+            scope = `${selection.mineOnly ? 'Your' : 'Household'} transactions, ${selection.order === 'OLDEST' ? 'oldest first' : 'newest first'}`
+          }
+          const selected = matches[selection.position - 1]
+          if (!selected)
+            return {
+              matches: [],
+              scope,
+              position: selection.position,
+              message: 'No transaction exists at that position. Nothing was selected.',
+            }
+          if (!['EXPENSE', 'INCOME'].includes(String(selected.get('type'))))
+            throw new HttpsError(
+              'failed-precondition',
+              'That historical transaction type is unsupported. Select another record.',
+            )
+          const data = selected.data()!
+          const date = dateKeyInTimeZone(
+            (data.transactionDate as Timestamp).toDate(),
+            household.timeZone,
+          )
+          const accountName = accounts.find((item) => item.id === data.accountId)?.name ?? 'Account'
+          const summary = `${String(data.description)} · ${formatMoney(Number(data.amountMinor), String(data.currency))} · ${date} · ${accountName} · ${scope}, position ${selection.position}`
+          deletionCandidate = { id: selected.id, updatedAt: data.updatedAt as Timestamp, summary }
+          return { matches: [{ id: selected.id, summary }], scope, position: selection.position }
+        },
         validate: async (proposal: JarvisProposal) => {
           if (proposal.kind === 'CREATE_TRANSACTION') {
-            const data = proposal.data
+            if (!currency.currency)
+              throw new HttpsError(
+                'failed-precondition',
+                'More than one currency was specified. Ask which currency to use.',
+              )
+            // Currency comes from the user's words/defaults, never an invented model value.
+            const data = { ...proposal.data, currency: currency.currency }
             const account = accounts.find(
               (item) => item.id === data.accountId && item.currency === data.currency,
             )

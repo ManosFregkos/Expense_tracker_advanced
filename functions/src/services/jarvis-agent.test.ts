@@ -75,6 +75,34 @@ describe('Jarvis provider boundary', () => {
     })
     expect(config.validate).toHaveBeenCalledOnce()
   })
+  it('constrains the transaction tool to the server-resolved currency', async () => {
+    const provider = mockResponses(answer('Which category?'))
+    await runJarvisAgent({ ...options(), transactionCurrency: 'EUR' })
+    const request = JSON.parse((provider.mock.calls[0]![1] as RequestInit).body as string) as {
+      tools: { name: string; parameters: { properties: { currency?: { enum: string[] } } } }[]
+    }
+    expect(
+      request.tools.find((tool) => tool.name === 'prepare_transaction')?.parameters.properties
+        .currency?.enum,
+    ).toEqual(['EUR'])
+  })
+  it('resolves ordinal deletion through the selection tool', async () => {
+    mockResponses(
+      call('select_transaction', { order: 'OLDEST', position: 1, mineOnly: true }),
+      call('prepare_deletion', { transactionId: 'oldest' }),
+    )
+    const select = vi.fn(async () => ({ matches: [{ id: 'oldest' }] }))
+    const result = await runJarvisAgent({
+      ...options(),
+      message: 'delete my oldest transaction',
+      select,
+    })
+    expect(select).toHaveBeenCalledWith({ order: 'OLDEST', position: 1, mineOnly: true })
+    expect(result.proposal).toMatchObject({
+      kind: 'DELETE_TRANSACTION',
+      data: { transactionId: 'oldest' },
+    })
+  })
   it('returns validation failures to the model and preserves reasoning/tool items for continuation', async () => {
     const provider = mockResponses(
       call('prepare_transaction', transaction),

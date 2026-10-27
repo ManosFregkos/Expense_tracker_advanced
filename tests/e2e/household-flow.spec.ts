@@ -260,7 +260,17 @@ test('register, onboard, and complete the core household finance workflow', asyn
 
   // Provider calls are mocked; exercise the real assistant UI without spending API quota.
   let confirmations = 0
+  let transcriptions = 0
   const jarvisMessages: string[] = []
+  await page.route('**/europe-west1/jarvisTranscribe', async (route) => {
+    transcriptions += 1
+    const body = route.request().postDataJSON() as {
+      data: { mimeType: string; audioBase64: string }
+    }
+    expect(body.data.mimeType).toBe('audio/webm')
+    expect(body.data.audioBase64.length).toBeGreaterThan(0)
+    await route.fulfill({ json: { result: { text: 'Add 30 euros supermarket' } } })
+  })
   await page.route('**/europe-west1/jarvisChat', async (route) => {
     const body = route.request().postDataJSON() as { data: { requestId: string; message: string } }
     jarvisMessages.push(body.data.message)
@@ -348,6 +358,27 @@ test('register, onboard, and complete the core household finance workflow', asyn
       }
     }
     Object.defineProperty(window, 'SpeechRecognition', { configurable: true, value: SpeechProbe })
+    class RecordingProbe {
+      static isTypeSupported = (type: string) => type.startsWith('audio/webm')
+      state = 'inactive'
+      mimeType = 'audio/webm;codecs=opus'
+      ondataavailable: ((event: { data: Blob }) => void) | null = null
+      onstop: (() => void) | null = null
+      onerror: (() => void) | null = null
+      start() {
+        this.state = 'recording'
+      }
+      stop() {
+        this.state = 'inactive'
+        this.ondataavailable?.({ data: new Blob(['simulated speech'], { type: this.mimeType }) })
+        this.onstop?.()
+      }
+    }
+    Object.defineProperty(window, 'MediaRecorder', { configurable: true, value: RecordingProbe })
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) },
+    })
     Object.defineProperty(window, 'SpeechRecognitionPhrase', {
       configurable: true,
       value: class {},
@@ -382,6 +413,14 @@ test('register, onboard, and complete the core household finance workflow', asyn
   await page.getByLabel('Message Jarvis').fill('Why is the sky blue?')
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByText('Air scatters blue sunlight more than red sunlight.')).toBeVisible()
+  await page.getByRole('button', { name: 'Record command', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Stop recording', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Stop recording', exact: true }).click()
+  await expect(page.getByLabel('Message Jarvis')).toHaveValue('Add 30 euros supermarket')
+  expect(transcriptions).toBe(1)
+  expect(jarvisMessages).toHaveLength(1)
+  await page.getByLabel('Message Jarvis').fill('')
+  await page.getByRole('button', { name: 'Enable voice', exact: true }).click()
   await say('Hey Jarvis delete my 30 euro supermarket transaction')
   await expect(
     page.getByText('Heard: Hey Jarvis delete my 30 euro supermarket transaction', { exact: true }),

@@ -20,6 +20,7 @@ Optionally set the model in **functions/.env.local**:
 
 ```dotenv
 JARVIS_MODEL=gpt-6-luna
+JARVIS_TRANSCRIPTION_MODEL=gpt-transcribe
 ```
 
 Use a model your OpenAI project can access that supports Responses function calling and strict tool
@@ -45,13 +46,15 @@ npm run emulators
 npm run dev
 ```
 
-For production, provision the secret, set `JARVIS_MODEL` in `functions/.env.<project-id>` if desired,
+For production, provision the secret, set these model values in `functions/.env.<project-id>` if desired,
 then build and deploy through the normal release workflow:
 
 ```bash
 firebase functions:secrets:set OPENAI_API_KEY --project <project-id>
 npm run build
-firebase deploy --only functions:jarvisChat,functions:jarvisAction,hosting,firestore:indexes --project <project-id>
+firebase deploy --only firestore:indexes --project <project-id>
+# Wait for new transaction indexes to finish building before deploying the functions/web app.
+firebase deploy --only functions:jarvisChat,functions:jarvisAction,functions:jarvisTranscribe,hosting --project <project-id>
 ```
 
 Deploying indexes includes TTL policies for the three private Jarvis collections. Verify those
@@ -59,6 +62,11 @@ policies become active in Firestore. TTL removal is asynchronous; logical sessio
 expiry are enforced independently by the application. Existing default-deny rules already block all
 client reads and writes to these collections. Keep existing production authentication and App Check
 configuration enabled as appropriate for the project.
+
+For this production project, replace `<project-id>` with `expense-tracker-v2-9520e`.
+If the secret is already configured, reuse it. A restricted OpenAI key must allow both Responses
+and audio transcription requests. Recordings incur separate audio transcription usage; changing
+the conversation model does not change browser recognition quality.
 
 ## Voice and examples
 
@@ -95,6 +103,23 @@ An unrelated standalone greeting such as “hey Debbie's” shows a local correc
 calling GPT. Clicking the header's **Jarvis** button also activates conversation, so you can ask a
 question directly without the wake phrase.
 
+### More accurate recorded commands
+
+Hands-free recognition uses the browser's speech provider before the text reaches Luna. Changing
+`JARVIS_MODEL` cannot repair words already misheard by the browser. For difficult commands:
+
+1. Open Jarvis and select the language you will speak in Voice settings.
+2. Click **Record command**, grant microphone permission, speak, then click **Stop recording**.
+   This pauses hands-free recognition and records at most 30 seconds / 3 MB.
+3. The authenticated `jarvisTranscribe` callable sends the clip to OpenAI `gpt-transcribe`.
+4. Review or edit the returned text, especially the amount and currency, then press **Send**.
+   Transcription alone never creates or deletes a record. **Cancel recording** discards the result.
+5. Re-enable **Enable voice** if you want hands-free listening again.
+
+This recording option also works in browsers with MediaRecorder but no SpeechRecognition.
+The browser/OS microphone, accent, background noise, and selected language still affect accuracy.
+Try recording “Add 30 euros supermarket” and verify the draft reads euros before sending it.
+
 OpenAI failures report a specific HTTP category (authentication, missing/inaccessible model,
 permissions, request configuration, quota, rate limits, or temporary outage). Logs contain only
 HTTP status, the configured model ID, allowlisted provider error codes, and a provider request ID.
@@ -109,6 +134,7 @@ Examples:
 - “Hey Jarvis, add income 1500 euro salary.”
 - “Hey Jarvis, delete yesterday's 30 euro supermarket transaction.” Then review the exact record
   and say “confirm” or “cancel”, or use the buttons.
+- “Delete my first transaction”, “Delete my second transaction”, or “Delete my oldest transaction”.
 - “Hey Jarvis, add buy milk to the Shopping list tomorrow.”
 
 Clear additions save immediately by default. Enable **Confirm additions before saving** for previews.
@@ -116,6 +142,18 @@ Deletion always needs a separate confirmation. If an account/category/list or de
 ambiguous, Jarvis asks a follow-up question. Categories and lists must already exist. Missing task
 lists are left unspecified; these tasks appear in the normal task workspace. Greek uses an explicit
 recognition-language switch; English wake/stop phrases stay the same in either language.
+
+An explicitly spoken euro/euros/€ is enforced as EUR by the server, even if a model proposes USD.
+Without an explicit currency, the selected account's currency (or household currency) is used.
+Short clarifying replies preserve the user's preceding currency. Multiple explicit currencies need
+clarification; a genuine USD request cannot be saved into an EUR account or silently converted.
+If speech recognition itself transcribes “dollars”, edit the draft or use recorded commands.
+
+“First” means the first matching row in the currently displayed, filtered/paginated Transactions
+list. “My” restricts selection to transactions owned by the signed-in user. On another page,
+“first” means newest by transaction date. “Oldest” or “first ever” explicitly selects the earliest
+transaction date; “latest” selects the newest. Selection needs no amount, category, or description.
+The preview includes the selected record and ordering scope; confirm only the intended record.
 
 The text box is available in all browsers. Speech recognition support varies; feature detection
 disables the voice button when unavailable. Use HTTPS or localhost. The active page must remain
@@ -131,10 +169,16 @@ echo; the exact stop phrase remains active. Wait for the spoken reply to end bef
 
 - Microphone listening starts only after opt-in; reloading requires a new opt-in. Browser speech
   recognition may send audio to the browser vendor's service. It is not a local-only wake-word engine.
+- **Record command** explicitly uploads the short clip to OpenAI for transcription. The app does not
+  persist the clip or returned transcript on the server. Once sent as a chat command, its text follows
+  normal conversation retention below. Closing/cancelling ignores late results; an upload already
+  in progress may still finish at the provider. Provider retention follows the OpenAI account policy.
 - OpenAI receives the submitted text, up to 12 recent conversation messages, household-local date,
   timezone/currency, active account names/IDs/currencies, category names/IDs/types, and task list names/IDs.
   Account balances are not sent. Transaction descriptions/amounts/dates/account names are sent only
-  when the model invokes transaction search.
+  when the model invokes transaction search or ordinal selection. Up to 100 visible transaction IDs
+  are supplied to the server to preserve the displayed ordering; each selected document is checked
+  within the authenticated household.
 - OpenAI requests use `store: false`. Provider-side abuse-monitoring retention and account policies
   are governed by the OpenAI account; this flag is not a promise of zero provider retention.
 - Private server conversations, action receipts, and rate-limit records have 24-hour TTL timestamps.
@@ -143,9 +187,13 @@ echo; the exact stop phrase remains active. Wait for the spoken reply to end bef
 - At most 20 chat requests per minute per user, four model rounds per message, one mutation per
   message, 200 accounts/categories/lists, and 2,000 input characters. Model work has a shared 50-second
   timeout budget. There is no automatic provider retry.
+- Recorded transcription has a separate limit of 10 requests/minute/user, 3 MB per request and a
+  45-second provider timeout. It uses the same server key with `JARVIS_TRANSCRIPTION_MODEL`.
 - Deletion search scans up to 100 most recent records, optionally on an exact household-local date.
   If the search window is truncated or several records match, narrow the date/description. Jarvis
   never interprets a truncated search as proof of a unique match.
+- Ordinal selection uses visible IDs or an indexed date-order query, so oldest/latest selection
+  works beyond the recent-100 descriptive search window. Supported positions are 1 through 100.
 - Prepared actions expire in 10 minutes. Confirmations accept only an opaque request ID and decision;
   clients cannot replace prepared amounts, account IDs, or deletion targets.
 - Financial/task mutation and the completion receipt commit in one Firestore transaction. Retrying
@@ -166,6 +214,9 @@ echo; the exact stop phrase remains active. Wait for the spoken reply to end bef
 proposals, confirmation, and idempotency. Existing transaction/task services expose their read-first
 mutation planners so receipts and normal financial/task effects can commit together.
 `apps/web/src/features/jarvis` contains the panel, voice parser, and browser recognition lifecycle.
+`jarvis-transcription.ts` handles authenticated recorded audio; `jarvis-currency.ts` independently
+resolves currency before proposal validation. Two ascending transaction-date indexes support oldest
+selection, with and without an owner filter.
 
 ```bash
 npm run typecheck
@@ -178,9 +229,12 @@ npm run build
 Unit/component tests cover everyday answers, strict tools, tool validation/continuation, wake/stop
 and echo handling, preparation without mutation, accounting, soft deletion, duplicate confirmations,
 ambiguous searches, stale previews, revoked membership, session isolation, expiry, and todos.
+Additional tests cover EUR enforcement, visible/newest/oldest selection, owned-only selection,
+audio validation and rate limits, recording cleanup/cancellation, and review-before-send behavior.
 Perform a real microphone smoke test on each intended device/browser after provisioning the key;
 synthetic tests cannot establish recognition accuracy, device speech quality, or provider access.
 
 References: [OpenAI function calling](https://developers.openai.com/api/docs/guides/function-calling),
 [model configuration](https://developers.openai.com/api/docs/models/gpt-6-luna),
+[OpenAI speech transcription](https://developers.openai.com/api/docs/guides/speech-to-text),
 [browser speech recognition and its compatibility limits](https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognition).
