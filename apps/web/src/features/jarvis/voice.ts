@@ -55,7 +55,6 @@ export interface VoiceRecognition {
   continuous: boolean
   interimResults: boolean
   maxAlternatives?: number
-  phrases?: object[]
   onresult: ((event: RecognitionEvent) => void) | null
   onerror: ((event: { error: string }) => void) | null
   onend: (() => void) | null
@@ -69,20 +68,6 @@ export interface VoiceRecognition {
   abort(): void
 }
 
-export function biasJarvisPhrases(recognition: VoiceRecognition): boolean {
-  const Phrase = (
-    window as unknown as { SpeechRecognitionPhrase?: new (phrase: string, boost: number) => object }
-  ).SpeechRecognitionPhrase
-  if (!Phrase || !('phrases' in recognition)) return false
-  try {
-    recognition.phrases = ['Jarvis', 'Hey Jarvis', 'Jarvis stop'].map(
-      (phrase) => new Phrase(phrase, 5),
-    )
-    return true
-  } catch {
-    return false
-  }
-}
 export function recognitionConstructor(): (new () => VoiceRecognition) | undefined {
   const speechWindow = window as unknown as {
     SpeechRecognition?: new () => VoiceRecognition

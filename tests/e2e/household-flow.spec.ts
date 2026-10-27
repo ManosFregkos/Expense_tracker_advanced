@@ -299,8 +299,16 @@ test('register, onboard, and complete the core household finance workflow', asyn
       lang = ''
       continuous = false
       interimResults = false
+      phraseConfigured = false
+      get phrases(): object[] {
+        return []
+      }
+      set phrases(_value: object[]) {
+        this.phraseConfigured = true
+      }
       onstart: (() => void) | null = null
       onend: (() => void) | null = null
+      onerror: ((event: { error: string }) => void) | null = null
       onresult:
         | ((event: {
             resultIndex: number
@@ -323,6 +331,12 @@ test('register, onboard, and complete the core household finance workflow', asyn
         window.addEventListener('jarvis-test-transcript', this.receive)
       }
       start() {
+        // Reproduce a provider that rejects even an emptied phrases configuration.
+        if (this.phraseConfigured) {
+          this.onerror?.({ error: 'phrases-not-supported' })
+          this.onend?.()
+          return
+        }
         this.index = 0
         this.onstart?.()
       }
@@ -334,6 +348,10 @@ test('register, onboard, and complete the core household finance workflow', asyn
       }
     }
     Object.defineProperty(window, 'SpeechRecognition', { configurable: true, value: SpeechProbe })
+    Object.defineProperty(window, 'SpeechRecognitionPhrase', {
+      configurable: true,
+      value: class {},
+    })
   })
   const say = async (text: string, final = true) => {
     await page.evaluate(

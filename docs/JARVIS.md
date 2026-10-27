@@ -86,8 +86,9 @@ appear but no request is sent, wait for any spoken reply to finish, then repeat 
 An addition with confirmation enabled or a deletion produces a preview first; `jarvisAction` is sent
 when you confirm or cancel. Browser recognition traffic itself need not appear as an app fetch call.
 
-The browser is asked for up to three transcript alternatives. Supported browsers also receive
-contextual hints for “Jarvis”; providers that reject hints fall back to ordinary recognition.
+The browser is asked for up to three transcript alternatives. Experimental phrase hints are not
+configured: some browsers expose that API while their speech provider rejects it, including when
+the hints are subsequently cleared. Jarvis uses ordinary recognition on a fresh instance instead.
 Common name variants such as “Jervis” and “Jarivs” can wake the panel. Alternate hypotheses are used
 only for a standalone wake phrase, never to replace a spoken amount, command, or confirmation.
 An unrelated standalone greeting such as “hey Debbie's” shows a local correction prompt rather than

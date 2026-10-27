@@ -6,11 +6,19 @@ import type { VoiceRecognition } from './voice'
 class Recognition implements VoiceRecognition {
   static latest: Recognition
   static startupError: string | null = null
+  static phraseAccess = vi.fn()
   lang = ''
   continuous = false
   interimResults = false
   maxAlternatives = 1
-  phrases: object[] = []
+  get phrases(): object[] {
+    Recognition.phraseAccess()
+    throw new Error('Unsupported experimental phrases')
+  }
+  set phrases(_value: object[]) {
+    Recognition.phraseAccess()
+    throw new Error('Unsupported experimental phrases')
+  }
   onstart: VoiceRecognition['onstart'] = null
   onend: VoiceRecognition['onend'] = null
   onerror: VoiceRecognition['onerror'] = null
@@ -31,6 +39,7 @@ class Recognition implements VoiceRecognition {
 }
 beforeEach(() => {
   Recognition.startupError = null
+  Recognition.phraseAccess.mockClear()
   vi.useFakeTimers()
   vi.stubGlobal('SpeechRecognition', Recognition)
   vi.stubGlobal('isSecureContext', true)
@@ -65,30 +74,25 @@ describe('Jarvis recognition lifecycle', () => {
     expect(handler).toHaveBeenCalledExactlyOnceWith('Hey Jarvis')
     expect(result.current.lastTranscript).toBe('Hey Jarvis')
   })
-  it('boosts Jarvis where supported and falls back if the provider rejects speech hints', () => {
-    class Phrase {
-      constructor(
-        readonly phrase: string,
-        readonly boost: number,
-      ) {}
-    }
+  it('starts and restarts without touching phrase hints even when the browser exposes the experimental API', () => {
+    const Phrase = vi.fn()
     vi.stubGlobal('SpeechRecognitionPhrase', Phrase)
     const { result } = renderHook(() => useJarvisVoice('en-US', vi.fn()))
     act(() => result.current.start())
     const microphone = Recognition.latest
-    expect(microphone.phrases).toEqual([
-      new Phrase('Jarvis', 5),
-      new Phrase('Hey Jarvis', 5),
-      new Phrase('Jarvis stop', 5),
-    ])
+    expect(result.current.listening).toBe(true)
     act(() => {
-      microphone.onerror?.({ error: 'phrases-not-supported' })
       microphone.onend?.()
       vi.advanceTimersByTime(500)
     })
-    expect(microphone.phrases).toEqual([])
+    expect(Phrase).not.toHaveBeenCalled()
+    expect(Recognition.phraseAccess).not.toHaveBeenCalled()
     expect(microphone.start).toHaveBeenCalledTimes(2)
     expect(result.current.error).toBe('')
+    act(() => result.current.stop())
+    act(() => result.current.start())
+    expect(result.current.listening).toBe(true)
+    expect(Recognition.phraseAccess).not.toHaveBeenCalled()
   })
   it('catches a permission failure emitted synchronously by start', () => {
     Recognition.startupError = 'not-allowed'

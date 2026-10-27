@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  biasJarvisPhrases,
-  recognitionConstructor,
-  recognitionTranscript,
-  type VoiceRecognition,
-} from './voice'
+import { recognitionConstructor, recognitionTranscript, type VoiceRecognition } from './voice'
 
 export function useJarvisVoice(language: string, onTranscript: (text: string) => void) {
   const [enabled, setEnabled] = useState(false)
@@ -57,7 +52,8 @@ export function useJarvisVoice(language: string, onTranscript: (text: string) =>
     current.continuous = true
     current.interimResults = true
     current.maxAlternatives = 3
-    let biased = biasJarvisPhrases(current)
+    // Do not set experimental `phrases`, even to []. Some remote providers reject
+    // the recognition session once this property has been configured at all.
     let disposed = false
     let restartTimer: ReturnType<typeof setTimeout> | undefined
     let rapidEnds = 0
@@ -138,11 +134,6 @@ export function useJarvisVoice(language: string, onTranscript: (text: string) =>
     }
     current.onerror = (event) => {
       if (disposed || event.error === 'aborted') return
-      if (event.error === 'phrases-not-supported' && biased) {
-        current.phrases = []
-        biased = false
-        return
-      }
       if (event.error === 'no-speech') {
         setNotice(
           'No speech detected. Check your browser’s microphone input and selected voice language, then try again.',
@@ -193,16 +184,6 @@ export function useJarvisVoice(language: string, onTranscript: (text: string) =>
     try {
       current.start()
     } catch {
-      if (biased) {
-        current.phrases = []
-        biased = false
-        try {
-          current.start()
-          return
-        } catch {
-          /* Fall through to a visible startup error. */
-        }
-      }
       fail('Could not start the microphone. Check browser permissions and try again.')
     }
   }, [language])
