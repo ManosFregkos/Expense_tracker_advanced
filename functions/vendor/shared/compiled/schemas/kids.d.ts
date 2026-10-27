@@ -109,7 +109,6 @@ export declare const learningRelationshipSchema: z.ZodObject<{
 export declare const everydayScenarioSchema: z.ZodObject<{
     id: z.ZodString;
     topic: z.ZodEnum<{
-        WEATHER: "WEATHER";
         HYGIENE: "HYGIENE";
         KINDNESS: "KINDNESS";
         SAFETY: "SAFETY";
@@ -118,6 +117,7 @@ export declare const everydayScenarioSchema: z.ZodObject<{
         ANIMALS: "ANIMALS";
         SOCIAL: "SOCIAL";
         FOOD: "FOOD";
+        WEATHER: "WEATHER";
     }>;
     subtopic: z.ZodOptional<z.ZodEnum<{
         RAIN: "RAIN";
@@ -417,8 +417,8 @@ export declare const kidsAssetMetadataSchema: z.ZodObject<{
 export declare const kidsCustomContentKindSchema: z.ZodEnum<{
     SEQUENCE: "SEQUENCE";
     PATTERN: "PATTERN";
-    CARD: "CARD";
     DECK: "DECK";
+    CARD: "CARD";
     RELATIONSHIP: "RELATIONSHIP";
     EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
     EMOTION_SCENARIO: "EMOTION_SCENARIO";
@@ -429,8 +429,8 @@ export declare const saveKidsCustomContentSchema: z.ZodObject<{
     kind: z.ZodEnum<{
         SEQUENCE: "SEQUENCE";
         PATTERN: "PATTERN";
-        CARD: "CARD";
         DECK: "DECK";
+        CARD: "CARD";
         RELATIONSHIP: "RELATIONSHIP";
         EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
         EMOTION_SCENARIO: "EMOTION_SCENARIO";
@@ -443,8 +443,8 @@ export declare const archiveKidsCustomContentSchema: z.ZodObject<{
     kind: z.ZodEnum<{
         SEQUENCE: "SEQUENCE";
         PATTERN: "PATTERN";
-        CARD: "CARD";
         DECK: "DECK";
+        CARD: "CARD";
         RELATIONSHIP: "RELATIONSHIP";
         EVERYDAY_SCENARIO: "EVERYDAY_SCENARIO";
         EMOTION_SCENARIO: "EMOTION_SCENARIO";
@@ -571,14 +571,14 @@ export declare const persistKidsAttemptSchema: z.ZodObject<{
     attemptCount: z.ZodNumber;
     difficulty: z.ZodUnion<readonly [z.ZodLiteral<1>, z.ZodLiteral<2>, z.ZodLiteral<3>, z.ZodLiteral<4>]>;
     conceptType: z.ZodOptional<z.ZodEnum<{
+        WEATHER: "WEATHER";
+        PATTERN: "PATTERN";
+        SPATIAL: "SPATIAL";
         NUMBER: "NUMBER";
         FLAG: "FLAG";
         COUNTING: "COUNTING";
         ADDITION: "ADDITION";
         QUANTITY: "QUANTITY";
-        PATTERN: "PATTERN";
-        SPATIAL: "SPATIAL";
-        WEATHER: "WEATHER";
         PROFESSION: "PROFESSION";
     }>>;
     conceptId: z.ZodOptional<z.ZodString>;

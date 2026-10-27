@@ -34,6 +34,7 @@ import { useAddTransaction } from '../features/transactions/AddTransactionProvid
 import { OfflineBanner } from './OfflineBanner'
 import { useTaskDueCount } from '../features/tasks/hooks'
 import { TaskNotificationMenu } from '../features/tasks/components/TaskNotificationMenu'
+import { JarvisAssistant } from '../features/jarvis/JarvisAssistant'
 
 const nav = [
   ['/dashboard', 'Dashboard', IconHome],
@@ -82,6 +83,7 @@ export function AppLayout() {
             </Text>
           </Group>
           <Group gap="xs" wrap="nowrap" className="app-header-actions">
+            {household && <JarvisAssistant key={`${user?.uid ?? ''}:${household.id}`} />}
             <TaskNotificationMenu />
             <Select
               className="desktop-only"

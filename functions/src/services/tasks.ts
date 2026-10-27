@@ -266,7 +266,7 @@ export const initializeTaskModule = secureCallable(
   },
 )
 
-async function planTaskCreation(transaction: Transaction, input: CreateTaskInput, actor: Actor) {
+export async function planTaskCreation(transaction: Transaction, input: CreateTaskInput, actor: Actor) {
   const ref = input.clientRequestId
     ? db.doc(`households/${input.householdId}/tasks/${input.clientRequestId}`)
     : db.collection(`households/${input.householdId}/tasks`).doc()

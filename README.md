@@ -43,6 +43,9 @@ npm run build
 - Installable PWA with offline shell and Firestore persistence
 - Household tasks with assignment, lists, subtasks, recurring occurrences, reminders, and PWA push
 - Bulk task completion, assignment, and rescheduling with per-task failure reporting
+- Jarvis assistant: wake/stop phrases, OpenAI questions, voice expenses/income, confirmed deletion, and todos
+
+See [Jarvis setup and usage](docs/JARVIS.md) and the [Jarvis implementation master prompt](docs/JARVIS_MASTER_PROMPT.md).
 
 See [Transaction totals and bulk task actions](docs/TRANSACTION_TOTALS_AND_BULK_TASKS.md) for usage,
 behavior, and deployment details.

@@ -257,4 +257,56 @@ test('register, onboard, and complete the core household finance workflow', asyn
     await page.getByRole('button', { name: /More filters/ }).click()
     await expect(page.getByRole('textbox', { name: 'Type' })).toBeVisible()
   }
+
+  // Provider calls are mocked; exercise the real assistant UI without spending API quota.
+  let confirmations = 0
+  await page.route('**/europe-west1/jarvisChat', async (route) => {
+    const body = route.request().postDataJSON() as { data: { requestId: string; message: string } }
+    const deletion = body.data.message.toLowerCase().includes('delete')
+    await route.fulfill({
+      json: {
+        result: deletion
+          ? {
+              reply: 'Confirm deletion: Supermarket · €30.00 · Cash · 2026-10-27',
+              action: {
+                requestId: body.data.requestId,
+                kind: 'DELETE_TRANSACTION',
+                summary: 'Supermarket · €30.00 · Cash · 2026-10-27',
+                expiresAt: new Date(Date.now() + 600_000).toISOString(),
+              },
+            }
+          : { reply: 'Air scatters blue sunlight more than red sunlight.', action: null },
+      },
+    })
+  })
+  await page.route('**/europe-west1/jarvisAction', async (route) => {
+    confirmations += 1
+    await route.fulfill({
+      json: {
+        result: {
+          status: 'COMPLETED',
+          message: 'Deleted: Supermarket · €30.00',
+          entityId: 'mock-preview',
+        },
+      },
+    })
+  })
+  await page.getByLabel('Open Jarvis').click()
+  await page.getByLabel('Read replies aloud').uncheck()
+  await page.getByLabel('Message Jarvis').fill('Why is the sky blue?')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByText('Air scatters blue sunlight more than red sunlight.')).toBeVisible()
+  await page.getByLabel('Message Jarvis').fill('Delete my 30 euro supermarket transaction')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Confirm deletion' })).toBeVisible()
+  expect(confirmations).toBe(0)
+  await page.screenshot({ path: testInfo.outputPath('mobile-320-jarvis-confirmation.png') })
+  await page.getByRole('button', { name: 'Confirm deletion' }).click()
+  await expect(page.getByText('Deleted: Supermarket · €30.00', { exact: true })).toBeVisible()
+  expect(confirmations).toBe(1)
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth))
+    .toBeLessThanOrEqual(1)
+  await page.keyboard.press('Escape')
+  await expect(page.getByLabel('Message Jarvis')).toHaveCount(0)
 })

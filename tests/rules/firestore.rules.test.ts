@@ -204,6 +204,14 @@ describeWithEmulator('Firestore household isolation', () => {
     )
   })
 
+  it('keeps Jarvis conversations, prepared actions, and rate limits backend-only even for household owners', async () => {
+    const alice = environment.authenticatedContext('alice').firestore()
+    for (const name of ['privateJarvisRequests', 'privateJarvisSessions', 'privateJarvisRateLimits']) {
+      await assertFails(getDoc(doc(alice, `${name}/private-record`)))
+      await assertFails(setDoc(doc(alice, `${name}/private-record`), { status: 'COMPLETED' }))
+    }
+  })
+
   it('isolates Kids learning data and denies all direct writes', async () => {
     const alice = environment.authenticatedContext('alice').firestore()
     await assertSucceeds(getDoc(doc(alice, 'households/h1/childProfiles/child1')))

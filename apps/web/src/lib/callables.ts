@@ -25,6 +25,10 @@ import type {
   UpdateKidsSettingsInput,
   SaveKidsCustomContentInput,
   ArchiveKidsCustomContentInput,
+  JarvisChatInput,
+  JarvisReply,
+  JarvisActionInput,
+  JarvisActionResult,
 } from '@family-expense-tracker/shared'
 import { functions } from './firebase'
 
@@ -34,6 +38,8 @@ async function call<TInput, TOutput>(name: string, input: TInput): Promise<TOutp
 }
 
 export const api = {
+  jarvisChat: (input: JarvisChatInput) => call<typeof input, JarvisReply>('jarvisChat', input),
+  jarvisAction: (input: JarvisActionInput) => call<typeof input, JarvisActionResult>('jarvisAction', input),
   createHousehold: (input: CreateHouseholdInput) => call<typeof input, { householdId: string }>('createHousehold', input),
   createAccount: (input: CreateAccountInput) => call<typeof input, { accountId: string }>('createAccount', input),
   updateAccount: (input: UpdateAccountInput) => call<typeof input, { accountId: string }>('updateAccount', input),

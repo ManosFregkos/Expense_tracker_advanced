@@ -290,7 +290,7 @@ async function applyFinancialMutation(
 }
 
 // Read and validate first; callers commit this plan inside the same Firestore transaction.
-async function planTransactionCreation(
+export async function planTransactionCreation(
   transaction: FirestoreTransaction,
   input: TransactionInput,
   actor: Actor,
@@ -399,26 +399,41 @@ async function setDeletionState(
   await requireMember(input.householdId, actor.uid)
   const ref = db.doc(`households/${input.householdId}/transactions/${input.transactionId}`)
   await db.runTransaction(async (transaction) => {
-    const [household, snapshot] = await Promise.all([
-      loadHousehold(transaction, input.householdId),
-      transaction.get(ref),
-    ])
-    if (!snapshot.exists) throw new HttpsError('not-found', 'Transaction not found.')
-    const before = snapshot.data() as Transaction
-    if (restore === !before.deletedAt) return
-    const restored = { ...before, isDeleted: false, updatedAt: Timestamp.now() }
-    delete restored.deletedAt
-    delete restored.deletedBy
-    const after: Transaction = restore
-      ? restored
-      : {
-          ...before,
-          isDeleted: true,
-          deletedAt: Timestamp.now(),
-          deletedBy: actor.uid,
-          updatedAt: Timestamp.now(),
-        }
-    await applyFinancialMutation(transaction, household, before, after)
+    const commit = await planTransactionDeletion(transaction, input, actor, restore)
+    commit()
+  })
+  return { transactionId: ref.id }
+}
+
+export async function planTransactionDeletion(
+  transaction: FirestoreTransaction,
+  input: { householdId: string; transactionId: string },
+  actor: Actor,
+  restore = false,
+) {
+  const ref = db.doc(`households/${input.householdId}/transactions/${input.transactionId}`)
+  const [household, snapshot] = await Promise.all([
+    loadHousehold(transaction, input.householdId),
+    transaction.get(ref),
+  ])
+  if (!snapshot.exists) throw new HttpsError('not-found', 'Transaction not found.')
+  const before = snapshot.data() as Transaction
+  if (restore === !before.deletedAt) return () => undefined
+  const restored = { ...before, isDeleted: false, updatedAt: Timestamp.now() }
+  delete restored.deletedAt
+  delete restored.deletedBy
+  const after: Transaction = restore
+    ? restored
+    : {
+        ...before,
+        isDeleted: true,
+        deletedAt: Timestamp.now(),
+        deletedBy: actor.uid,
+        updatedAt: Timestamp.now(),
+      }
+  const commitFinancials = await planFinancialMutation(transaction, household, before, after)
+  return () => {
+    commitFinancials()
     transaction.set(ref, after)
     writeAudit(db, transaction, {
       householdId: input.householdId,
@@ -429,8 +444,7 @@ async function setDeletionState(
       before: safeFinancialSnapshot(before as unknown as Record<string, unknown>),
       after: safeFinancialSnapshot(after as unknown as Record<string, unknown>),
     })
-  })
-  return { transactionId: input.transactionId }
+  }
 }
 
 export const deleteTransaction = secureCallable(transactionIdSchema, (input, actor) =>

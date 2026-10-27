@@ -450,5 +450,9 @@
       ]
     }
   ],
-  "fieldOverrides": []
+  "fieldOverrides": [
+    { "collectionGroup": "privateJarvisRequests", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "privateJarvisSessions", "fieldPath": "expiresAt", "ttl": true, "indexes": [] },
+    { "collectionGroup": "privateJarvisRateLimits", "fieldPath": "expiresAt", "ttl": true, "indexes": [] }
+  ]
 }
